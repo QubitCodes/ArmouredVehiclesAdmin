@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
+import { Orbitron } from "next/font/google";
 import "./globals.css";
-import { AppProviders } from "./providers";
+import { ReactQueryProvider } from "@/components/providers";
+
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ArmoredMart Admin",
@@ -14,8 +21,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <AppProviders>{children}</AppProviders>
+      <body className={`min-h-screen bg-background antialiased ${orbitron.className}`}>
+        <ReactQueryProvider>{children}</ReactQueryProvider>
       </body>
     </html>
   );
