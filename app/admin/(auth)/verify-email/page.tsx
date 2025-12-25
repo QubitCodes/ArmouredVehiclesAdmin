@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import { useLoginStart } from "@/hooks/use-login";
 import { useVerifyOtp } from "@/hooks/use-verify-otp";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "verify@gmail.com";
@@ -231,5 +231,26 @@ export default function VerifyEmailPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
+          <Card className="w-full max-w-md md:max-w-xl bg-bg-light border-none shadow-lg rounded-2xl">
+            <CardContent className="p-6 sm:p-8 md:p-10">
+              <div className="text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
