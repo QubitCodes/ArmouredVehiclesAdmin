@@ -1,4 +1,4 @@
-import { Orbitron } from "next/font/google";
+import { Orbitron, Inter } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
 
@@ -9,6 +9,14 @@ const orbitron = Orbitron({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
   display: "swap",
+  variable: "--font-orbitron",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -22,10 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`min-h-screen bg-background antialiased ${orbitron.className}`}>
+    <html lang="en" className={`${inter.variable} ${orbitron.variable}`}>
+      <body className="min-h-screen bg-background antialiased font-sans">
         <ReactQueryProvider>{children}</ReactQueryProvider>
-        <Toaster />
+        <Toaster position="top-right" />
       </body>
     </html>
   );

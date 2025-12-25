@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { AxiosError } from "axios";
 import Image from "next/image";
@@ -31,6 +32,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -50,11 +52,14 @@ export default function LoginPage() {
         response.message || "OTP sent successfully! Please check your email."
       );
 
-      // TODO: Navigate to OTP verification page
-      // router.push("/admin/otp-verify");
+      // Navigate to OTP verification page with email parameter
+      router.push(`/admin/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
+      console.log(error);
+      
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
       const errorMessage =
+        axiosError?.response?.data?.error ||
         axiosError?.response?.data?.message ||
         axiosError?.message ||
         "Failed to send OTP. Please try again.";
