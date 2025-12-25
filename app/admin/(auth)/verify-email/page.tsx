@@ -14,6 +14,7 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "verify@gmail.com";
+  const redirect = searchParams.get("redirect") || "/admin";
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -79,12 +80,12 @@ export default function VerifyEmailPage() {
       });
 
       toast.success(
-        response.message || "Email verified successfully! Redirecting..."
+        response.message || "Email verified successfully"
       );
 
-      // Redirect to admin dashboard after successful verification
+      // Redirect to intended destination or dashboard after successful verification
       setTimeout(() => {
-        router.push("/admin");
+        router.push(redirect);
       }, 1500);
     } catch (error) {
       const axiosError = error as AxiosError<{
