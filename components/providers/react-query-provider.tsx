@@ -1,4 +1,4 @@
-/* Providers wrapper for the app: React Query, (later) theme, toasts, etc. */
+/* Providers wrapper for the app: React Query */
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

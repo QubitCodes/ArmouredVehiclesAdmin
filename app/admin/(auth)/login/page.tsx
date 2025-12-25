@@ -1,12 +1,12 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { AxiosError } from "axios";
 import Image from "next/image";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import * as z from "zod";
+
 import {
   Form,
   FormControl,
@@ -15,14 +15,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useLoginStart } from "@/hooks/use-login";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 const loginSchema = z.object({
   email: z
     .string()
     .min(1, "Email is required")
     .email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -32,13 +35,31 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   });
 
-  const onSubmit = (data: LoginFormValues) => {
-    // Handle form submission
-    console.log("Form data:", data);
+  const loginMutation = useLoginStart();
+
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      const response = await loginMutation.mutateAsync({
+        email: data.email,
+      });
+
+      toast.success(
+        response.message || "OTP sent successfully! Please check your email."
+      );
+
+      // TODO: Navigate to OTP verification page
+      // router.push("/admin/otp-verify");
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      const errorMessage =
+        axiosError?.response?.data?.message ||
+        axiosError?.message ||
+        "Failed to send OTP. Please try again.";
+      toast.error(errorMessage);
+    }
   };
 
   return (
@@ -102,34 +123,23 @@ export default function LoginPage() {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem className="space-y-1.5">
-                      <FormLabel className="text-foreground font-semibold text-xs uppercase tracking-wide">
-                        Password
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Enter Your Password"
-                          className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-600 text-xs" />
-                    </FormItem>
-                  )}
-                />
-
                 <Button
                   type="submit"
                   variant="secondary"
-                  className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 mt-4"
+                  disabled={loginMutation.isPending}
+                  className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Continue
-                  <ArrowRight className="w-4 h-4" />
+                  {loginMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending OTP...
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
                 </Button>
               </form>
             </Form>
