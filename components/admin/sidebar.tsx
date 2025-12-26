@@ -14,7 +14,7 @@ const navigation = [
   },
   {
     name: "Admin Management",
-    href: "/admin/admins",
+    href: "/admin/admin-management",
     icon: Users,
   },
   {
