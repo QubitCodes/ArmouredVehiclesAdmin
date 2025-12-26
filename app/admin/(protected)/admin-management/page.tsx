@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
 import { useAdmins } from "@/hooks/admin/admin-management/use-admins";
 import { AdminTable } from "@/components/admin/admin-management/admin-table";
 import { AdminActions } from "@/components/admin/admin-management/admin-actions";
+import { AddAdminDialog } from "@/components/admin/admin-management/add-admin-dialog";
 
 export default function AdminManagementPage() {
+  const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false);
+
   // Use React Query to fetch admins
   const {
     data: admins = [],
@@ -25,8 +28,7 @@ export default function AdminManagementPage() {
   }, [error]);
 
   const handleAddAdmin = () => {
-    // TODO: Implement add admin dialog/modal
-    toast.info("Add Admin feature - Open dialog/modal here");
+    setIsAddAdminDialogOpen(true);
   };
 
   return (
@@ -54,6 +56,11 @@ export default function AdminManagementPage() {
       ) : (
         <AdminTable admins={admins} />
       )}
+
+      <AddAdminDialog
+        open={isAddAdminDialogOpen}
+        onOpenChange={setIsAddAdminDialogOpen}
+      />
     </div>
   );
 }
