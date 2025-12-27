@@ -14,6 +14,66 @@ export interface Product {
   sku?: string;
 }
 
+export interface CreateProductRequest {
+  name: string;
+  sku?: string;
+  mainCategoryId?: number;
+  categoryId?: number;
+  subCategoryId?: number;
+  vehicleCompatibility?: string;
+  certifications?: string;
+  countryOfOrigin?: string;
+  controlledItemType?: string;
+  dimensionLength?: number;
+  dimensionWidth?: number;
+  dimensionHeight?: number;
+  dimensionUnit?: string;
+  materials?: string[];
+  features?: string[];
+  performance?: string[];
+  technicalDescription?: string;
+  driveTypes?: string[];
+  sizes?: string[];
+  thickness?: string[];
+  colors?: string[];
+  weightValue?: number;
+  weightUnit?: string;
+  packingLength?: number;
+  packingWidth?: number;
+  packingHeight?: number;
+  packingDimensionUnit?: string;
+  packingWeight?: number;
+  packingWeightUnit?: string;
+  basePrice: number;
+  currency?: string;
+  stock?: number;
+  minOrderQuantity?: number;
+  condition?: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  readyStockAvailable?: boolean;
+  pricingTerms?: string[];
+  productionLeadTime?: number;
+  manufacturingSource?: string;
+  manufacturingSourceName?: string;
+  requiresExportLicense?: boolean;
+  hasWarranty?: boolean;
+  warrantyDuration?: number;
+  warrantyDurationUnit?: string;
+  warrantyTerms?: string;
+  complianceConfirmed?: boolean;
+  supplierSignature?: string;
+  vehicleFitment?: string;
+  specifications?: string;
+  description?: string;
+  warranty?: string;
+  actionType?: string;
+  isFeatured?: boolean;
+  image?: string;
+  gallery?: string[];
+}
+
 export interface GetProductsParams {
   page?: number;
   limit?: number;
@@ -44,6 +104,19 @@ class ProductService {
       return response.data;
     } catch (error) {
       console.error("Error fetching product:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new product
+   */
+  async createProduct(data: CreateProductRequest) {
+    try {
+      const response = await api.post("/admin/products", data);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating product:", error);
       throw error;
     }
   }
