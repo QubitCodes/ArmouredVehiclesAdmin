@@ -68,10 +68,9 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
         name: data.name,
         description: data.description || undefined,
         basePrice: data.price,
-        category: data.category || undefined,
         stock: data.stock || undefined,
         sku: data.sku || undefined,
-        imageUrl: data.imageUrl || undefined,
+        ...(data.imageUrl ? { image: data.imageUrl } : {}),
       });
 
       toast.success("Product created successfully!");

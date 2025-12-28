@@ -1,35 +1,194 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Package, DollarSign, Tag, BarChart3, Calendar, Edit } from "lucide-react";
+import { AxiosError } from "axios";
+import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Trash2 } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
+import { useDeleteProduct } from "@/hooks/admin/product-management/use-products";
+
+// Helper function to format field names (camelCase to Title Case)
+const formatFieldName = (fieldName: string): string => {
+  return fieldName
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+};
+
+
+// Helper function to format field value
+const formatFieldValue = (value: unknown, fieldName: string): string => {
+  if (value === undefined || value === null) {
+    return "—";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return "—";
+    }
+    return value.filter((item) => item !== "" && item !== null).join(", ");
+  }
+
+  if (typeof value === "object" && value !== null) {
+    // Handle date objects
+    if (fieldName === "signatureDate" && "day" in value && "month" in value && "year" in value) {
+      const dateObj = value as { day?: number; month?: number; year?: number };
+      if (dateObj.day && dateObj.month && dateObj.year) {
+        return `${dateObj.day}/${dateObj.month}/${dateObj.year}`;
+      }
+    }
+    return JSON.stringify(value);
+  }
+
+  if (typeof value === "number") {
+    // Handle currency fields
+    if (fieldName.toLowerCase().includes("price")) {
+      return `$${value.toFixed(2)}`;
+    }
+    return value.toString();
+  }
+
+  return String(value);
+};
+
+// Section definitions matching the form sections
+const SECTIONS = [
+  {
+    id: 1,
+    name: "Basic Information",
+    icon: Package,
+    fields: [
+      "name",
+      "sku",
+      "mainCategory",
+      "category",
+      "subCategory",
+      "certifications",
+      "controlledItemType",
+      "vehicleCompatibility",
+      "make",
+      "model",
+      "year",
+      "countryOfOrigin",
+      "description",
+    ],
+  },
+  {
+    id: 2,
+    name: "Technical Description",
+    icon: Settings,
+    fields: [
+      "dimensionLength",
+      "dimensionWidth",
+      "dimensionHeight",
+      "dimensionUnit",
+      "materials",
+      "features",
+      "performance",
+      "specifications",
+      "technicalDescription",
+      "vehicleFitment",
+      "sizes",
+      "thickness",
+      "colors",
+      "weightValue",
+      "weightUnit",
+      "packingLength",
+      "packingWidth",
+      "packingHeight",
+      "packingDimensionUnit",
+      "packingWeight",
+      "packingWeightUnit",
+      "minOrderQuantity",
+    ],
+  },
+  {
+    id: 3,
+    name: "Pricing & Availability",
+    icon: ShoppingCart,
+    fields: [
+      "basePrice",
+      "currency",
+      "pricingTerms",
+      "productionLeadTime",
+      "readyStockAvailable",
+      "stock",
+      "condition",
+    ],
+  },
+  {
+    id: 4,
+    name: "Uploads & Media",
+    icon: ImageIcon,
+    fields: ["image", "imageUrl", "gallery"],
+  },
+  {
+    id: 5,
+    name: "Declarations",
+    icon: Shield,
+    fields: [
+      "manufacturingSource",
+      "manufacturingSourceName",
+      "requiresExportLicense",
+      "hasWarranty",
+      "warranty",
+      "warrantyDuration",
+      "warrantyDurationUnit",
+      "warrantyTerms",
+      "complianceConfirmed",
+      "supplierSignature",
+      "signatureDate",
+    ],
+  },
+];
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params.id as string;
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     data: product,
     isLoading,
     error,
-  } = useProduct(productId);
+  } = useProduct(productId, !isDeleting);
 
-  // Show error toast when query fails
+  const deleteProductMutation = useDeleteProduct();
+
+  // Handle 404 errors - redirect to listing page if product doesn't exist
   useEffect(() => {
     if (error) {
-      console.error("Error fetching product:", error);
-      const axiosError = error as any;
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      if (axiosError?.response?.status === 404) {
+        // Product doesn't exist, redirect to listing page
+        router.replace("/admin/products/admin");
+        return;
+      }
       const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Failed to fetch product";
       toast.error(errorMessage);
     }
-  }, [error]);
+  }, [error, router]);
 
   if (isLoading) {
     return (
@@ -64,6 +223,25 @@ export default function ProductDetailPage() {
     );
   }
 
+  const productData = product as unknown as Record<string, unknown>;
+
+  // Render field in section
+  const renderField = (fieldName: string) => {
+    const value = productData[fieldName];
+    const formattedValue = formatFieldValue(value, fieldName);
+
+    return (
+      <div key={fieldName}>
+        <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          {formatFieldName(fieldName)}
+        </label>
+        <p className="text-foreground mt-2">
+          {formattedValue}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="flex w-full flex-col gap-6">
       {/* Header Section */}
@@ -86,158 +264,91 @@ export default function ProductDetailPage() {
             </p>
           </div>
         </div>
-        <Button variant="default">
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Product
-        </Button>
-      </div>
-
-      {/* Image and Basic Info Section */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Product Image */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardContent className="p-6">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-full rounded-lg object-cover aspect-square"
-                />
-              ) : (
-                <div className="w-full aspect-square rounded-lg bg-muted flex items-center justify-center">
-                  <Package className="h-16 w-16 text-muted-foreground" />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Basic Information */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Basic Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Product Name
-                  </label>
-                  <p className="text-lg font-medium text-foreground mt-2">
-                    {product.name}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    Price
-                  </label>
-                  <p className="text-lg font-bold text-foreground mt-2">
-                    ${typeof product.price === 'number' 
-                      ? product.price.toFixed(2) 
-                      : parseFloat(String(product.price || '0')).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {product.description && (
-                <div>
-                  <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Description
-                  </label>
-                  <p className="text-foreground mt-2 leading-relaxed">
-                    {product.description}
-                  </p>
-                </div>
-              )}
-
-              {product.category && (
-                <div>
-                  <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                    <Tag className="h-4 w-4" />
-                    Category
-                  </label>
-                  <p className="text-foreground mt-2">
-                    {product.category}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <div className="flex gap-2">
+          <Button variant="default" onClick={() => router.push(`/admin/products/admin/${product.id}/edit`)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Product
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={deleteProductMutation.isPending}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </Button>
         </div>
       </div>
 
-      {/* Additional Information Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Product Image */}
+      {((productData.image as string) || (productData.imageUrl as string)) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Status & Inventory
+              <ImageIcon className="h-5 w-5" />
+              Product Image
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Status
-              </label>
-              <p className="mt-2">
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    product.status === "active" || !product.status
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500"
-                      : "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-500"
-                  }`}
-                >
-                  {product.status
-                    ? product.status.charAt(0).toUpperCase() +
-                      product.status.slice(1)
-                    : "Active"}
-                </span>
-              </p>
-            </div>
-            {product.stock !== undefined && (
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Stock Quantity
-                </label>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {product.stock}
-                </p>
-              </div>
-            )}
-            {product.sku && (
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  SKU
-                </label>
-                <p className="text-foreground mt-2 font-mono">
-                  {product.sku}
-                </p>
-              </div>
-            )}
+          <CardContent>
+            <img
+              src={(productData.image as string) || (productData.imageUrl as string)}
+              alt={product.name}
+              className="w-full max-w-md rounded-lg object-cover"
+            />
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Timeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+      {/* Render all sections */}
+      {SECTIONS.map((section) => {
+        const Icon = section.icon;
+        return (
+          <Card key={section.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon className="h-5 w-5" />
+                {section.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {section.fields.map((fieldName) => renderField(fieldName))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {/* Timeline Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Timeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Created At
+            </label>
+            <p className="text-foreground mt-2">
+              {new Date(product.createdAt).toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          </div>
+          {product.updatedAt && (
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Created At
+                Last Updated
               </label>
               <p className="text-foreground mt-2">
-                {new Date(product.createdAt).toLocaleString("en-GB", {
+                {new Date(product.updatedAt).toLocaleString("en-GB", {
                   day: "2-digit",
                   month: "long",
                   year: "numeric",
@@ -246,26 +357,61 @@ export default function ProductDetailPage() {
                 })}
               </p>
             </div>
-            {product.updatedAt && (
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Last Updated
-                </label>
-                <p className="text-foreground mt-2">
-                  {new Date(product.updatedAt).toLocaleString("en-GB", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the product &quot;{product.name}&quot; 
+              and remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteProductMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  setShowDeleteDialog(false);
+                  setIsDeleting(true); // Disable product query before deletion
+                  await deleteProductMutation.mutateAsync(productId);
+                  toast.success("Product deleted successfully!");
+                  // Navigate immediately after deletion
+                  router.replace("/admin/products/admin");
+                } catch (error) {
+                  console.error(error);
+                  setIsDeleting(false); // Re-enable query if deletion fails
+                  const axiosError = error as AxiosError<{
+                    message?: string;
+                    error?: string;
+                  }>;
+
+                  let errorMessage = "Failed to delete product. Please try again.";
+                  
+                  if (axiosError?.response?.data?.message) {
+                    errorMessage = axiosError.response.data.message;
+                  } else if (axiosError?.response?.data?.error) {
+                    errorMessage = axiosError.response.data.error;
+                  }
+
+                  toast.error(errorMessage);
+                  setShowDeleteDialog(false);
+                }
+              }}
+              disabled={deleteProductMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteProductMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-

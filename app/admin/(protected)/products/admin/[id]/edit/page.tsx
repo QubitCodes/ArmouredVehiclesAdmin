@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,9 +31,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { DateSelector } from "@/components/ui/date-selector";
-import { useCreateProduct, useUpdateProduct } from "@/hooks/admin/product-management/use-products";
+import { Spinner } from "@/components/ui/spinner";
+import { useUpdateProduct } from "@/hooks/admin/product-management/use-products";
+import { useProduct } from "@/hooks/admin/product-management/use-product";
 import { useMainCategories, useCategoriesByParent } from "@/hooks/admin/product-management/use-categories";
-import type { CreateProductRequest, UpdateProductRequest, Product } from "@/services/admin/product.service";
+import type { UpdateProductRequest } from "@/services/admin/product.service";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -193,54 +195,177 @@ const SECTIONS = [
   },
 ];
 
-export default function NewProductPage() {
+export default function EditProductPage() {
+  const params = useParams();
   const router = useRouter();
-  const createProductMutation = useCreateProduct();
+  const productId = params.id as string;
   const updateProductMutation = useUpdateProduct();
   const [currentStep, setCurrentStep] = useState(1);
-  const [productId, setProductId] = useState<string | null>(null);
   const { data: mainCategories = [] } = useMainCategories();
+  
+  const {
+    data: product,
+    isLoading: isLoadingProduct,
+    error: productError,
+  } = useProduct(productId);
+
+  const defaultValues: ProductFormValues = {
+    name: "",
+    basePrice: 0,
+    currency: "USD",
+    condition: "new",
+    dimensionUnit: "mm",
+    weightUnit: "kg",
+    packingDimensionUnit: "cm",
+    packingWeightUnit: "kg",
+    warrantyDurationUnit: "months",
+    readyStockAvailable: false,
+    requiresExportLicense: false,
+    hasWarranty: false,
+    complianceConfirmed: false,
+    isFeatured: false,
+    actionType: "buy_now",
+    materials: [],
+    features: [],
+    performance: [],
+    specifications: [],
+    driveTypes: [],
+    sizes: [],
+    thickness: [],
+    colors: [],
+    vehicleFitment: [],
+    pricingTerms: [],
+    gallery: [],
+    signatureDate: undefined,
+  };
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: {
-      name: "",
-      basePrice: 0,
-      currency: "USD",
-      condition: "new",
-      dimensionUnit: "mm",
-      weightUnit: "kg",
-      packingDimensionUnit: "cm",
-      packingWeightUnit: "kg",
-      warrantyDurationUnit: "months",
-      readyStockAvailable: false,
-      requiresExportLicense: false,
-      hasWarranty: false,
-      complianceConfirmed: false,
-      isFeatured: false,
-      actionType: "buy_now",
-      materials: [],
-      features: [],
-      performance: [],
-      specifications: [],
-      driveTypes: [],
-      sizes: [],
-      thickness: [],
-      colors: [],
-      vehicleFitment: [],
-      pricingTerms: [],
-      gallery: [],
-      signatureDate: undefined,
-    },
+    defaultValues,
   });
+
+  // Populate form with product data when loaded
+  useEffect(() => {
+    if (product) {
+      const productData = product as unknown as Record<string, unknown>;
+      const formData: Partial<ProductFormValues> = {
+        name: (productData.name as string) || "",
+        sku: (productData.sku as string) || "",
+        basePrice: (productData.basePrice as number) || (productData.price as number) || 0,
+        currency: (productData.currency as string) || "USD",
+        condition: (productData.condition as string) || "new",
+        dimensionUnit: (productData.dimensionUnit as string) || "mm",
+        weightUnit: (productData.weightUnit as string) || "kg",
+        packingDimensionUnit: (productData.packingDimensionUnit as string) || "cm",
+        packingWeightUnit: (productData.packingWeightUnit as string) || "kg",
+        warrantyDurationUnit: (productData.warrantyDurationUnit as string) || "months",
+        readyStockAvailable: (productData.readyStockAvailable as boolean) ?? false,
+        requiresExportLicense: (productData.requiresExportLicense as boolean) ?? false,
+        hasWarranty: (productData.hasWarranty as boolean) ?? false,
+        complianceConfirmed: (productData.complianceConfirmed as boolean) ?? false,
+        isFeatured: (productData.isFeatured as boolean) ?? false,
+        stock: productData.stock as number | undefined,
+        description: (productData.description as string) || "",
+        vehicleCompatibility: (productData.vehicleCompatibility as string) || "",
+        certifications: (productData.certifications as string) || "",
+        countryOfOrigin: (productData.countryOfOrigin as string) || "",
+        controlledItemType: (productData.controlledItemType as string) || "",
+        make: (productData.make as string) || "",
+        model: (productData.model as string) || "",
+        year: productData.year as number | undefined,
+        dimensionLength: productData.dimensionLength as number | undefined,
+        dimensionWidth: productData.dimensionWidth as number | undefined,
+        dimensionHeight: productData.dimensionHeight as number | undefined,
+        weightValue: productData.weightValue as number | undefined,
+        packingLength: productData.packingLength as number | undefined,
+        packingWidth: productData.packingWidth as number | undefined,
+        packingHeight: productData.packingHeight as number | undefined,
+        packingWeight: productData.packingWeight as number | undefined,
+        minOrderQuantity: productData.minOrderQuantity as number | undefined,
+        productionLeadTime: productData.productionLeadTime as number | undefined,
+        manufacturingSource: (productData.manufacturingSource as string) || "",
+        manufacturingSourceName: (productData.manufacturingSourceName as string) || "",
+        warrantyDuration: productData.warrantyDuration as number | undefined,
+        warrantyTerms: (productData.warrantyTerms as string) || "",
+        supplierSignature: (productData.supplierSignature as string) || "",
+        technicalDescription: (productData.technicalDescription as string) || "",
+        warranty: (productData.warranty as string) || "",
+        image: (productData.image as string) || (productData.imageUrl as string) || "",
+        materials: Array.isArray(productData.materials) ? (productData.materials as string[]) : [],
+        features: Array.isArray(productData.features) ? (productData.features as string[]) : [],
+        performance: Array.isArray(productData.performance) ? (productData.performance as string[]) : [],
+        specifications: Array.isArray(productData.specifications) ? (productData.specifications as string[]) : [],
+        sizes: Array.isArray(productData.sizes) ? (productData.sizes as string[]) : [],
+        thickness: Array.isArray(productData.thickness) ? (productData.thickness as string[]) : [],
+        colors: Array.isArray(productData.colors) ? (productData.colors as string[]) : [],
+        vehicleFitment: Array.isArray(productData.vehicleFitment) ? (productData.vehicleFitment as string[]) : [],
+        pricingTerms: Array.isArray(productData.pricingTerms) ? (productData.pricingTerms as string[]) : [],
+        gallery: Array.isArray(productData.gallery) ? (productData.gallery as string[]) : [],
+        signatureDate: productData.signatureDate as { day?: number; month?: number; year?: number } | undefined,
+      };
+
+      // Set form values
+      Object.keys(formData).forEach((key) => {
+        const value = formData[key as keyof typeof formData];
+        if (value !== undefined) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          form.setValue(key as keyof ProductFormValues, value as any);
+        }
+      });
+    }
+  }, [product, form]);
 
   // Watch mainCategoryId to fetch categories when it changes
   const mainCategoryId = form.watch("mainCategoryId");
-  const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesByParent(mainCategoryId);
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesByParent(mainCategoryId || undefined);
   
   // Watch categoryId to fetch subcategories when it changes
   const categoryId = form.watch("categoryId");
-  const { data: subCategories = [], isLoading: isLoadingSubCategories } = useCategoriesByParent(categoryId);
+  const { data: subCategories = [], isLoading: isLoadingSubCategories } = useCategoriesByParent(categoryId || undefined);
+
+  // Show error toast when product query fails
+  useEffect(() => {
+    if (productError) {
+      console.error("Error fetching product:", productError);
+      const axiosError = productError as AxiosError<{ message?: string; error?: string }>;
+      const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Failed to fetch product";
+      toast.error(errorMessage);
+    }
+  }, [productError]);
+
+  // Show loading state
+  if (isLoadingProduct) {
+    return (
+      <div className="flex min-h-[calc(100vh-300px)] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="3xl" className="text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">
+            Loading product...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="flex w-full flex-col gap-4">
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="w-fit"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Product not found.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const materials = form.watch("materials") || [];
   const features = form.watch("features") || [];
@@ -370,52 +495,22 @@ export default function NewProductPage() {
     const formData = form.getValues();
 
     try {
-      if (currentStep === 1) {
-        // Step 1: POST basic information
-        const basicInfoData = cleanDataForApi(formData, currentSection.fields);
-        
-        const response = await createProductMutation.mutateAsync(
-          basicInfoData as unknown as CreateProductRequest
-        );
-        
-        // Extract product ID from response (could be response.id or response.data.id)
-        const productResponse = response as Product | { data?: Product; id?: string };
-        const newProductId = 
-          (productResponse as Product).id || 
-          (productResponse as { data?: Product }).data?.id ||
-          (productResponse as { id?: string }).id;
-        
-        if (newProductId) {
-          setProductId(String(newProductId));
-          toast.success("Product created successfully!");
-          setCurrentStep(2);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-          throw new Error("Product ID not found in response");
-        }
+      // All steps: PATCH update
+      const updateData = cleanDataForApi(formData, currentSection.fields);
+      
+      await updateProductMutation.mutateAsync({
+        id: productId,
+        data: updateData as UpdateProductRequest,
+      });
+      
+      toast.success("Product updated successfully!");
+      
+      if (currentStep < SECTIONS.length) {
+        setCurrentStep(currentStep + 1);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        // Steps 2-5: PATCH update
-        if (!productId) {
-          toast.error("Product ID is missing. Please start from step 1.");
-          return;
-        }
-
-        const updateData = cleanDataForApi(formData, currentSection.fields);
-        
-        await updateProductMutation.mutateAsync({
-          id: productId,
-          data: updateData as UpdateProductRequest,
-        });
-        
-        toast.success("Product updated successfully!");
-        
-        if (currentStep < SECTIONS.length) {
-          setCurrentStep(currentStep + 1);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-          // Last step completed, redirect to products list
-          router.push("/admin/products/admin");
-        }
+        // Last step completed, redirect to product detail page
+        router.push(`/admin/products/admin/${productId}`);
       }
     } catch (error) {
       console.error(error);
@@ -424,9 +519,7 @@ export default function NewProductPage() {
         error?: string;
       }>;
 
-      let errorMessage = currentStep === 1 
-        ? "Failed to create product. Please try again."
-        : "Failed to update product. Please try again.";
+      let errorMessage = "Failed to update product. Please try again.";
       
       if (axiosError?.response?.data?.message) {
         errorMessage = axiosError.response.data.message;
@@ -1948,7 +2041,7 @@ export default function NewProductPage() {
           Back
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Add New Product</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Product</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Step {currentStep} of {SECTIONS.length}:{" "}
             {SECTIONS[currentStep - 1].name}
@@ -1970,11 +2063,9 @@ export default function NewProductPage() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
                 onClick={() => {
-                  // Allow clicking on completed or current sections
-                  if (currentStep >= section.id) {
-                    setCurrentStep(section.id);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }
+                  // Allow navigation to any section in edit mode
+                  setCurrentStep(section.id);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               >
                 {section.name}
@@ -2026,7 +2117,7 @@ export default function NewProductPage() {
               type="button"
               variant="outline"
               onClick={() => router.back()}
-              disabled={createProductMutation.isPending || updateProductMutation.isPending}
+              disabled={updateProductMutation.isPending}
             >
               Cancel
             </Button>
@@ -2036,7 +2127,7 @@ export default function NewProductPage() {
                 type="button"
                 variant="outline"
                 onClick={handlePrevious}
-                disabled={currentStep === 1 || createProductMutation.isPending || updateProductMutation.isPending}
+                disabled={currentStep === 1 || updateProductMutation.isPending}
               >
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Previous
@@ -2046,12 +2137,12 @@ export default function NewProductPage() {
                 <Button 
                   type="button" 
                   onClick={handleNext}
-                  disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                  disabled={updateProductMutation.isPending}
                 >
-                  {createProductMutation.isPending || updateProductMutation.isPending ? (
+                  {updateProductMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {currentStep === 1 ? "Creating..." : "Updating..."}
+                      Updating...
                     </>
                   ) : (
                     <>

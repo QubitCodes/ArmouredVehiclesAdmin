@@ -4,9 +4,11 @@ export interface Product {
   id: string;
   name: string;
   description?: string;
-  price: number;
+  price?: number;
+  basePrice?: number;
   status?: string;
   category?: string;
+  mainCategory?: string;
   createdAt: string;
   updatedAt?: string;
   imageUrl?: string | null;
@@ -74,6 +76,8 @@ export interface CreateProductRequest {
   gallery?: string[];
 }
 
+export type UpdateProductRequest = Partial<CreateProductRequest>;
+
 export interface GetProductsParams {
   page?: number;
   limit?: number;
@@ -113,10 +117,36 @@ class ProductService {
    */
   async createProduct(data: CreateProductRequest) {
     try {
-      const response = await api.post("/admin/products", data);
+      const response = await api.post("/vendor/products", data);
       return response.data;
     } catch (error) {
       console.error("Error creating product:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing product
+   */
+  async updateProduct(id: string, data: UpdateProductRequest) {
+    try {
+      const response = await api.patch(`/vendor/products/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating product:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a product
+   */
+  async deleteProduct(id: string) {
+    try {
+      const response = await api.delete(`/vendor/products/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting product:", error);
       throw error;
     }
   }

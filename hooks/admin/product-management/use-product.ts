@@ -8,7 +8,7 @@ import {
 /**
  * React Query hook for fetching a single product by ID
  */
-export function useProduct(productId: string) {
+export function useProduct(productId: string, enabled: boolean = true) {
   return useQuery<Product, AxiosError>({
     queryKey: ["product", productId],
     queryFn: async () => {
@@ -16,7 +16,8 @@ export function useProduct(productId: string) {
       // Handle different response structures
       return response.data || response;
     },
-    enabled: !!productId,
+    enabled: !!productId && enabled,
+    retry: false, // Don't retry on error to prevent unnecessary requests
   });
 }
 
