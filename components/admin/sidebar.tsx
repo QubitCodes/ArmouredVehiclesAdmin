@@ -20,17 +20,8 @@ const navigation = [
   },
   {
     name: "Products",
+    href: "/admin/products/admin",
     icon: Package,
-    subItems: [
-      {
-        name: "Admin Products",
-        href: "/admin/products/admin",
-      },
-      {
-        name: "Vendor Products",
-        href: "/admin/products/vendor",
-      },
-    ],
   },
   {
     name: "Orders",
