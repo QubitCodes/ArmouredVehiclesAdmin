@@ -78,6 +78,13 @@ export interface CreateProductRequest {
 
 export type UpdateProductRequest = Partial<CreateProductRequest>;
 
+export interface GetProductsResponse {
+  products: Product[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface GetProductsParams {
   page?: number;
   limit?: number;
@@ -89,7 +96,7 @@ class ProductService {
    */
   async getProducts(params: GetProductsParams = {}) {
     try {
-      const response = await api.get("/admin/products", {
+      const response = await api.get<GetProductsResponse>("/admin/products", {
         params,
       });
       return response.data;

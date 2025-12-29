@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useOrders } from "@/hooks/admin/order-management/use-orders";
 import { OrderTable } from "@/components/admin/order-management/order-table";
 
-export default function AdminOrdersPage() {
+export default function OrdersPage() {
   // Use React Query to fetch orders
   const {
     data: orders = [],
@@ -15,20 +15,11 @@ export default function AdminOrdersPage() {
     error,
   } = useOrders();
 
-  // Debug logging
-  useEffect(() => {
-    console.log("Orders data:", orders);
-    console.log("Loading state:", isLoading);
-    console.log("Error state:", error);
-  }, [orders, isLoading, error]);
-
   // Show error toast when query fails
   useEffect(() => {
     if (error) {
       console.error("Error fetching orders:", error);
-      const axiosError = error as any;
-      const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Failed to fetch orders";
-      toast.error(errorMessage);
+      toast.error("Failed to fetch orders");
     }
   }, [error]);
 
@@ -36,10 +27,10 @@ export default function AdminOrdersPage() {
     <div className="flex w-full flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Admin Orders
+          Orders
         </h1>
         <p className="text-sm text-muted-foreground sm:text-base">
-          Manage admin orders.
+          Manage orders.
         </p>
       </div>
 
