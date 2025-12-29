@@ -39,7 +39,7 @@ export function ProductTable({ products }: ProductTableProps) {
         {products.map((product) => (
           <Link
             key={product.id}
-            href={`/admin/products/admin/${product.id}`}
+            href={`/admin/products/${product.id}`}
             className="block w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm"
           >
             <div className="grid items-center grid-cols-[2fr_120px_130px_100px] gap-4 px-4 py-3">

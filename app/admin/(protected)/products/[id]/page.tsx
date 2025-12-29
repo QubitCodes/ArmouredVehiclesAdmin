@@ -265,7 +265,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="default" onClick={() => router.push(`/admin/products/admin/${product.id}/edit`)}>
+          <Button variant="default" onClick={() => router.push(`/admin/products/${product.id}/edit`)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Product
           </Button>

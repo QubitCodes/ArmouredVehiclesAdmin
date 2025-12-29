@@ -14,11 +14,8 @@ export function useOrders(params: GetOrdersParams = {}) {
     queryKey: ["orders", params],
     queryFn: async () => {
       const response = await orderService.getOrders(params);
-      console.log("Raw API response:", response);
-      // Handle different response structures
-      const orders = Array.isArray(response) ? response : response.data || response.orders || [];
-      console.log("Parsed orders:", orders);
-      return orders;
+      // Response structure: { orders: [...], total, page, limit }
+      return response.orders || [];
     },
   });
 }

@@ -22,6 +22,13 @@ export interface OrderItem {
   price: number;
 }
 
+export interface GetOrdersResponse {
+  orders: Order[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface GetOrdersParams {
   page?: number;
   limit?: number;
@@ -33,7 +40,7 @@ class OrderService {
    */
   async getOrders(params: GetOrdersParams = {}) {
     try {
-      const response = await api.get("/admin/orders", {
+      const response = await api.get<GetOrdersResponse>("/admin/orders", {
         params,
       });
       return response.data;

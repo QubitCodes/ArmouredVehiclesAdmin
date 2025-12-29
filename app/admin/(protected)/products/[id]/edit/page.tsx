@@ -510,7 +510,7 @@ export default function EditProductPage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         // Last step completed, redirect to product detail page
-        router.push(`/admin/products/admin/${productId}`);
+        router.push(`/admin/products/${productId}`);
       }
     } catch (error) {
       console.error(error);

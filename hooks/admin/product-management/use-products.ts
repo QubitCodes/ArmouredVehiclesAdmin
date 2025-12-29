@@ -16,11 +16,8 @@ export function useProducts(params: GetProductsParams = {}) {
     queryKey: ["products", params],
     queryFn: async () => {
       const response = await productService.getProducts(params);
-      console.log("Raw API response:", response);
-      // Handle different response structures
-      const products = Array.isArray(response) ? response : response.data || response.products || [];
-      console.log("Parsed products:", products);
-      return products;
+      // Response structure: { products: [...], total, page, limit }
+      return response.products || [];
     },
   });
 }

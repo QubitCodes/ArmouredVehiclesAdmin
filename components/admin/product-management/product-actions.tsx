@@ -11,7 +11,7 @@ interface ProductActionsProps {
 export function ProductActions({ onAddProduct }: ProductActionsProps) {
   return (
     <div className="flex justify-end">
-      <Link href="/admin/products/admin/new">
+      <Link href="/admin/products/new">
         <Button>
           <Plus className="h-4 w-4" />
           Add Product
