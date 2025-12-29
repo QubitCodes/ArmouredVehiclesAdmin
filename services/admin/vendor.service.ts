@@ -121,6 +121,19 @@ class VendorService {
       throw error;
     }
   }
+
+  /**
+   * Fetch a single vendor by userId
+   */
+  async getVendorByUserId(userId: string) {
+    try {
+      const response = await api.get<Vendor>(`/admin/vendors/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching vendor:", error);
+      throw error;
+    }
+  }
 }
 
 export const vendorService = new VendorService();

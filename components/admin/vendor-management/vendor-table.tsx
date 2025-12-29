@@ -1,3 +1,6 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { Vendor } from "@/services/admin/vendor.service";
 
 interface VendorTableProps {
@@ -5,6 +8,8 @@ interface VendorTableProps {
 }
 
 export function VendorTable({ vendors }: VendorTableProps) {
+  const router = useRouter();
+
   if (vendors.length === 0) {
     return (
       <div className="rounded-md border p-8 text-center text-muted-foreground">
@@ -12,6 +17,10 @@ export function VendorTable({ vendors }: VendorTableProps) {
       </div>
     );
   }
+
+  const handleVendorClick = (userId: string) => {
+    router.push(`/admin/vendors/${userId}`);
+  };
 
   return (
     <div className="w-full">
@@ -39,7 +48,8 @@ export function VendorTable({ vendors }: VendorTableProps) {
         {vendors.map((vendor) => (
           <div
             key={vendor.id}
-            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm"
+            onClick={() => handleVendorClick(vendor.userId)}
+            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm cursor-pointer"
           >
             <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(180px,1.5fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">
