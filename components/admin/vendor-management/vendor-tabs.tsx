@@ -14,21 +14,28 @@ export function VendorTabs({ userId }: VendorTabsProps) {
   const tabs = [
     {
       id: "details",
-      label: "Vendor Details",
+      label: "Info",
       path: `/admin/vendors/${userId}`,
     },
     {
       id: "products",
-      label: "Vendor Products",
+      label: "Products",
       path: `/admin/vendors/${userId}/products`,
+    },
+    {
+      id: "orders",
+      label: "Orders",
+      path: `/admin/vendors/${userId}/orders`,
     },
   ];
 
-  const activeTab = tabs.find((tab) => pathname === tab.path)?.id || "details";
+  // Sort tabs by path length (longest first) to match more specific paths first
+  const sortedTabs = [...tabs].sort((a, b) => b.path.length - a.path.length);
+  const activeTab = sortedTabs.find((tab) => pathname === tab.path || pathname.startsWith(tab.path + "/"))?.id || "details";
 
   return (
     <div className="border-b border-border">
-      <nav className="flex gap-1" aria-label="Vendor navigation tabs">
+      <nav className="flex gap-4" aria-label="Vendor navigation tabs">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
