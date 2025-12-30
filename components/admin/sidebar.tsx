@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut } from "lucide-react";
 
@@ -45,11 +46,16 @@ export function Sidebar() {
   };
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-primary/20 bg-primary">
-      <div className="flex h-16 items-center border-b border-primary/20 px-6">
-        <h2 className="text-lg font-bold font-heading text-primary-foreground uppercase tracking-wide">
-          ArmoredMart Admin
-        </h2>
+    <div className="flex h-full w-64 flex-col bg-primary">
+      <div className="flex bg-white h-16 items-center justify-center px-6">
+        <Image
+          src="/images/logo.png"
+          alt="ArmoredMart"
+          width={180}
+          height={40}
+          className="h-auto w-auto object-contain"
+          priority
+        />
       </div>
       <nav className="flex-1 space-y-1 p-4">
         {navigation.map((item) => {
