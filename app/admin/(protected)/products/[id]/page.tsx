@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Trash2 } from "lucide-react";
@@ -164,7 +164,9 @@ const SECTIONS = [
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const productId = params.id as string;
+  const fromVendor = searchParams.get('from') === 'vendor';
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -264,20 +266,22 @@ export default function ProductDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="default" onClick={() => router.push(`/admin/products/${product.id}/edit`)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Product
-          </Button>
-          <Button 
-            variant="destructive" 
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={deleteProductMutation.isPending}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
+        {!fromVendor && (
+          <div className="flex gap-2">
+            <Button variant="default" onClick={() => router.push(`/admin/products/${product.id}/edit`)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Product
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={deleteProductMutation.isPending}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Product Image */}

@@ -138,6 +138,14 @@ export default function VendorDetailPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Vendor ID
+              </label>
+              <p className="text-foreground mt-2 font-mono text-sm">
+                {vendor.id}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Name
               </label>
               <p className="text-foreground mt-2">

@@ -12,7 +12,7 @@ export default function VendorProductsPage() {
   const params = useParams();
   const userId = params.userId as string;
 
-  // Fetch vendor products from /vendor/products API
+  // Fetch vendor products from /admin/products/vendors API
   const {
     data: vendorProducts = [],
     isLoading: isLoadingProducts,
@@ -47,7 +47,7 @@ export default function VendorProductsPage() {
           No products found for this vendor.
         </div>
       ) : (
-        <ProductTable products={vendorProducts} />
+        <ProductTable products={vendorProducts} fromVendor={true} />
       )}
     </div>
   );
