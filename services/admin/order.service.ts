@@ -53,6 +53,7 @@ export interface GetOrdersResponse {
 export interface GetOrdersParams {
   page?: number;
   limit?: number;
+  vendorId?: string;
 }
 
 class OrderService {

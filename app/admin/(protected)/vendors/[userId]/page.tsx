@@ -20,6 +20,7 @@ const formatFieldName = (fieldName: string): string => {
 };
 
 // Helper function to format field value
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const formatFieldValue = (value: unknown, fieldName: string): string => {
   if (value === undefined || value === null) {
     return "—";
