@@ -18,7 +18,7 @@ export function OrderTable({ orders }: OrderTableProps) {
       <div className="w-full overflow-hidden rounded-lg mb-1">
         <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(150px,1fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3 bg-transparent">
           <div className="min-w-[120px] text-sm font-semibold text-black">
-            Order Number
+            Tracking Number
           </div>
           <div className="min-w-[150px] text-sm font-semibold text-black">
             Customer
@@ -30,7 +30,7 @@ export function OrderTable({ orders }: OrderTableProps) {
             Total Amount
           </div>
           <div className="min-w-[100px] hidden text-sm font-semibold text-black md:block">
-            Payment Method
+            Estimated Delivery
           </div>
           <div className="min-w-[120px] hidden text-sm font-semibold text-black lg:block">
             Created Date
@@ -46,10 +46,10 @@ export function OrderTable({ orders }: OrderTableProps) {
           >
             <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(150px,1fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">
-                {order.orderNumber || `#${order.id.slice(0, 8)}`}
+                {order.trackingNumber || "—"}
               </div>
               <div className="text-foreground truncate">
-                {order.customerName || order.customerEmail || "—"}
+                {order.user?.name || order.customerName || order.customerEmail || "—"}
               </div>
               <div>
                 <span
@@ -70,12 +70,20 @@ export function OrderTable({ orders }: OrderTableProps) {
                 </span>
               </div>
               <div className="text-foreground">
-                ${typeof order.totalAmount === 'number' 
+                ${order.total 
+                  ? parseFloat(order.total).toFixed(2)
+                  : typeof order.totalAmount === 'number' 
                   ? order.totalAmount.toFixed(2) 
                   : parseFloat(String(order.totalAmount || '0')).toFixed(2)}
               </div>
               <div className="hidden text-sm text-foreground md:block">
-                {order.paymentMethod || "—"}
+                {order.estimatedDelivery 
+                  ? new Date(order.estimatedDelivery).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })
+                  : "—"}
               </div>
               <div className="hidden text-sm text-foreground lg:block">
                 {new Date(order.createdAt).toLocaleDateString("en-GB", {

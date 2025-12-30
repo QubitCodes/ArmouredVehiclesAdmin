@@ -2,16 +2,25 @@ import api from "@/lib/api";
 
 export interface Order {
   id: string;
+  userId: string;
   orderNumber?: string;
+  trackingNumber?: string | null;
   customerName?: string;
   customerEmail?: string;
   status?: string;
+  total?: string;
   totalAmount?: number;
+  estimatedDelivery?: string | null;
   createdAt: string;
   updatedAt?: string;
   items?: OrderItem[];
   shippingAddress?: string;
   paymentMethod?: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export interface OrderItem {
