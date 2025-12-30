@@ -4,9 +4,10 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { Building2, User, Mail, Calendar, Shield, FileText, CreditCard } from "lucide-react";
+import { ArrowLeft, Building2, User, Mail, Calendar, Shield, FileText, CreditCard, BarChart3 } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVendor } from "@/hooks/admin/vendor-management/use-vendor";
 
@@ -104,11 +105,11 @@ export default function VendorDetailPage() {
     );
   }
 
-  const vendorData = vendor as unknown as Record<string, unknown>;
+  const vendorProfileData = vendor.userProfile as unknown as Record<string, unknown> | null;
 
-  // Render field in section
+  // Render field in section (from userProfile)
   const renderField = (fieldName: string) => {
-    const value = vendorData[fieldName];
+    const value = vendorProfileData?.[fieldName];
     const formattedValue = formatFieldValue(value, fieldName);
 
     return (
@@ -140,7 +141,7 @@ export default function VendorDetailPage() {
                 Name
               </label>
               <p className="text-foreground mt-2">
-                {vendor.user.name}
+                {vendor.name}
               </p>
             </div>
             <div>
@@ -148,7 +149,7 @@ export default function VendorDetailPage() {
                 Username
               </label>
               <p className="text-foreground mt-2">
-                {vendor.user.username}
+                {vendor.username}
               </p>
             </div>
             <div>
@@ -156,7 +157,7 @@ export default function VendorDetailPage() {
                 Email
               </label>
               <p className="text-foreground mt-2">
-                {vendor.user.email}
+                {vendor.email}
               </p>
             </div>
             <div>
@@ -164,7 +165,7 @@ export default function VendorDetailPage() {
                 Phone
               </label>
               <p className="text-foreground mt-2">
-                {vendor.user.phone ? `${vendor.user.countryCode || ""} ${vendor.user.phone}` : "—"}
+                {vendor.phone ? `${vendor.countryCode || ""} ${vendor.phone}` : "—"}
               </p>
             </div>
             <div>
@@ -172,7 +173,7 @@ export default function VendorDetailPage() {
                 Email Verified
               </label>
               <p className="text-foreground mt-2">
-                {vendor.user.emailVerified ? "Yes" : "No"}
+                {vendor.emailVerified ? "Yes" : "No"}
               </p>
             </div>
             <div>
@@ -180,7 +181,7 @@ export default function VendorDetailPage() {
                 Phone Verified
               </label>
               <p className="text-foreground mt-2">
-                {vendor.user.phoneVerified ? "Yes" : "No"}
+                {vendor.phoneVerified ? "Yes" : "No"}
               </p>
             </div>
             <div>
@@ -190,12 +191,12 @@ export default function VendorDetailPage() {
               <p className="text-foreground mt-2">
                 <span
                   className={`text-sm font-medium ${
-                    vendor.user.isActive
+                    vendor.isActive
                       ? "text-green-600 dark:text-green-500"
                       : "text-orange-600 dark:text-orange-500"
                   }`}
                 >
-                  {vendor.user.isActive ? "Active" : "Inactive"}
+                  {vendor.isActive ? "Active" : "Inactive"}
                 </span>
               </p>
             </div>
@@ -204,166 +205,226 @@ export default function VendorDetailPage() {
                 Completion Percentage
               </label>
               <p className="text-foreground mt-2">
-                {vendor.user.completionPercentage}%
+                {vendor.completionPercentage}%
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Stats Section */}
+      {vendor.stats && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Statistics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Products
+                </label>
+                <p className="text-2xl font-bold text-foreground mt-2">
+                  {vendor.stats.products || 0}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Orders
+                </label>
+                <p className="text-2xl font-bold text-foreground mt-2">
+                  {vendor.stats.orders || 0}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Revenue
+                </label>
+                <p className="text-2xl font-bold text-foreground mt-2">
+                  ${(vendor.stats.revenue || 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Customers
+                </label>
+                <p className="text-2xl font-bold text-foreground mt-2">
+                  {vendor.stats.customers || 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Company Information Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Company Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {renderField("companyName")}
-            {renderField("companyEmail")}
-            {renderField("companyPhone")}
-            {renderField("country")}
-            {renderField("countryOfRegistration")}
-            {renderField("registeredCompanyName")}
-            {renderField("tradeBrandName")}
-            {renderField("yearOfEstablishment")}
-            {renderField("entityType")}
-            {renderField("officialWebsite")}
-            {renderField("cityOfficeAddress")}
-            {renderField("dunsNumber")}
-          </div>
-        </CardContent>
-      </Card>
+      {vendor.userProfile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Company Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {renderField("companyName")}
+              {renderField("companyEmail")}
+              {renderField("companyPhone")}
+              {renderField("country")}
+              {renderField("countryOfRegistration")}
+              {renderField("registeredCompanyName")}
+              {renderField("tradeBrandName")}
+              {renderField("yearOfEstablishment")}
+              {renderField("entityType")}
+              {renderField("officialWebsite")}
+              {renderField("cityOfficeAddress")}
+              {renderField("dunsNumber")}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Legal & Compliance Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Legal & Compliance
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {renderField("legalEntityId")}
-            {renderField("legalEntityIssueDate")}
-            {renderField("legalEntityExpiryDate")}
-            {renderField("taxVatNumber")}
-            {renderField("taxIssuingDate")}
-            {renderField("taxExpiryDate")}
-            {renderField("complianceRegistration")}
-            {renderField("isOnSanctionsList")}
-            {renderField("controlledDualUseItems")}
-            {renderField("licenseTypes")}
-            {renderField("natureOfBusiness")}
-            {renderField("endUseMarkets")}
-            {renderField("operatingCountries")}
-          </div>
-        </CardContent>
-      </Card>
+      {vendor.userProfile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Legal & Compliance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {renderField("legalEntityId")}
+              {renderField("legalEntityIssueDate")}
+              {renderField("legalEntityExpiryDate")}
+              {renderField("taxVatNumber")}
+              {renderField("taxIssuingDate")}
+              {renderField("taxExpiryDate")}
+              {renderField("complianceRegistration")}
+              {renderField("isOnSanctionsList")}
+              {renderField("controlledDualUseItems")}
+              {renderField("licenseTypes")}
+              {renderField("natureOfBusiness")}
+              {renderField("endUseMarkets")}
+              {renderField("operatingCountries")}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Contact Information Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Contact Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {renderField("contactFullName")}
-            {renderField("contactJobTitle")}
-            {renderField("contactWorkEmail")}
-            {renderField("contactMobile")}
-          </div>
-        </CardContent>
-      </Card>
+      {vendor.userProfile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Contact Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {renderField("contactFullName")}
+              {renderField("contactJobTitle")}
+              {renderField("contactWorkEmail")}
+              {renderField("contactMobile")}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Business Details Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Business Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {renderField("registerAs")}
-            {renderField("typeOfBuyer")}
-            {renderField("sellingCategories")}
-            {renderField("preferredCurrency")}
-            {renderField("sponsorContent")}
-            {renderField("commissionPercent")}
-          </div>
-        </CardContent>
-      </Card>
+      {vendor.userProfile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Business Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {renderField("registerAs")}
+              {renderField("typeOfBuyer")}
+              {renderField("sellingCategories")}
+              {renderField("preferredCurrency")}
+              {renderField("sponsorContent")}
+              {renderField("commissionPercent")}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Payment Information Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Payment Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {renderField("paymentMethod")}
-            {renderField("bankCountry")}
-            {renderField("financialInstitution")}
-            {renderField("swiftCode")}
-            {renderField("bankAccountNumber")}
-            {renderField("proofType")}
-            {renderField("verificationMethod")}
-          </div>
-        </CardContent>
-      </Card>
+      {vendor.userProfile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Payment Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {renderField("paymentMethod")}
+              {renderField("bankCountry")}
+              {renderField("financialInstitution")}
+              {renderField("swiftCode")}
+              {renderField("bankAccountNumber")}
+              {renderField("proofType")}
+              {renderField("verificationMethod")}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Onboarding Status Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Onboarding Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Onboarding Status
-              </label>
-              <p className="text-foreground mt-2">
-                <span
-                  className={`text-sm font-medium capitalize ${
-                    vendor.onboardingStatus === "approved"
-                      ? "text-green-600 dark:text-green-500"
-                      : vendor.onboardingStatus === "under_review"
-                      ? "text-yellow-600 dark:text-yellow-500"
-                      : vendor.onboardingStatus === "rejected"
-                      ? "text-red-600 dark:text-red-500"
-                      : "text-gray-600 dark:text-gray-500"
-                  }`}
-                >
-                  {vendor.onboardingStatus.replace("_", " ")}
-                </span>
-              </p>
+      {vendor.userProfile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Onboarding Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Onboarding Status
+                </label>
+                <p className="text-foreground mt-2">
+                  <span
+                    className={`text-sm font-medium capitalize ${
+                      vendor.userProfile?.onboardingStatus === "approved"
+                        ? "text-green-600 dark:text-green-500"
+                        : vendor.userProfile?.onboardingStatus === "under_review"
+                        ? "text-yellow-600 dark:text-yellow-500"
+                        : vendor.userProfile?.onboardingStatus === "rejected"
+                        ? "text-red-600 dark:text-red-500"
+                        : "text-gray-600 dark:text-gray-500"
+                    }`}
+                  >
+                    {vendor.userProfile?.onboardingStatus?.replace("_", " ") || "N/A"}
+                  </span>
+                </p>
+              </div>
+              {renderField("currentStep")}
+              {renderField("submittedForApproval")}
+              {renderField("submittedAt")}
+              {renderField("completedAt")}
+              {renderField("reviewedBy")}
+              {renderField("reviewedAt")}
+              {renderField("reviewNote")}
+              {renderField("rejectionReason")}
             </div>
-            {renderField("currentStep")}
-            {renderField("submittedForApproval")}
-            {renderField("submittedAt")}
-            {renderField("completedAt")}
-            {renderField("reviewedBy")}
-            {renderField("reviewedAt")}
-            {renderField("reviewNote")}
-            {renderField("rejectionReason")}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Timeline Section */}
       <Card>
@@ -388,13 +449,13 @@ export default function VendorDetailPage() {
               })}
             </p>
           </div>
-          {vendor.updatedAt && (
+          {vendor.userProfile?.updatedAt && (
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Last Updated
               </label>
               <p className="text-foreground mt-2">
-                {new Date(vendor.updatedAt).toLocaleString("en-GB", {
+                {new Date(vendor.userProfile.updatedAt).toLocaleString("en-GB", {
                   day: "2-digit",
                   month: "long",
                   year: "numeric",
