@@ -19,8 +19,20 @@ export interface Order {
   user?: {
     id: string;
     name: string;
+    username?: string;
     email: string;
+    phone?: string;
   };
+  statusHistory?: StatusHistoryItem[];
+}
+
+export interface StatusHistoryItem {
+  id: number;
+  orderId: string;
+  status: string;
+  changedBy: string;
+  note?: string | null;
+  createdAt: string;
 }
 
 export interface OrderItem {
@@ -55,6 +67,19 @@ class OrderService {
       return response.data;
     } catch (error) {
       console.error("Error fetching orders:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch a single order by ID from /admin/orders/{orderId}
+   */
+  async getOrderById(orderId: string) {
+    try {
+      const response = await api.get<Order>(`/admin/orders/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching order:", error);
       throw error;
     }
   }

@@ -1,3 +1,6 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { Order } from "@/services/admin/order.service";
 
 interface OrderTableProps {
@@ -5,6 +8,7 @@ interface OrderTableProps {
 }
 
 export function OrderTable({ orders }: OrderTableProps) {
+  const router = useRouter();
   if (orders.length === 0) {
     return (
       <div className="rounded-md border p-8 text-center text-muted-foreground">
@@ -42,7 +46,8 @@ export function OrderTable({ orders }: OrderTableProps) {
         {orders.map((order) => (
           <div
             key={order.id}
-            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm"
+            onClick={() => router.push(`/admin/orders/${order.id}`)}
+            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm cursor-pointer"
           >
             <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(150px,1fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">
