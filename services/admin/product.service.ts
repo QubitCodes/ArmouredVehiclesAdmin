@@ -88,6 +88,7 @@ export interface GetProductsResponse {
 export interface GetProductsParams {
   page?: number;
   limit?: number;
+  vendorId?: string;
 }
 
 class ProductService {
@@ -146,6 +147,19 @@ class ProductService {
   }
 
   /**
+   * Update product status
+   */
+  async updateProductStatus(id: string, status: string) {
+    try {
+      const response = await api.patch(`/vendor/products/${id}`, { status });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating product status:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete a product
    */
   async deleteProduct(id: string) {
@@ -154,6 +168,24 @@ class ProductService {
       return response.data;
     } catch (error) {
       console.error("Error deleting product:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch vendor products from /admin/products/vendors
+   */
+  async getVendorProducts(vendorId: string, params: GetProductsParams = {}) {
+    try {
+      const response = await api.get<GetProductsResponse>("/admin/products/vendors", {
+        params: {
+          ...params,
+          vendorId,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching vendor products:", error);
       throw error;
     }
   }

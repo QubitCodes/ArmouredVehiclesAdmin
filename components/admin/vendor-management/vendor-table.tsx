@@ -1,3 +1,6 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { Vendor } from "@/services/admin/vendor.service";
 
 interface VendorTableProps {
@@ -5,6 +8,8 @@ interface VendorTableProps {
 }
 
 export function VendorTable({ vendors }: VendorTableProps) {
+  const router = useRouter();
+
   if (vendors.length === 0) {
     return (
       <div className="rounded-md border p-8 text-center text-muted-foreground">
@@ -12,6 +17,10 @@ export function VendorTable({ vendors }: VendorTableProps) {
       </div>
     );
   }
+
+  const handleVendorClick = (vendorId: string) => {
+    router.push(`/admin/vendors/${vendorId}`);
+  };
 
   return (
     <div className="w-full">
@@ -39,43 +48,44 @@ export function VendorTable({ vendors }: VendorTableProps) {
         {vendors.map((vendor) => (
           <div
             key={vendor.id}
-            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm"
+            onClick={() => handleVendorClick(vendor.id)}
+            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm cursor-pointer"
           >
             <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(180px,1.5fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">
-                {vendor.companyName || vendor.user.name}
+                {vendor.userProfile?.companyName || vendor.name}
               </div>
               <div className="text-foreground">
-                {vendor.companyEmail || vendor.user.email}
+                {vendor.userProfile?.companyEmail || vendor.email}
               </div>
               <div>
                 <span
                   className={`text-sm font-medium ${
-                    vendor.user.isActive
+                    vendor.isActive
                       ? "text-green-600 dark:text-green-500"
                       : "text-orange-600 dark:text-orange-500"
                   }`}
                 >
-                  {vendor.user.isActive ? "Active" : "Inactive"}
+                  {vendor.isActive ? "Active" : "Inactive"}
                 </span>
               </div>
               <div>
                 <span
                   className={`text-sm font-medium capitalize ${
-                    vendor.onboardingStatus === "approved"
+                    vendor.userProfile?.onboardingStatus === "approved"
                       ? "text-green-600 dark:text-green-500"
-                      : vendor.onboardingStatus === "under_review"
+                      : vendor.userProfile?.onboardingStatus === "under_review"
                       ? "text-yellow-600 dark:text-yellow-500"
-                      : vendor.onboardingStatus === "rejected"
+                      : vendor.userProfile?.onboardingStatus === "rejected"
                       ? "text-red-600 dark:text-red-500"
                       : "text-gray-600 dark:text-gray-500"
                   }`}
                 >
-                  {vendor.onboardingStatus.replace("_", " ")}
+                  {vendor.userProfile?.onboardingStatus?.replace("_", " ") || "N/A"}
                 </span>
               </div>
               <div className="hidden text-sm text-foreground md:block">
-                {vendor.user.emailVerified ? "Verified" : "Unverified"}
+                {vendor.emailVerified ? "Verified" : "Unverified"}
               </div>
             </div>
           </div>
