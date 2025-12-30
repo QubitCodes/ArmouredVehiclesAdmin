@@ -143,6 +143,37 @@ class VendorService {
       throw error;
     }
   }
+
+  /**
+   * Approve a vendor
+   */
+  async approveVendor(userId: string) {
+    try {
+      const response = await api.post(`/admin/vendors/${userId}/approve`, {
+        status: "approved",
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error approving vendor:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject a vendor
+   */
+  async rejectVendor(userId: string, reason: string, note: string) {
+    try {
+      const response = await api.post(`/admin/vendors/${userId}/reject`, {
+        reason,
+        note,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error rejecting vendor:", error);
+      throw error;
+    }
+  }
 }
 
 export const vendorService = new VendorService();
