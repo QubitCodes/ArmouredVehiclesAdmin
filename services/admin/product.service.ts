@@ -88,6 +88,7 @@ export interface GetProductsResponse {
 export interface GetProductsParams {
   page?: number;
   limit?: number;
+  vendorId?: string;
 }
 
 class ProductService {
@@ -154,6 +155,24 @@ class ProductService {
       return response.data;
     } catch (error) {
       console.error("Error deleting product:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch vendor products from /vendor/products
+   */
+  async getVendorProducts(userId: string, params: GetProductsParams = {}) {
+    try {
+      const response = await api.get<GetProductsResponse>("/vendor/products", {
+        params: {
+          ...params,
+          userId,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching vendor products:", error);
       throw error;
     }
   }

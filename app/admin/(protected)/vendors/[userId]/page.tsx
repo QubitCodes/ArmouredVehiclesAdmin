@@ -4,10 +4,9 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { ArrowLeft, Building2, User, Mail, Calendar, Shield, FileText, CreditCard } from "lucide-react";
+import { Building2, User, Mail, Calendar, Shield, FileText, CreditCard } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVendor } from "@/hooks/admin/vendor-management/use-vendor";
 
@@ -126,28 +125,6 @@ export default function VendorDetailPage() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      {/* Header Section */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.back()}
-            className="w-fit"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {vendor.companyName || vendor.user.name}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Vendor Details
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* User Information Section */}
       <Card>
         <CardHeader>
