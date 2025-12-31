@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useLoginStart } from "@/hooks/use-login";
+import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 

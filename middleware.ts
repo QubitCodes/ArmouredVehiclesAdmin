@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Public routes that don't require authentication
-const publicRoutes = ["/admin/login", "/admin/verify-email"];
+const publicRoutes = [
+  "/admin/login",
+  "/admin/verify-email",
+  "/vendor/create-account",
+  "/vendor/verify-email",
+  "/vendor/add-phone",
+  "/vendor/verify-phone",
+];
 
 // Protected routes that require authentication
-const protectedRoutes = ["/admin"];
+const protectedRoutes = ["/admin", "/vendor"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -35,6 +42,11 @@ export function middleware(request: NextRequest) {
   if (pathname === "/admin/login" && accessToken) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
+
+  // If accessing vendor create-account page while authenticated, redirect to vendor dashboard
+  // if (pathname === "/vendor/create-account" && accessToken) {
+  //   return NextResponse.redirect(new URL("/vendor", request.url));
+  // }
 
   // Other public routes are accessible to everyone (authenticated or not)
   return NextResponse.next();
