@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Package, ShoppingCart, Store, LogOut } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { authService } from "@/services/admin/auth.service";
+import { vendorAuthService } from "@/services/vendor/auth.service";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +51,7 @@ export function VendorSidebar() {
   };
 
   const handleLogout = () => {
-    authService.clearTokens();
+    vendorAuthService.clearTokens();
     router.push("/vendor/login");
   };
 
@@ -73,7 +73,7 @@ export function VendorSidebar() {
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -85,7 +85,7 @@ export function VendorSidebar() {
         <div className="border-t border-border p-4">
           <button
             onClick={handleLogoutClick}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <LogOut className="h-5 w-5" />
             Logout

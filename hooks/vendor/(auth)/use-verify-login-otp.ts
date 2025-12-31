@@ -4,28 +4,26 @@ import { AxiosError } from "axios";
 import api from "@/lib/api";
 import { vendorAuthService } from "@/services/vendor/auth.service";
 
-export interface VerifyEmailRequest {
-  userId: string;
+export interface VerifyLoginOtpRequest {
   email: string;
   code: string;
 }
 
-export interface VerifyEmailResponse {
+export interface VerifyLoginOtpResponse {
   message?: string;
   success?: boolean;
   accessToken?: string;
   refreshToken?: string;
-  userId?: string;
 }
 
 /**
- * React Query hook for vendor email verification API
+ * React Query hook for vendor login OTP verification
  */
-export function useVerifyEmail() {
-  return useMutation<VerifyEmailResponse, AxiosError, VerifyEmailRequest>({
-    mutationFn: async (data: VerifyEmailRequest) => {
-      const response = await api.post<VerifyEmailResponse>(
-        "/auth/otp/verify-email",
+export function useVerifyLoginOtp() {
+  return useMutation<VerifyLoginOtpResponse, AxiosError, VerifyLoginOtpRequest>({
+    mutationFn: async (data: VerifyLoginOtpRequest) => {
+      const response = await api.post<VerifyLoginOtpResponse>(
+        "/auth/otp/login/verify",
         data
       );
       

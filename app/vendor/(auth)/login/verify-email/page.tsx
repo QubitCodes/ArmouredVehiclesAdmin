@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
-import { useVerifyOtp } from "@/hooks/admin/(auth)/use-verify-otp";
+import { useVerifyLoginOtp } from "@/hooks/vendor/(auth)/use-verify-login-otp";
 import { Card, CardContent } from "@/components/ui/card";
 
 function VerifyEmailContent() {
@@ -18,7 +18,7 @@ function VerifyEmailContent() {
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const verifyMutation = useVerifyOtp();
+  const verifyMutation = useVerifyLoginOtp();
   const resendMutation = useLoginStart();
 
   const handleChange = (index: number, value: string) => {
@@ -80,7 +80,7 @@ function VerifyEmailContent() {
       });
 
       // Note: accessToken and refreshToken are automatically stored in cookies
-      // by the useVerifyOtp hook via authService.setTokens()
+      // by the useVerifyLoginOtp hook via vendorAuthService.setTokens()
 
       toast.success(
         response.message || "Email verified successfully"

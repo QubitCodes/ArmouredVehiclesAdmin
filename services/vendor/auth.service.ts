@@ -1,11 +1,11 @@
 /**
- * Authentication service for managing tokens
+ * Authentication service for managing vendor tokens
  */
 
 import Cookies from "js-cookie";
 
-const ACCESS_TOKEN_KEY = "admin_access_token";
-const REFRESH_TOKEN_KEY = "admin_refresh_token";
+const ACCESS_TOKEN_KEY = "vendor_access_token";
+const REFRESH_TOKEN_KEY = "vendor_refresh_token";
 
 // Cookie options for secure token storage
 const cookieOptions = {
@@ -14,7 +14,7 @@ const cookieOptions = {
   path: "/", // Available across the entire site
 };
 
-class AuthService {
+class VendorAuthService {
   /**
    * Get the stored access token
    */
@@ -69,7 +69,7 @@ class AuthService {
    */
   async refreshAccessToken(): Promise<string | null> {
     const refreshToken = this.getRefreshToken();
-    
+
     if (!refreshToken) {
       return null;
     }
@@ -92,17 +92,17 @@ class AuthService {
       }
 
       const data = await response.json();
-      
+
       // Assuming the API returns { accessToken, refreshToken } or similar
       // Adjust based on your API response structure
       if (data.accessToken) {
         this.setAccessToken(data.accessToken);
-        
+
         // Update refresh token if provided
         if (data.refreshToken) {
           this.setRefreshToken(data.refreshToken);
         }
-        
+
         return data.accessToken;
       }
 
@@ -122,5 +122,4 @@ class AuthService {
   }
 }
 
-export const authService = new AuthService();
-
+export const vendorAuthService = new VendorAuthService();

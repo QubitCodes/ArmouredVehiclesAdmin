@@ -27,26 +27,42 @@ export function middleware(request: NextRequest) {
   );
 
   // Check if the route is a protected admin route
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route) && !isPublicRoute
+  const isProtectedRoute = protectedRoutes.some(
+    (route) => pathname.startsWith(route) && !isPublicRoute
   );
 
-  // Get the access token from cookies
-  const accessToken = request.cookies.get("access_token")?.value;
+  // Get the access tokens from cookies (separate for admin and vendor)
+  const adminToken = request.cookies.get("admin_access_token")?.value;
+  const vendorToken = request.cookies.get("vendor_access_token")?.value;
 
   // If accessing a protected route without authentication, redirect to login
-  if (isProtectedRoute && !accessToken) {
-    // Determine which login page to redirect to based on the route
+  if (isProtectedRoute) {
     const isVendorRoute = pathname.startsWith("/vendor");
-    const loginPath = isVendorRoute ? "/vendor/login" : "/admin/login";
-    const loginUrl = new URL(loginPath, request.url);
-    // Preserve the intended destination for redirect after login
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    const isAdminRoute = pathname.startsWith("/admin");
+    const hasToken = isVendorRoute
+      ? vendorToken
+      : isAdminRoute
+      ? adminToken
+      : false;
+
+    if (!hasToken) {
+      const loginPath = isVendorRoute ? "/vendor/login" : "/admin/login";
+      const loginUrl = new URL(loginPath, request.url);
+      // Preserve the intended destination for redirect after login
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  // Auth routes are always accessible (authenticated or not)
-  // No redirects for auth pages - users can access them regardless of auth status
+  // If accessing vendor login page while authenticated, redirect to vendor dashboard
+  if (pathname === "/vendor/login" && vendorToken) {
+    return NextResponse.redirect(new URL("/vendor", request.url));
+  }
+
+  // If accessing admin login page while authenticated, redirect to admin dashboard
+  if (pathname === "/admin/login" && adminToken) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
 
   // Other public routes are accessible to everyone (authenticated or not)
   return NextResponse.next();
@@ -66,4 +82,3 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-

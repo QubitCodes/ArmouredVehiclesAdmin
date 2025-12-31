@@ -4,6 +4,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { authService } from "@/services/admin/auth.service";
+import { vendorAuthService } from "@/services/vendor/auth.service";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -12,9 +13,19 @@ const api = axios.create({
   },
 });
 
+// Helper function to determine which auth service to use based on URL
+function getAuthService(url?: string) {
+  if (!url) return authService; // Default to admin
+  
+  // Check if the URL is for vendor endpoints
+  const isVendorEndpoint = url.includes("/vendor/") || url.startsWith("/vendor");
+  return isVendorEndpoint ? vendorAuthService : authService;
+}
+
 // Request interceptor to add access token to requests
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const authService = getAuthService(config.url);
     const token = authService.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -76,6 +87,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const authService = getAuthService(originalRequest.url);
         const newToken = await authService.refreshAccessToken();
 
         if (newToken) {
@@ -90,7 +102,8 @@ api.interceptors.response.use(
           processQueue(error, null);
           // Redirect to login if refresh fails
           if (typeof window !== "undefined") {
-            window.location.href = "/admin/login";
+            const isVendorEndpoint = originalRequest.url?.includes("/vendor/") || originalRequest.url?.startsWith("/vendor");
+            window.location.href = isVendorEndpoint ? "/vendor/login" : "/admin/login";
           }
           return Promise.reject(error);
         }
@@ -98,7 +111,8 @@ api.interceptors.response.use(
         processQueue(refreshError as AxiosError, null);
         // Redirect to login if refresh fails
         if (typeof window !== "undefined") {
-          window.location.href = "/admin/login";
+          const isVendorEndpoint = originalRequest.url?.includes("/vendor/") || originalRequest.url?.startsWith("/vendor");
+          window.location.href = isVendorEndpoint ? "/vendor/login" : "/admin/login";
         }
         return Promise.reject(refreshError);
       } finally {
