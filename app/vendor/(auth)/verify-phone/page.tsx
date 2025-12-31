@@ -9,6 +9,7 @@ import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useVerifyPhone } from "@/hooks/vendor/(auth)/use-verify-phone";
 
 function VerifyPhoneContent() {
   const router = useRouter();
@@ -20,6 +21,7 @@ function VerifyPhoneContent() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const verifyPhoneMutation = useVerifyPhone();
 
   // Mask phone number for display (show only last 2 digits)
   const maskPhone = (phoneNumber: string) => {
@@ -100,18 +102,22 @@ function VerifyPhoneContent() {
         return;
       }
 
-      // TODO: Implement API call to verify phone OTP
-      // const response = await verifyPhoneMutation.mutateAsync({
-      //   userId,
-      //   phone,
-      //   code: otpCode,
-      // });
+      if (!phone) {
+        toast.error("Phone number is missing. Please try again.");
+        return;
+      }
 
-      toast.success("Phone number verified successfully!");
+      const response = await verifyPhoneMutation.mutateAsync({
+        userId,
+        phone,
+        code: otpCode,
+      });
 
-      // Redirect to dashboard or next step
+      toast.success(response.message || "Phone number verified successfully!");
+
+      // Redirect to create store page
       setTimeout(() => {
-        router.push("/vendor");
+        router.push("/vendor/create-store");
       }, 1500);
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -195,7 +201,8 @@ function VerifyPhoneContent() {
           {/* Phone number text */}
           <div>
             <p className="text-sm text-black/80">
-              We sent a security code to: <span className="font-semibold">{maskPhone(phone)}</span>
+              We sent a security code to:{" "}
+              <span className="font-semibold">{maskPhone(phone)}</span>
             </p>
           </div>
 
@@ -242,13 +249,16 @@ function VerifyPhoneContent() {
             <Button
               onClick={handleVerify}
               variant="secondary"
-              disabled={otp.join("").length !== 6}
+              disabled={
+                otp.join("").length !== 6 || verifyPhoneMutation.isPending
+              }
               className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 relative overflow-visible"
               style={{
-                clipPath: "polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%)",
+                clipPath:
+                  "polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%)",
               }}
             >
-              VERIFY
+              {verifyPhoneMutation.isPending ? "VERIFYING..." : "VERIFY"}
             </Button>
           </div>
 
@@ -287,4 +297,3 @@ export default function VerifyPhonePage() {
     </Suspense>
   );
 }
-

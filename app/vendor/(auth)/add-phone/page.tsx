@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -31,7 +32,7 @@ const phoneSchema = z.object({
 
 type PhoneFormValues = z.infer<typeof phoneSchema>;
 
-export default function AddPhonePage() {
+function AddPhoneContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get("userId") || "";
@@ -180,6 +181,27 @@ export default function AddPhonePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AddPhonePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-bg-medium px-8 py-8">
+          <Card className="bg-bg-light border-0 shadow-lg rounded-xl overflow-hidden px-10 py-8 w-full max-w-lg">
+            <CardContent className="p-0">
+              <div className="text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <AddPhoneContent />
+    </Suspense>
   );
 }
 
