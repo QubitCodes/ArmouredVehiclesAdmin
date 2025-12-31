@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import Link from "next/link";
 
 const loginSchema = z.object({
   email: z
@@ -148,6 +149,19 @@ export default function VendorLoginPage() {
                 </Button>
               </form>
             </Form>
+
+            {/* Registration Link */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <Link
+                  href="/vendor/create-account"
+                  className="text-secondary font-semibold hover:text-secondary/80 underline-offset-2 hover:underline transition-colors"
+                >
+                  Register as Vendor
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
