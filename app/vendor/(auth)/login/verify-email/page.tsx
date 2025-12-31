@@ -14,7 +14,7 @@ function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "verify@gmail.com";
-  const redirect = searchParams.get("redirect") || "/admin";
+  const redirect = searchParams.get("redirect") || "/vendor";
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -79,11 +79,14 @@ function VerifyEmailContent() {
         code: otpCode,
       });
 
+      // Note: accessToken and refreshToken are automatically stored in cookies
+      // by the useVerifyOtp hook via authService.setTokens()
+
       toast.success(
         response.message || "Email verified successfully"
       );
 
-      // Redirect to intended destination or dashboard after successful verification
+      // Redirect to intended destination or vendor dashboard after successful verification
       setTimeout(() => {
         router.push(redirect);
       }, 1500);
@@ -106,7 +109,7 @@ function VerifyEmailContent() {
   };
 
   const handleCancel = () => {
-    router.push("/admin/login");
+    router.push("/vendor/login");
   };
 
   const handleResend = async () => {
@@ -165,7 +168,7 @@ function VerifyEmailContent() {
             <p className="text-xs sm:text-sm text-black/70">
               If you can&apos;t find it, check your spam folder.{" "}
               <Link
-                href="/admin/login"
+                href="/vendor/login"
                 className="text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium"
               >
                 Wrong email?
@@ -234,7 +237,7 @@ function VerifyEmailContent() {
   );
 }
 
-export default function VerifyEmailPage() {
+export default function VendorLoginVerifyEmailPage() {
   return (
     <Suspense
       fallback={
@@ -254,3 +257,4 @@ export default function VerifyEmailPage() {
     </Suspense>
   );
 }
+

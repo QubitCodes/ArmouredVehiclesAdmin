@@ -2,10 +2,21 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Public routes that don't require authentication
-const publicRoutes = ["/admin/login", "/admin/verify-email"];
+const publicRoutes = [
+  "/admin/login",
+  "/admin/verify-email",
+  "/vendor/create-account",
+  "/vendor/verify-email",
+  "/vendor/add-phone",
+  "/vendor/verify-phone",
+  "/vendor/create-store",
+  "/vendor/company-information",
+  "/vendor/login",
+  "/vendor/login/verify-email",
+];
 
 // Protected routes that require authentication
-const protectedRoutes = ["/admin"];
+const protectedRoutes = ["/admin", "/vendor"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,16 +36,17 @@ export function middleware(request: NextRequest) {
 
   // If accessing a protected route without authentication, redirect to login
   if (isProtectedRoute && !accessToken) {
-    const loginUrl = new URL("/admin/login", request.url);
+    // Determine which login page to redirect to based on the route
+    const isVendorRoute = pathname.startsWith("/vendor");
+    const loginPath = isVendorRoute ? "/vendor/login" : "/admin/login";
+    const loginUrl = new URL(loginPath, request.url);
     // Preserve the intended destination for redirect after login
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // If accessing login page while authenticated, redirect to dashboard
-  if (pathname === "/admin/login" && accessToken) {
-    return NextResponse.redirect(new URL("/admin", request.url));
-  }
+  // Auth routes are always accessible (authenticated or not)
+  // No redirects for auth pages - users can access them regardless of auth status
 
   // Other public routes are accessible to everyone (authenticated or not)
   return NextResponse.next();

@@ -8,6 +8,7 @@ interface DateSelectorProps {
   value?: { day?: number; month?: number; year?: number };
   onChange?: (value: { day?: number; month?: number; year?: number }) => void;
   className?: string;
+  selectClassName?: string;
   dayPlaceholder?: string;
   monthPlaceholder?: string;
   yearPlaceholder?: string;
@@ -19,6 +20,7 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
       value,
       onChange,
       className,
+      selectClassName,
       dayPlaceholder = "Day",
       monthPlaceholder = "Month",
       yearPlaceholder = "Year",
@@ -75,7 +77,7 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
           placeholder={dayPlaceholder}
           value={value?.day?.toString() || ""}
           onChange={(e) => handleDayChange(e.target.value)}
-          className="flex-1"
+          className={cn("flex-1", selectClassName)}
         >
           <option value="" disabled>
             {dayPlaceholder}
@@ -91,7 +93,7 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
           placeholder={monthPlaceholder}
           value={value?.month?.toString() || ""}
           onChange={(e) => handleMonthChange(e.target.value)}
-          className="flex-1"
+          className={cn("flex-1", selectClassName)}
         >
           <option value="" disabled>
             {monthPlaceholder}
@@ -107,7 +109,7 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
           placeholder={yearPlaceholder}
           value={value?.year?.toString() || ""}
           onChange={(e) => handleYearChange(e.target.value)}
-          className="flex-1"
+          className={cn("flex-1", selectClassName)}
         >
           <option value="" disabled>
             {yearPlaceholder}

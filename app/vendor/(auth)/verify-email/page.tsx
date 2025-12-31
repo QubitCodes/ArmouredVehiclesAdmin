@@ -6,20 +6,21 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 import Link from "next/link";
 
-import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
-import { useVerifyOtp } from "@/hooks/admin/(auth)/use-verify-otp";
+import { useVendorRegistration } from "@/hooks/vendor/(auth)/use-vendor-registration";
+import { useVerifyEmail } from "@/hooks/vendor/(auth)/use-verify-email";
 import { Card, CardContent } from "@/components/ui/card";
 
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "verify@gmail.com";
-  const redirect = searchParams.get("redirect") || "/admin";
+  const userId = searchParams.get("userId") || "";
+  const username = searchParams.get("username") || "";
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const verifyMutation = useVerifyOtp();
-  const resendMutation = useLoginStart();
+  const verifyMutation = useVerifyEmail();
+  const resendMutation = useVendorRegistration();
 
   const handleChange = (index: number, value: string) => {
     // Only allow single digit
@@ -73,8 +74,14 @@ function VerifyEmailContent() {
     }
 
     try {
-      console.log("otpCode", otpCode, "email", email);
+      if (!userId) {
+        toast.error("User ID is missing. Please try registering again.");
+        return;
+      }
+
+      console.log("otpCode", otpCode, "email", email, "userId", userId);
       const response = await verifyMutation.mutateAsync({
+        userId,
         email,
         code: otpCode,
       });
@@ -83,9 +90,17 @@ function VerifyEmailContent() {
         response.message || "Email verified successfully"
       );
 
-      // Redirect to intended destination or dashboard after successful verification
+      // Get userId from response if available, otherwise use from URL params
+      const finalUserId = response.userId || userId;
+
+      // Always redirect to add phone number page after successful email verification
       setTimeout(() => {
-        router.push(redirect);
+        if (finalUserId) {
+          router.push(`/vendor/add-phone?userId=${encodeURIComponent(finalUserId)}&email=${encodeURIComponent(email)}`);
+        } else {
+          // Fallback: if no userId, still try to go to add-phone (API might handle it)
+          router.push(`/vendor/add-phone?email=${encodeURIComponent(email)}`);
+        }
       }, 1500);
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -106,13 +121,21 @@ function VerifyEmailContent() {
   };
 
   const handleCancel = () => {
-    router.push("/admin/login");
+    router.push("/vendor/create-account");
   };
 
   const handleResend = async () => {
     try {
+      // Get username from search params if available, otherwise use email as fallback
+      const resendUsername = username || email.split("@")[0];
+      // For resend, we need name and userType - use username as name fallback
+      const name = resendUsername;
+      
       const response = await resendMutation.mutateAsync({
         email,
+        username: resendUsername,
+        name,
+        userType: "vendor",
       });
 
       toast.success(
@@ -165,7 +188,7 @@ function VerifyEmailContent() {
             <p className="text-xs sm:text-sm text-black/70">
               If you can&apos;t find it, check your spam folder.{" "}
               <Link
-                href="/admin/login"
+                href="/vendor/create-account"
                 className="text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium"
               >
                 Wrong email?
@@ -254,3 +277,4 @@ export default function VerifyEmailPage() {
     </Suspense>
   );
 }
+

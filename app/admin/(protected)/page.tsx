@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { Users, Store, ShoppingCart, Package, UserCheck, AlertCircle, DollarSign, TrendingUp, RefreshCw } from "lucide-react";
+import { Users, Store, ShoppingCart, Package, UserCheck, AlertCircle, DollarSign, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { useDashboard } from "@/hooks/admin/dashboard/use-dashboard";

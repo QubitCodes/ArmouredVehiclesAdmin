@@ -31,7 +31,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+export default function VendorLoginPage() {
   const router = useRouter();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -53,7 +53,7 @@ export default function LoginPage() {
       );
 
       // Navigate to OTP verification page with email parameter
-      router.push(`/admin/verify-email?email=${encodeURIComponent(data.email)}`);
+      router.push(`/vendor/login/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch (error) {
       console.log(error);
       
@@ -93,7 +93,7 @@ export default function LoginPage() {
               </div>
             </div>
             <h1 className="text-2xl font-bold text-foreground uppercase tracking-wide text-center">
-              Admin Login
+              Vendor Login
             </h1>
             <p className="text-xs text-muted-foreground text-center">
               Enter your details to get started
@@ -154,3 +154,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
