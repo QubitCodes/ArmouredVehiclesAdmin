@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { VendorSidebar } from "@/components/vendor/sidebar";
+
+export const metadata: Metadata = {
+  title: "ArmoredMart Vendor",
+  description: "Vendor portal for managing your store, products, and orders on ArmoredMart.",
+};
 
 export default function VendorLayout({
   children,

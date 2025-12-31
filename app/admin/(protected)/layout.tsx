@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { Sidebar } from "@/components/admin/sidebar";
+
+export const metadata: Metadata = {
+  title: "ArmoredMart Admin",
+  description: "Admin panel for managing ArmoredMart products, orders, and admins.",
+};
 
 export default function AdminLayout({
   children,
