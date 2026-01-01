@@ -13,7 +13,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -54,11 +53,16 @@ export default function VendorLoginPage() {
       );
 
       // Navigate to OTP verification page with email parameter
-      router.push(`/vendor/login/verify-email?email=${encodeURIComponent(data.email)}`);
+      router.push(
+        `/vendor/login/verify-email?email=${encodeURIComponent(data.email)}`
+      );
     } catch (error) {
       console.log(error);
-      
-      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+
+      const axiosError = error as AxiosError<{
+        message?: string;
+        error?: string;
+      }>;
       const errorMessage =
         axiosError?.response?.data?.error ||
         axiosError?.response?.data?.message ||
@@ -70,7 +74,7 @@ export default function VendorLoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center relative overflow-hidden bg-cover bg-center bg-no-repeat"
+      className="min-h-screen flex items-center justify-start relative overflow-hidden bg-cover bg-center bg-no-repeat"
       style={{
         backgroundImage: "url('/images/army.jpg')",
       }}
@@ -78,16 +82,16 @@ export default function VendorLoginPage() {
       {/* Background Overlay */}
       <div className="absolute inset-0 z-0 bg-black/30" />
 
-      <div className="relative z-10 w-full max-w-md p-4">
-        <Card className="bg-card border-2 border-border shadow-2xl rounded-xl overflow-hidden px-5">
-          <CardHeader className="pb-4 pt-6">
-            <div className="flex justify-center">
+      <div className="relative z-10 w-full max-w-md p-4 md:ml-8 lg:ml-16">
+        <Card className="bg-card border-2 border-border shadow-2xl overflow-hidden px-2">
+          <CardHeader className="pb-4 pt-6 gap-0">
+            <div className="flex justify-center pb-5">
               <div className="relative">
                 <Image
-                  src="/images/logo.png"
+                  src="/images/Logo.svg"
                   alt="ArmoredMart Logo"
-                  width={180}
-                  height={180}
+                  width={230}
+                  height={230}
                   className="object-contain drop-shadow-lg"
                   priority
                 />
@@ -96,7 +100,7 @@ export default function VendorLoginPage() {
             <h1 className="text-2xl font-bold text-foreground uppercase tracking-wide text-center">
               Vendor Login
             </h1>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className=" text-muted-foreground text-center">
               Enter your details to get started
             </p>
           </CardHeader>
@@ -107,20 +111,16 @@ export default function VendorLoginPage() {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
-
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem className="space-y-1.5">
-                      <FormLabel className="text-foreground font-semibold text-xs uppercase tracking-wide">
-                        Email Address
-                      </FormLabel>
                       <FormControl>
                         <Input
                           type="email"
                           placeholder="Email Address"
-                          className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                          className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                           {...field}
                         />
                       </FormControl>
@@ -168,5 +168,3 @@ export default function VendorLoginPage() {
     </div>
   );
 }
-
-

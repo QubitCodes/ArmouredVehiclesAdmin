@@ -132,13 +132,13 @@ export default function CompanyInformationPage() {
             <span className="text-sm font-medium text-gray-700">Step 1 of 5</span>
             <span className="text-sm font-medium text-gray-700">20%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-secondary h-2 rounded-full" style={{ width: "20%" }}></div>
+          <div className="w-full bg-gray-200 h-2" style={{ borderRadius: '50%' }}>
+            <div className="bg-secondary h-2" style={{ width: "20%", borderRadius: '50%' }}></div>
           </div>
         </div>
 
         {/* Form Container */}
-        <div className="bg-bg-light rounded-lg p-8 shadow-lg">
+        <div className="bg-bg-light p-8 shadow-lg">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* COMPANY INFORMATION Section */}
@@ -159,7 +159,7 @@ export default function CompanyInformationPage() {
                         <div className="relative">
                           <select
                             {...field}
-                            className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 rounded-md text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                            className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
                           >
                             {countries.map((country) => (
                               <option key={country.value} value={country.value}>
@@ -366,7 +366,7 @@ export default function CompanyInformationPage() {
                       <FormControl>
                         <select
                           {...field}
-                          className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 rounded-md text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                          className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
                         >
                           <option value="">Select Entity Type</option>
                           {entityTypes.map((type) => (
@@ -413,7 +413,7 @@ export default function CompanyInformationPage() {
                     VAT Registration Certificate
                     <Info className="w-4 h-4 text-gray-400 cursor-help" />
                   </FormLabel>
-                  <div className="border-2 border-dashed border-gray-300 rounded-md p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors">
+                  <div className="border-2 border-dashed border-gray-300 p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors">
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
                     <p className="text-xs text-gray-500 mt-1">PDF, PNG, JPG (MAX. 10MB)</p>
@@ -491,7 +491,7 @@ export default function CompanyInformationPage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="w-full text-white font-bold uppercase tracking-wide py-4 text-base shadow-lg hover:shadow-xl transition-all relative rounded-r-md mt-8"
+                className="w-full text-white font-bold uppercase tracking-wide py-4 text-base shadow-lg hover:shadow-xl transition-all relative mt-8"
                 style={{
                   clipPath:
                     "polygon(16px 0%, 100% 0%, 100% 100%, 16px 100%, 0% 50%)",

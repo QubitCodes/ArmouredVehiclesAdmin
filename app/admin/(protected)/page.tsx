@@ -115,7 +115,7 @@ export default function AdminDashboard() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </CardTitle>
-                <div className={`${stat.bgColor} p-2 rounded-lg`}>
+                <div className={`${stat.bgColor} p-2`}>
                   <Icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
               </CardHeader>

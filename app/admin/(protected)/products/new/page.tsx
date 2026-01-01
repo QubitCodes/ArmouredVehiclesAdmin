@@ -728,7 +728,7 @@ export default function NewProductPage() {
                     <FormLabel>Description</FormLabel>
                       <FormControl>
                       <textarea
-                        className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border rounded-md"
+                        className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
                         placeholder="General product description"
                         {...field}
                         />
@@ -1001,7 +1001,7 @@ export default function NewProductPage() {
                       </FormLabel>
                       <FormControl>
                         <textarea
-                          className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border rounded-md"
+                          className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
                           placeholder="Enter dimensions, materials, features, performance"
                           {...field}
                         />
@@ -1856,7 +1856,7 @@ export default function NewProductPage() {
                         <FormLabel>Terms</FormLabel>
                         <FormControl>
                           <textarea
-                            className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border rounded-md"
+                            className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
                             placeholder="Terms"
                             {...field}
                           />
@@ -1962,7 +1962,7 @@ export default function NewProductPage() {
           {SECTIONS.map((section, index) => (
             <div key={section.id} className="flex items-center shrink-0">
               <div
-                className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                className={`px-4 py-2 text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${
                   currentStep === section.id
                     ? "bg-white text-secondary"
                     : currentStep > section.id
@@ -1981,7 +1981,7 @@ export default function NewProductPage() {
               </div>
               {index < SECTIONS.length - 1 && (
                 <div
-                  className={`w-2 h-2 rounded-full mx-2 ${
+                  className={`w-2 h-2 mx-2 ${
                     currentStep > section.id ? "bg-primary" : "bg-muted"
                   }`}
                 />

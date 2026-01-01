@@ -43,7 +43,7 @@ export default function VendorOrdersPage() {
   return (
     <div className="flex w-full flex-col gap-6">
       {orders.length === 0 ? (
-        <div className="rounded-md border p-8 text-center text-muted-foreground">
+        <div className="border p-8 text-center text-muted-foreground">
           No orders found for this vendor.
         </div>
       ) : (

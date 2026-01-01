@@ -7,7 +7,7 @@ interface AdminTableProps {
 export function AdminTable({ admins }: AdminTableProps) {
   if (admins.length === 0) {
     return (
-      <div className="rounded-md border p-8 text-center text-muted-foreground">
+      <div className="border p-8 text-center text-muted-foreground">
         No admins found.
       </div>
     );
@@ -15,7 +15,7 @@ export function AdminTable({ admins }: AdminTableProps) {
 
   return (
     <div className="w-full">
-      <div className="w-full overflow-hidden rounded-lg mb-1">
+      <div className="w-full overflow-hidden mb-1">
         <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(180px,1.5fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3 bg-transparent">
           <div className="min-w-[120px] text-sm font-semibold text-black">
             Name
@@ -42,7 +42,7 @@ export function AdminTable({ admins }: AdminTableProps) {
         {admins.map((admin) => (
           <div
             key={admin.id}
-            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm"
+            className="w-full overflow-hidden bg-bg-light transition-all hover:shadow-sm"
           >
             <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(180px,1.5fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">{admin.name}</div>

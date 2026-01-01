@@ -35,7 +35,7 @@ export function ProductTable({ products, fromVendor = false }: ProductTableProps
   });
   if (products.length === 0) {
     return (
-      <div className="rounded-md border p-8 text-center text-muted-foreground">
+      <div className="border p-8 text-center text-muted-foreground">
         No products found.
       </div>
     );
@@ -70,7 +70,7 @@ export function ProductTable({ products, fromVendor = false }: ProductTableProps
 
   return (
     <div className="w-full">
-      <div className="w-full overflow-hidden rounded-lg mb-1">
+      <div className="w-full overflow-hidden mb-1">
         <div className="grid items-center grid-cols-[2fr_120px_130px_100px] gap-4 px-4 py-3 bg-transparent">
           <div className="text-sm font-semibold text-black">
             Name
@@ -91,7 +91,7 @@ export function ProductTable({ products, fromVendor = false }: ProductTableProps
         {products.map((product) => (
           <div
             key={product.id}
-            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:bg-muted/50 hover:shadow-sm"
+            className="w-full overflow-hidden bg-bg-light transition-all hover:bg-muted/50 hover:shadow-sm"
           >
             <div className="grid items-center grid-cols-[2fr_120px_130px_100px] gap-4 px-4 py-3">
               <Link

@@ -117,7 +117,7 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
                   <FormControl>
                     <Input
                       placeholder="Enter admin name"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>
@@ -138,7 +138,7 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
                     <Input
                       type="email"
                       placeholder="Enter email address"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>
@@ -159,7 +159,7 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
                     <Input
                       type="password"
                       placeholder="Enter password"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>

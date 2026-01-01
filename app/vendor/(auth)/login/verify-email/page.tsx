@@ -9,6 +9,8 @@ import Link from "next/link";
 import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
 import { useVerifyLoginOtp } from "@/hooks/vendor/(auth)/use-verify-login-otp";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -146,7 +148,7 @@ function VerifyEmailContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
-      <Card className="w-full max-w-md md:max-w-xl bg-bg-light border-none shadow-lg rounded-2xl">
+      <Card className="w-full max-w-md md:max-w-xl p-0 bg-bg-light border-none shadow-lg">
         <CardContent className="p-6 sm:p-8 md:p-10 space-y-8">
           {/* Heading Section */}
           <div className="text-center space-y-4">
@@ -192,7 +194,7 @@ function VerifyEmailContent() {
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
                   aria-label={`OTP digit ${index + 1}`}
-                  className="w-11 h-11 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-white border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:border-secondary transition-all shadow-sm hover:border-secondary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-11 h-11 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-bg-medium border border-border focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:border-secondary transition-all shadow-sm hover:border-secondary/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               ))}
             </div>
@@ -200,21 +202,30 @@ function VerifyEmailContent() {
 
           <div className="w-full max-w-sm mx-auto">
             <div className="flex flex-col sm:flex-row gap-3">
-              <button
+              <Button
                 onClick={handleCancel}
                 type="button"
-                className="w-full sm:flex-1 h-11 sm:h-12 bg-bg-medium border border-border text-black font-bold uppercase tracking-wide hover:bg-bg-light hover:border-border/80 active:scale-[0.98] transition-all font-heading text-sm sm:text-base rounded-lg shadow-sm"
+                variant="secondary"
+                className="w-full sm:flex-1 h-11 sm:h-12 font-bold uppercase tracking-wide font-heading text-sm sm:text-base bg-bg-medium text-black hover:bg-bg-light border-0"
               >
                 CANCEL
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleVerify}
                 type="button"
+                variant="secondary"
                 disabled={otp.join("").length !== 6 || verifyMutation.isPending}
-                className="w-full sm:flex-1 h-11 sm:h-12 bg-secondary text-secondary-foreground font-bold uppercase tracking-wide hover:bg-secondary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-secondary font-heading text-sm sm:text-base rounded-lg shadow-md hover:shadow-lg"
+                className="w-full sm:flex-1 h-11 sm:h-12 font-bold uppercase tracking-wide font-heading text-sm sm:text-base"
               >
-                {verifyMutation.isPending ? "VERIFYING..." : "VERIFY"}
-              </button>
+                {verifyMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    VERIFYING...
+                  </>
+                ) : (
+                  "VERIFY"
+                )}
+              </Button>
             </div>
           </div>
 
@@ -225,9 +236,10 @@ function VerifyEmailContent() {
               <button
                 onClick={handleResend}
                 type="button"
-                className="text-sm text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium"
+                disabled={resendMutation.isPending}
+                className="text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Get another one.
+                {resendMutation.isPending ? "Sending..." : "Get another one."}
               </button>
             </p>
           </div>
@@ -242,10 +254,10 @@ export default function VendorLoginVerifyEmailPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
-          <Card className="w-full max-w-md md:max-w-xl bg-bg-light border-none shadow-lg rounded-2xl">
+          <Card className="w-full max-w-md md:max-w-xl bg-bg-light border-none shadow-lg">
             <CardContent className="p-6 sm:p-8 md:p-10">
               <div className="text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <div className="inline-block h-8 w-8 animate-spin border-4 border-solid border-primary border-r-transparent" style={{ borderRadius: '50%' }}></div>
                 <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
               </div>
             </CardContent>

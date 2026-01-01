@@ -72,7 +72,7 @@ export function Sidebar() {
               key={item.name}
               href={item.href!}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-muted text-foreground"
                   : "text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
@@ -89,7 +89,7 @@ export function Sidebar() {
       <div className="border-t border-primary/20 p-4">
         <button
           onClick={handleLogoutClick}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors bg-white/10 hover:bg-muted hover:text-foreground"
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors bg-white/10 hover:bg-muted hover:text-foreground"
         >
           <LogOut className="h-5 w-5" />
           <span>Logout</span>

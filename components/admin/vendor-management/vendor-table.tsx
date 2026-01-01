@@ -57,7 +57,7 @@ export function VendorTable({ vendors }: VendorTableProps) {
 
   if (vendors.length === 0) {
     return (
-      <div className="rounded-md border p-8 text-center text-muted-foreground">
+      <div className="border p-8 text-center text-muted-foreground">
         No vendors found.
       </div>
     );
@@ -136,7 +136,7 @@ export function VendorTable({ vendors }: VendorTableProps) {
 
   return (
     <div className="w-full">
-      <div className="w-full overflow-hidden rounded-lg mb-1">
+      <div className="w-full overflow-hidden mb-1">
         <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(180px,1.5fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3 bg-transparent">
           <div className="min-w-[150px] text-sm font-semibold text-black">
             Company Name
@@ -161,7 +161,7 @@ export function VendorTable({ vendors }: VendorTableProps) {
           <div
             key={vendor.id}
             onClick={() => handleVendorClick(vendor.id)}
-            className="w-full overflow-hidden rounded-lg bg-bg-light transition-all hover:shadow-sm cursor-pointer"
+            className="w-full overflow-hidden bg-bg-light transition-all hover:shadow-sm cursor-pointer"
           >
             <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(180px,1.5fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">
@@ -253,7 +253,7 @@ export function VendorTable({ vendors }: VendorTableProps) {
                 value={rejectNote}
                 onChange={(e) => setRejectNote(e.target.value)}
                 rows={4}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-[80px] w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
           </div>
