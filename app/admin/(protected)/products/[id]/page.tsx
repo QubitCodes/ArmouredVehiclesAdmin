@@ -297,7 +297,7 @@ export default function ProductDetailPage() {
             <img
               src={(productData.image as string) || (productData.imageUrl as string)}
               alt={product.name}
-              className="w-full max-w-md rounded-lg object-cover"
+              className="w-full max-w-md object-cover"
             />
           </CardContent>
         </Card>

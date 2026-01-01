@@ -96,7 +96,7 @@ export default function CreateSupplierAccountPage() {
       <div className="absolute inset-0 z-0 bg-black/30" />
 
       <div className="relative z-10 w-full max-w-lg p-4 md:ml-8 lg:ml-16">
-        <Card className="bg-bg-light border border-blue-500/30 shadow-2xl rounded-xl overflow-hidden px-6 py-8 w-full">
+        <Card className="bg-bg-light border border-blue-500/30 shadow-2xl overflow-hidden px-6 py-8 w-full">
           <CardHeader className="pb-3 pt-0 px-0">
             <h1 className="text-xl sm:text-3xl font-bold text-black uppercase tracking-wide text-center font-heading">
               CREATE YOUR SUPPLIER ACCOUNT
@@ -122,7 +122,7 @@ export default function CreateSupplierAccountPage() {
                           <Input
                             type="text"
                             placeholder="Enter Your Name"
-                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm rounded-lg transition-all"
+                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
                             {...field}
                           />
                           {/* Dashed blue line connector */}
@@ -144,7 +144,7 @@ export default function CreateSupplierAccountPage() {
                           <Input
                             type="email"
                             placeholder="Email Address"
-                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm rounded-lg transition-all"
+                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
                             {...field}
                           />
                           {/* Dashed blue line connector */}
@@ -165,7 +165,7 @@ export default function CreateSupplierAccountPage() {
                         <Input
                           type="text"
                           placeholder="Enter Your Username"
-                          className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm rounded-lg transition-all"
+                          className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
                           {...field}
                         />
                       </FormControl>
@@ -202,7 +202,7 @@ export default function CreateSupplierAccountPage() {
               </form>
             </Form>
 
-            <div className="mt-6 text-left">
+            <div className="mt-6 text-center">
               <p className="text-sm text-black/80">
                 Already have an account?{" "}
                 <Link

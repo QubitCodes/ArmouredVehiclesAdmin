@@ -39,7 +39,7 @@ export function CountrySelector({
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 rounded-md text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+            className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
           >
             {countries.map((country) => (
               <option key={country.value} value={country.value}>

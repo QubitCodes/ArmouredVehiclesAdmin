@@ -127,7 +127,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                   <FormControl>
                     <Input
                       placeholder="Enter product name"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>
@@ -147,7 +147,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                   <FormControl>
                     <Input
                       placeholder="Enter product description"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>
@@ -169,7 +169,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                       type="number"
                       step="0.01"
                       placeholder="Enter price"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       value={field.value || ""}
@@ -191,7 +191,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                   <FormControl>
                     <Input
                       placeholder="Enter category"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>
@@ -212,7 +212,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                     <Input
                       type="number"
                       placeholder="Enter stock quantity"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                       onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       value={field.value || ""}
@@ -234,7 +234,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                   <FormControl>
                     <Input
                       placeholder="Enter SKU"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>
@@ -255,7 +255,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                     <Input
                       type="url"
                       placeholder="Enter image URL"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm rounded-lg transition-all"
+                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                       {...field}
                     />
                   </FormControl>

@@ -13,7 +13,7 @@ export function BackButton({ className }: BackButtonProps) {
   return (
     <button
       onClick={() => router.back()}
-      className={`flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors ${className || ""}`}
+      className={`flex items-center justify-center w-10 h-10 bg-gray-200 hover:bg-gray-300 transition-colors ${className || ""}`}
       aria-label="Go back"
     >
       <ArrowLeft className="w-5 h-5 text-black" />

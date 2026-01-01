@@ -103,13 +103,13 @@ export default function CreateStorePage() {
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="absolute top-6 left-6 flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors z-10"
+          className="absolute top-6 left-6 flex items-center justify-center w-10 h-10 bg-gray-200 hover:bg-gray-300 transition-colors z-10"
           aria-label="Go back"
         >
           <ArrowLeft className="w-5 h-5 text-black" />
         </button>
 
-        <div className="w-full max-w-md space-y-8 bg-bg-light rounded-lg p-6">
+        <div className="w-full max-w-md space-y-8 bg-bg-light p-6">
           {/* Form */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -127,7 +127,7 @@ export default function CreateStorePage() {
                       <div className="relative">
                         <select
                           {...field}
-                          className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 rounded-md text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                          className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
                         >
                           {countries.map((country) => (
                             <option key={country.value} value={country.value}>
@@ -208,7 +208,7 @@ export default function CreateStorePage() {
                           <div className="relative">
                             <select
                               {...field}
-                              className="w-full bg-bg-medium border border-gray-300 h-11 pl-10 pr-6 rounded-md text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                              className="w-full bg-bg-medium border border-gray-300 h-11 pl-10 pr-6 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
                             >
                               {phoneCountryCodes.map((code) => (
                                 <option key={code.value} value={code.value}>
@@ -251,7 +251,7 @@ export default function CreateStorePage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="w-full text-white font-bold uppercase tracking-wide py-2 text-base shadow-lg hover:shadow-xl transition-all relative rounded-r-md"
+                className="w-full text-white font-bold uppercase tracking-wide py-2 text-base shadow-lg hover:shadow-xl transition-all relative"
                 style={{
                   clipPath:
                     "polygon(16px 0%, 100% 0%, 100% 100%, 16px 100%, 0% 50%)",

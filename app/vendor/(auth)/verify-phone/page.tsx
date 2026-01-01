@@ -5,11 +5,12 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useVerifyPhone } from "@/hooks/vendor/(auth)/use-verify-phone";
+import { useResendPhone } from "@/hooks/vendor/(auth)/use-resend-phone";
+import { Loader2 } from "lucide-react";
 
 function VerifyPhoneContent() {
   const router = useRouter();
@@ -20,8 +21,11 @@ function VerifyPhoneContent() {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [resendTimer, setResendTimer] = useState(60);
-  const [canResend, setCanResend] = useState(false);
   const verifyPhoneMutation = useVerifyPhone();
+  const resendPhoneMutation = useResendPhone();
+
+  // Derive canResend from resendTimer instead of using state
+  const canResend = resendTimer === 0;
 
   // Mask phone number for display (show only last 2 digits)
   const maskPhone = (phoneNumber: string) => {
@@ -37,11 +41,9 @@ function VerifyPhoneContent() {
   useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => {
-        setResendTimer(resendTimer - 1);
+        setResendTimer((prev) => prev - 1);
       }, 1000);
       return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
     }
   }, [resendTimer]);
 
@@ -141,17 +143,27 @@ function VerifyPhoneContent() {
     if (!canResend) return;
 
     try {
-      // TODO: Implement API call to resend phone OTP
-      // const response = await resendPhoneMutation.mutateAsync({
-      //   userId,
-      //   phone,
-      // });
+      if (!userId) {
+        toast.error("User ID is missing. Please try again.");
+        return;
+      }
 
-      toast.success("Security code resent successfully!");
+      if (!phone) {
+        toast.error("Phone number is missing. Please try again.");
+        return;
+      }
+
+      const response = await resendPhoneMutation.mutateAsync({
+        userId,
+        phone,
+      });
+
+      toast.success(
+        response.message || "Security code resent successfully! Please check your phone."
+      );
 
       // Reset timer
       setResendTimer(60);
-      setCanResend(false);
 
       // Clear OTP inputs
       setOtp(Array(6).fill(""));
@@ -180,15 +192,15 @@ function VerifyPhoneContent() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-light px-4 py-8">
-      <Card className="bg-bg-light border-0 shadow-lg rounded-xl overflow-hidden px-6 py-8 w-full max-w-lg">
-        <CardContent className="p-0 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
+      <Card className="bg-bg-light border-0 shadow-lg overflow-hidden px-6 py-8 w-full max-w-lg">
+        <CardContent className="p-0 space-y-2">
           {/* Header with back button and title */}
           <div className="flex items-center gap-4">
             <button
               onClick={handleBack}
               type="button"
-              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 transition-colors"
+              className="flex items-center justify-center w-10 h-10 hover:bg-black/5 transition-colors"
               aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5 text-black" />
@@ -200,14 +212,14 @@ function VerifyPhoneContent() {
 
           {/* Phone number text */}
           <div>
-            <p className="text-sm text-black/80">
+            <p className="text-sm text-center text-black/80">
               We sent a security code to:{" "}
               <span className="font-semibold">{maskPhone(phone)}</span>
             </p>
           </div>
 
           {/* OTP Input Fields */}
-          <div className="flex justify-center gap-2.5 sm:gap-3">
+          <div className="flex justify-center gap-2.5 sm:gap-3 py-5">
             {otp.map((digit, index) => (
               <input
                 key={index}
@@ -222,26 +234,9 @@ function VerifyPhoneContent() {
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={handlePaste}
                 aria-label={`Security code digit ${index + 1}`}
-                className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-bg-light border-2 border-black/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:border-secondary transition-all shadow-sm hover:border-secondary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-bg-medium border border-black/20 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:border-secondary transition-all shadow-sm hover:border-secondary/50 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             ))}
-          </div>
-
-          {/* Resend timer */}
-          <div className="text-center">
-            {canResend ? (
-              <button
-                onClick={handleResend}
-                type="button"
-                className="text-sm text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium"
-              >
-                Resend security code
-              </button>
-            ) : (
-              <p className="text-xs text-black/70">
-                You can resend the security code in {resendTimer} seconds.
-              </p>
-            )}
           </div>
 
           {/* Verify Button */}
@@ -262,14 +257,29 @@ function VerifyPhoneContent() {
             </Button>
           </div>
 
-          {/* Need Help Link */}
-          <div className="text-left pt-2">
-            <Link
-              href="/vendor/help"
-              className="text-sm text-black/70 underline-offset-2 hover:text-black hover:underline transition-colors font-medium"
-            >
-              Need Help?
-            </Link>
+          {/* Resend timer */}
+          <div className="text-center pt-3">
+            {canResend ? (
+              <button
+                onClick={handleResend}
+                type="button"
+                disabled={resendPhoneMutation.isPending}
+                className="text-sm text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resendPhoneMutation.isPending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Sending...
+                  </span>
+                ) : (
+                  "Resend security code"
+                )}
+              </button>
+            ) : (
+              <p className="text-xs text-black/70">
+                You can resend the security code in {resendTimer} seconds.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -282,10 +292,13 @@ export default function VerifyPhonePage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-bg-light px-4 py-8">
-          <Card className="bg-bg-light border-0 shadow-lg rounded-xl overflow-hidden px-6 py-8 w-full max-w-lg">
+          <Card className="bg-bg-light border-0 shadow-lg overflow-hidden px-6 py-8 w-full max-w-lg">
             <CardContent className="p-0">
               <div className="text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <div
+                  className="inline-block h-8 w-8 animate-spin border-4 border-solid border-primary border-r-transparent"
+                  style={{ borderRadius: "50%" }}
+                ></div>
                 <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
               </div>
             </CardContent>

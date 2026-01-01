@@ -49,7 +49,7 @@ export function PhoneInput({
               <select
                 value={countryCode}
                 onChange={(e) => onCountryCodeChange(e.target.value)}
-                className="w-full bg-bg-medium border border-gray-300 h-11 pl-10 pr-6 rounded-md text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                className="w-full bg-bg-medium border border-gray-300 h-11 pl-10 pr-6 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
               >
                 {phoneCodes.map((code) => (
                   <option key={code.value} value={code.value}>

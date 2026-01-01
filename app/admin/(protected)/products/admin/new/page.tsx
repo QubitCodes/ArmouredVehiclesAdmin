@@ -452,7 +452,7 @@ export default function NewProductPage() {
                     <FormLabel>Description</FormLabel>
                     <FormControl>
                       <textarea
-                        className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border rounded-md"
+                        className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
                         placeholder="Premium armored door panel for military and VIP vehicles"
                         {...field}
                       />
@@ -1049,7 +1049,7 @@ export default function NewProductPage() {
                     <FormLabel>Technical Description</FormLabel>
                     <FormControl>
                       <textarea
-                        className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border rounded-md"
+                        className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
                         placeholder="Advanced composite armor door panel designed for high-threat environments..."
                         {...field}
                       />
@@ -1677,7 +1677,7 @@ export default function NewProductPage() {
                         <FormLabel>Warranty Terms</FormLabel>
                         <FormControl>
                           <textarea
-                            className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border rounded-md"
+                            className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
                             placeholder="Full coverage against manufacturing defects. Installation warranty separate."
                             {...field}
                           />
@@ -1801,7 +1801,7 @@ export default function NewProductPage() {
           {SECTIONS.map((section, index) => (
             <div key={section.id} className="flex items-center flex-shrink-0">
               <div
-                className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                className={`px-4 py-2 text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${
                   currentStep > section.id
                     ? "bg-primary text-white"
                     : currentStep === section.id
@@ -1820,7 +1820,7 @@ export default function NewProductPage() {
               </div>
               {index < SECTIONS.length - 1 && (
                 <div
-                  className={`w-2 h-2 rounded-full mx-2 ${
+                  className={`w-2 h-2 mx-2 ${
                     currentStep > section.id ? "bg-primary" : "bg-muted"
                   }`}
                 />

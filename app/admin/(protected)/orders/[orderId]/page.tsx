@@ -286,7 +286,7 @@ export default function OrderDetailPage() {
                       <div className="absolute left-2 top-6 bottom-0 w-0.5 bg-border" />
                     )}
                     <div className="relative">
-                      <div className="absolute left-[-22px] top-1 h-3 w-3 rounded-full border-2 border-background bg-primary" />
+                      <div className="absolute left-[-22px] top-1 h-3 w-3 border-2 border-background bg-primary" style={{ borderRadius: '50%' }} />
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <p className={`font-semibold ${getStatusColor(historyItem.status)}`}>
