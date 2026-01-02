@@ -157,7 +157,7 @@ function VerifyEmailContent() {
 
   const handleCancel = () => {
     if (isRegistrationFlow) {
-      router.push("/vendor/create-account");
+    router.push("/vendor/create-account");
     } else {
       router.push("/vendor");
     }

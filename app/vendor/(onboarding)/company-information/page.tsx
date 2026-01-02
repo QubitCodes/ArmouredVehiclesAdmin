@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { Info, Upload } from "lucide-react";
+import { Info, Upload, ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +22,12 @@ import { Select } from "@/components/ui/select";
 import { DateSelector } from "@/components/ui/date-selector";
 
 const companyInformationSchema = z.object({
-  countryOfRegistration: z.string().min(1, "Country of registration is required"),
-  registeredCompanyName: z.string().min(1, "Registered company name is required"),
+  countryOfRegistration: z
+    .string()
+    .min(1, "Country of registration is required"),
+  registeredCompanyName: z
+    .string()
+    .min(1, "Registered company name is required"),
   yearOfEstablishment: z.string().min(1, "Year of establishment is required"),
   tradeBrandName: z.string().min(1, "Trade/Brand name is required"),
   legalEntityId: z.string().min(1, "Legal Entity ID / CR No is required"),
@@ -38,20 +42,28 @@ const companyInformationSchema = z.object({
     year: z.number().optional(),
   }),
   cityOfficeAddress: z.string().min(1, "City & Office Address is required"),
-  officialWebsite: z.string().url("Please enter a valid website URL").optional().or(z.literal("")),
+  officialWebsite: z
+    .string()
+    .url("Please enter a valid website URL")
+    .optional()
+    .or(z.literal("")),
   entityType: z.string().min(1, "Entity Type is required"),
   dunsNumber: z.string().optional(),
   taxVatNumber: z.string().optional(),
-  taxIssueDate: z.object({
-    day: z.number().optional(),
-    month: z.number().optional(),
-    year: z.number().optional(),
-  }).optional(),
-  taxExpiryDate: z.object({
-    day: z.number().optional(),
-    month: z.number().optional(),
-    year: z.number().optional(),
-  }).optional(),
+  taxIssueDate: z
+    .object({
+      day: z.number().optional(),
+      month: z.number().optional(),
+      year: z.number().optional(),
+    })
+    .optional(),
+  taxExpiryDate: z
+    .object({
+      day: z.number().optional(),
+      month: z.number().optional(),
+      year: z.number().optional(),
+    })
+    .optional(),
 });
 
 type CompanyInformationFormValues = z.infer<typeof companyInformationSchema>;
@@ -65,10 +77,10 @@ const countries = [
 ];
 
 const entityTypes = [
-  { value: "llc", label: "LLC" },
-  { value: "corporation", label: "Corporation" },
-  { value: "partnership", label: "Partnership" },
-  { value: "sole-proprietorship", label: "Sole Proprietorship" },
+  { value: "distributor", label: "Distributor" },
+  { value: "manufacturer", label: "Manufacturer" },
+  { value: "retailer", label: "Retailer" },
+  { value: "wholesaler", label: "Wholesaler" },
   { value: "other", label: "Other" },
 ];
 
@@ -92,6 +104,7 @@ export default function CompanyInformationPage() {
       taxVatNumber: "",
       taxIssueDate: {},
       taxExpiryDate: {},
+      vatCertificate: undefined,
     },
   });
 
@@ -125,34 +138,87 @@ export default function CompanyInformationPage() {
 
   return (
     <div className="min-h-screen bg-bg-medium flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-7xl">
         {/* Progress Bar */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Step 1 of 5</span>
-            <span className="text-sm font-medium text-gray-700">20%</span>
-          </div>
-          <div className="w-full bg-gray-200 h-2" style={{ borderRadius: '50%' }}>
-            <div className="bg-secondary h-2" style={{ width: "20%", borderRadius: '50%' }}></div>
+          <div className="relative">
+            {/* Horizontal connecting line */}
+            <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-border"></div>
+
+            {/* Steps Container */}
+            <div className="relative flex items-start justify-between w-full">
+              {/* Step 1: Company Information */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
+                  <span className="text-white text-base font-bold">✓</span>
+                </div>
+                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
+                  Company Information
+                </span>
+              </div>
+
+              {/* Step 2: Contact Person */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
+                  <span className="text-black text-sm font-bold">2</span>
+                </div>
+                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
+                  Contact Person
+                </span>
+              </div>
+
+              {/* Step 3: Declaration */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
+                  <span className="text-black text-sm font-bold">3</span>
+                </div>
+                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
+                  Declaration
+                </span>
+              </div>
+
+              {/* Step 4: Account Preferences */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
+                  <span className="text-black text-sm font-bold">4</span>
+                </div>
+                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
+                  Account Preferences
+                </span>
+              </div>
+
+              {/* Step 5: Verification */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
+                  <span className="text-black text-sm font-bold">5</span>
+                </div>
+                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
+                  Verification
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Form Container */}
-        <div className="bg-bg-light p-8 shadow-lg">
+        <div className="bg-bg-light px-4 py-8 shadow-lg">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* COMPANY INFORMATION Section */}
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-black mb-6">COMPANY INFORMATION</h2>
+                <h2 className="text-2xl font-bold text-black mb-6">
+                  COMPANY INFORMATION
+                </h2>
 
-                {/* Country of Registration */}
+                {/* Country of Registration - Full Width */}
                 <FormField
                   control={form.control}
                   name="countryOfRegistration"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Country of Registration <span className="text-red-500">*</span>
+                        Country of Registration{" "}
+                        <span className="text-red-500">*</span>
                         <Info className="w-4 h-4 text-gray-400 cursor-help" />
                       </FormLabel>
                       <FormControl>
@@ -179,331 +245,377 @@ export default function CompanyInformationPage() {
                   )}
                 />
 
-                {/* Registered Company Name */}
-                <FormField
-                  control={form.control}
-                  name="registeredCompanyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Registered Company Name <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Two Column Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Registered Company Name */}
+                    <FormField
+                      control={form.control}
+                      name="registeredCompanyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Registered Company Name{" "}
+                            <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Year of Establishment */}
-                <FormField
-                  control={form.control}
-                  name="yearOfEstablishment"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Year of Establishment <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    {/* Year of Establishment */}
+                    <FormField
+                      control={form.control}
+                      name="yearOfEstablishment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Year of Establishment{" "}
+                            <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="eg : 1985"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Trade/Brand Name */}
-                <FormField
-                  control={form.control}
-                  name="tradeBrandName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Trade/Brand Name <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    {/* Issue Date */}
+                    <FormField
+                      control={form.control}
+                      name="issueDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Issue Date <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <DateSelector
+                              value={field.value}
+                              onChange={field.onChange}
+                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Legal Entity ID / CR No */}
-                <FormField
-                  control={form.control}
-                  name="legalEntityId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Legal Entity ID / CR No <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    {/* City & Office Address */}
+                    <FormField
+                      control={form.control}
+                      name="cityOfficeAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            City & Office Address{" "}
+                            <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Office Address / Address Line"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Issue Date and Expiry Date */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="issueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Issue Date <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <DateSelector
-                            value={field.value}
-                            onChange={field.onChange}
-                            selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    {/* Entity Type */}
+                    <FormField
+                      control={form.control}
+                      name="entityType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Entity Type <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <select
+                                {...field}
+                                className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                              >
+                                <option value="">Select Entity Type</option>
+                                {entityTypes.map((type) => (
+                                  <option key={type.value} value={type.value}>
+                                    {type.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="expiryDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Expiry Date <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <DateSelector
-                            value={field.value}
-                            onChange={field.onChange}
-                            selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Trade/Brand Name */}
+                    <FormField
+                      control={form.control}
+                      name="tradeBrandName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Trade/Brand Name (if different){" "}
+                            <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Legal Entity ID / CR No */}
+                    <FormField
+                      control={form.control}
+                      name="legalEntityId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Legal Entity ID / CR No{" "}
+                            <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter Your Trade License Number"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Expiry Date */}
+                    <FormField
+                      control={form.control}
+                      name="expiryDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Expiry Date
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <DateSelector
+                              value={field.value}
+                              onChange={field.onChange}
+                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Official Website */}
+                    <FormField
+                      control={form.control}
+                      name="officialWebsite"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Official Website
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="url"
+                              placeholder="eg: www.blueweb2.com"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* DUNS Number */}
+                    <FormField
+                      control={form.control}
+                      name="dunsNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            DUNS Number (if applicable)
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="eg: 65-432-1987"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
-
-                {/* City & Office Address */}
-                <FormField
-                  control={form.control}
-                  name="cityOfficeAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        City & Office Address <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Official Website */}
-                <FormField
-                  control={form.control}
-                  name="officialWebsite"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Official Website
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="https://example.com"
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Entity Type */}
-                <FormField
-                  control={form.control}
-                  name="entityType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Entity Type <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <select
-                          {...field}
-                          className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
-                        >
-                          <option value="">Select Entity Type</option>
-                          {entityTypes.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
-                            </option>
-                          ))}
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* DUNS Number */}
-                <FormField
-                  control={form.control}
-                  name="dunsNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        DUNS Number
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               {/* TAX INFORMATION Section */}
               <div className="space-y-6 pt-6 border-t border-gray-300">
-                <h2 className="text-2xl font-bold text-black mb-6">TAX INFORMATION</h2>
+                <h2 className="text-2xl font-bold text-black mb-6">
+                  TAX INFORMATION
+                </h2>
 
-                {/* VAT Registration Certificate */}
-                <div className="space-y-2">
-                  <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                    VAT Registration Certificate
-                    <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                  </FormLabel>
-                  <div className="border-2 border-dashed border-gray-300 p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors">
-                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                    <p className="text-xs text-gray-500 mt-1">PDF, PNG, JPG (MAX. 10MB)</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column - VAT Registration Certificate */}
+                  <FormField
+                    control={form.control}
+                    name="vatCertificate"
+                    render={() => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Upload VAT Registration Certificate{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <div className="border-2 border-dashed border-gray-300 p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors">
+                            <Upload className="w-10 h-10 text-secondary mb-3" />
+                            <p className="text-sm font-medium text-gray-700 mb-1">
+                              Choose a File or Drag & Drop It Here
+                            </p>
+                            <p className="text-xs text-gray-500 text-center max-w-md">
+                              Make sure the document details match your entry.
+                              Upload all pages in clear, colored format.
+                              <br />
+                              Accepted files: JPEG, PNG, PDF, or MP4 (max 10
+                              MB).
+                            </p>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Right Column - Tax/VAT Number and Dates */}
+                  <div className="space-y-6">
+                    {/* Tax / VAT Number */}
+                    <FormField
+                      control={form.control}
+                      name="taxVatNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Tax / VAT Number{" "}
+                            <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="eg: 100123456700003"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Issuing Date */}
+                    <FormField
+                      control={form.control}
+                      name="taxIssueDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Issuing Date <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <DateSelector
+                              value={field.value || {}}
+                              onChange={field.onChange}
+                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Expiry Date */}
+                    <FormField
+                      control={form.control}
+                      name="taxExpiryDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Expiry Date
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <DateSelector
+                              value={field.value || {}}
+                              onChange={field.onChange}
+                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
-
-                {/* Tax / VAT Number */}
-                <FormField
-                  control={form.control}
-                  name="taxVatNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Tax / VAT Number
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Tax Issue Date and Expiry Date */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="taxIssueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Issuing Date
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <DateSelector
-                            value={field.value || {}}
-                            onChange={field.onChange}
-                            className="bg-bg-medium"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="taxExpiryDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Expiry Date
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <DateSelector
-                            value={field.value || {}}
-                            onChange={field.onChange}
-                            className="bg-bg-medium"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
               </div>
-
-              {/* NEXT Button */}
-              <Button
-                type="submit"
-                variant="secondary"
-                className="w-full text-white font-bold uppercase tracking-wide py-4 text-base shadow-lg hover:shadow-xl transition-all relative mt-8"
-                style={{
-                  clipPath:
-                    "polygon(16px 0%, 100% 0%, 100% 100%, 16px 100%, 0% 50%)",
-                }}
-              >
-                NEXT
-              </Button>
             </form>
           </Form>
+        </div>
+
+        {/* NEXT Button */}
+        <div className="flex justify-center mt-8 pb-8">
+          <Button
+            type="submit"
+            variant="secondary"
+            className="text-white font-bold uppercase tracking-wide px-24 py-3 text-base shadow-lg hover:shadow-xl transition-all min-w-[300px]"
+            onClick={() => {
+              form.handleSubmit(onSubmit)();
+            }}
+          >
+            NEXT
+          </Button>
         </div>
       </div>
     </div>
   );
 }
-

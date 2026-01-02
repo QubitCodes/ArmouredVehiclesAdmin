@@ -118,12 +118,12 @@ export default function CreateSupplierAccountPage() {
                   render={({ field }) => (
                     <FormItem className="space-y-0">
                       <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="Enter Your Name"
-                          className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
-                          {...field}
-                        />
+                          <Input
+                            type="text"
+                            placeholder="Enter Your Name"
+                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
+                            {...field}
+                          />
                       </FormControl>
                       <FormMessage className="text-red-600 text-xs" />
                     </FormItem>
@@ -136,12 +136,12 @@ export default function CreateSupplierAccountPage() {
                   render={({ field }) => (
                     <FormItem className="space-y-0 mt-4">
                       <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="Email Address"
-                          className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
-                          {...field}
-                        />
+                          <Input
+                            type="email"
+                            placeholder="Email Address"
+                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
+                            {...field}
+                          />
                       </FormControl>
                       <FormMessage className="text-red-600 text-xs" />
                     </FormItem>
