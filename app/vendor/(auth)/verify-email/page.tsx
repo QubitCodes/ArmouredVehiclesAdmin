@@ -8,21 +8,41 @@ import Link from "next/link";
 
 import { useVendorRegistration } from "@/hooks/vendor/(auth)/use-vendor-registration";
 import { useVerifyEmail } from "@/hooks/vendor/(auth)/use-verify-email";
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "verify@gmail.com";
+  const urlEmail = searchParams.get("email");
   const userId = searchParams.get("userId") || "";
   const username = searchParams.get("username") || "";
+  
+  // Determine if this is registration flow (has userId in URL)
+  const isRegistrationFlow = !!userId;
+  
+  // Fetch profile for post-login verification flow (only if not registration flow)
+  // We disable the query for registration flow to avoid unnecessary API calls
+  const { data: profileData, isLoading: isLoadingProfile } = useOnboardingProfile(!isRegistrationFlow);
+  const profileEmail = profileData?.user?.email;
+  const profileUserId = profileData?.user?.id;
+  
+  // Determine if this is verification flow (no userId in URL but has profile data)
+  const isVerificationFlow = !userId && !!profileData?.user;
+  
+  // Use email from URL (registration) or profile (verification), fallback to placeholder only for registration
+  const email = urlEmail || profileEmail || (isRegistrationFlow ? "verify@gmail.com" : "");
+  const finalUserId = userId || profileUserId || "";
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const hasAutoSentRef = useRef(false);
   const verifyMutation = useVerifyEmail();
   const resendMutation = useVendorRegistration();
+  const autoSendMutation = useVendorRegistration(); // Separate mutation for auto-send
 
   const handleChange = (index: number, value: string) => {
     // Only allow single digit
@@ -76,14 +96,19 @@ function VerifyEmailContent() {
     }
 
     try {
-      if (!userId) {
-        toast.error("User ID is missing. Please try registering again.");
+      if (!finalUserId) {
+        toast.error("User ID is missing. Please try again.");
         return;
       }
 
-      console.log("otpCode", otpCode, "email", email, "userId", userId);
+      if (!email) {
+        toast.error("Email is missing. Please try again.");
+        return;
+      }
+
+      console.log("otpCode", otpCode, "email", email, "userId", finalUserId);
       const response = await verifyMutation.mutateAsync({
-        userId,
+        userId: finalUserId,
         email,
         code: otpCode,
       });
@@ -92,15 +117,23 @@ function VerifyEmailContent() {
         response.message || "Email verified successfully"
       );
 
-      // Get userId from response if available, otherwise use from URL params
-      const finalUserId = response.userId || userId;
+      // Get userId from response if available, otherwise use finalUserId
+      const verifiedUserId = response.userId || finalUserId;
 
-      // Always redirect to add phone number page after successful email verification
+      // Redirect to phone verification step for both flows
       setTimeout(() => {
-        if (finalUserId) {
-          router.push(`/vendor/add-phone?userId=${encodeURIComponent(finalUserId)}&email=${encodeURIComponent(email)}`);
+        if (verifiedUserId) {
+          // Check if user already has a phone number
+          const hasPhone = profileData?.user?.phone;
+          if (hasPhone) {
+            // User has phone, redirect to verify phone
+            router.push(`/vendor/verify-phone?userId=${encodeURIComponent(verifiedUserId)}&email=${encodeURIComponent(email)}`);
+          } else {
+            // User doesn't have phone, redirect to add phone
+            router.push(`/vendor/add-phone?userId=${encodeURIComponent(verifiedUserId)}&email=${encodeURIComponent(email)}`);
+          }
         } else {
-          // Fallback: if no userId, still try to go to add-phone (API might handle it)
+          // Fallback: redirect to add-phone (API might handle userId)
           router.push(`/vendor/add-phone?email=${encodeURIComponent(email)}`);
         }
       }, 1500);
@@ -123,14 +156,23 @@ function VerifyEmailContent() {
   };
 
   const handleCancel = () => {
+    if (isRegistrationFlow) {
     router.push("/vendor/create-account");
+    } else {
+      router.push("/vendor");
+    }
   };
 
   const handleResend = async () => {
     try {
-      // Get username from search params if available, otherwise use email as fallback
-      const resendUsername = username || email.split("@")[0];
-      // For resend, we need name and userType - use username as name fallback
+      if (!email) {
+        toast.error("Email is missing. Please try again.");
+        return;
+      }
+
+      // For both registration and verification flows, we use vendor registration endpoint
+      // This sends the verification email that works with the verify-email endpoint
+      const resendUsername = username || profileData?.user?.name || email.split("@")[0];
       const name = resendUsername;
       
       const response = await resendMutation.mutateAsync({
@@ -161,10 +203,75 @@ function VerifyEmailContent() {
     }
   };
 
+  // Auto-send OTP on page load for verification flow (when user is logged in but email not verified)
+  useEffect(() => {
+    if (isVerificationFlow && email && !isLoadingProfile && !hasAutoSentRef.current) {
+      hasAutoSentRef.current = true;
+      
+      // Auto-send verification OTP email using vendor registration endpoint
+      // This endpoint sends the OTP that works with the verify-email endpoint
+      const resendUsername = profileData?.user?.name || email.split("@")[0];
+      const name = resendUsername;
+      
+      autoSendMutation.mutate(
+        {
+          email,
+          username: resendUsername,
+          name,
+          userType: "vendor",
+        },
+        {
+          onSuccess: () => {
+            // OTP sent successfully, user will see it in their email
+          },
+          onError: (error) => {
+            // Reset ref on error so user can try again via "Get another one"
+            console.error("Auto-send OTP error:", error);
+            hasAutoSentRef.current = false;
+          },
+        }
+      );
+    }
+  }, [isVerificationFlow, email, isLoadingProfile, profileData?.user?.name, autoSendMutation]);
+
   // Auto-focus first input on mount
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
+
+  // Show loading state while fetching profile for verification flow
+  if (isVerificationFlow && isLoadingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
+        <Card className="w-full max-w-md md:max-w-xl p-0 bg-bg-light border-none shadow-lg">
+          <CardContent className="p-6 sm:p-8 md:p-10">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <Spinner size="lg" />
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Don't render if we don't have an email
+  if (!email) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
+        <Card className="w-full max-w-md md:max-w-xl p-0 bg-bg-light border-none shadow-lg">
+          <CardContent className="p-6 sm:p-8 md:p-10">
+            <div className="text-center space-y-4">
+              <p className="text-sm text-muted-foreground">Unable to load email. Please try again.</p>
+              <Button onClick={() => router.push(isRegistrationFlow ? "/vendor/create-account" : "/vendor")}>
+                Go Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">

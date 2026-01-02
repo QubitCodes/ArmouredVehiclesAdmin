@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useSetPhone } from "@/hooks/vendor/(auth)/use-set-phone";
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 
 // Country code to ISO country code mapping
@@ -87,7 +88,17 @@ type PhoneFormValues = z.infer<typeof phoneSchema>;
 function AddPhoneContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const userId = searchParams.get("userId") || "";
+  const urlUserId = searchParams.get("userId") || "";
+  
+  // Determine if this is registration flow (has userId in URL) or verification flow
+  const isRegistrationFlow = !!urlUserId;
+  
+  // Fetch profile for verification flow (when user is logged in but no userId in URL)
+  const { data: profileData, isLoading: isLoadingProfile } = useOnboardingProfile(!isRegistrationFlow);
+  const profileUserId = profileData?.user?.id;
+  
+  // Use userId from URL (registration flow) or profile (verification flow)
+  const userId = urlUserId || profileUserId || "";
 
   const form = useForm<PhoneFormValues>({
     resolver: zodResolver(phoneSchema),
@@ -97,6 +108,22 @@ function AddPhoneContent() {
       phoneNumber: "",
     },
   });
+  
+  // Show loading state while fetching profile for verification flow
+  if (!urlUserId && isLoadingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
+        <Card className="w-full max-w-md md:max-w-xl p-0 bg-bg-light border-none shadow-lg">
+          <CardContent className="p-6 sm:p-8 md:p-10">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="inline-block h-8 w-8 animate-spin border-4 border-solid border-primary border-r-transparent" style={{ borderRadius: '50%' }}></div>
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const setPhoneMutation = useSetPhone();
   

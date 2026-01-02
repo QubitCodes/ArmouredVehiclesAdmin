@@ -118,16 +118,12 @@ export default function CreateSupplierAccountPage() {
                   render={({ field }) => (
                     <FormItem className="space-y-0">
                       <FormControl>
-                        <div className="relative">
                           <Input
                             type="text"
                             placeholder="Enter Your Name"
                             className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
                             {...field}
                           />
-                          {/* Dashed blue line connector */}
-                          <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-0.5 h-4 border-l-2 border-dashed border-blue-500/40 pointer-events-none" />
-                        </div>
                       </FormControl>
                       <FormMessage className="text-red-600 text-xs" />
                     </FormItem>
@@ -140,16 +136,12 @@ export default function CreateSupplierAccountPage() {
                   render={({ field }) => (
                     <FormItem className="space-y-0 mt-4">
                       <FormControl>
-                        <div className="relative">
                           <Input
                             type="email"
                             placeholder="Email Address"
                             className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
                             {...field}
                           />
-                          {/* Dashed blue line connector */}
-                          <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-0.5 h-4 border-l-2 border-dashed border-blue-500/40 pointer-events-none" />
-                        </div>
                       </FormControl>
                       <FormMessage className="text-red-600 text-xs" />
                     </FormItem>
