@@ -39,7 +39,7 @@ export function useCountries() {
       return countries;
     },
     staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours (countries don't change often)
-    cacheTime: 1000 * 60 * 60 * 24, // Keep in cache for 24 hours
+    gcTime: 1000 * 60 * 60 * 24, // Keep in cache for 24 hours (gcTime replaces cacheTime in React Query v5)
     retry: 2,
     refetchOnWindowFocus: false,
   });
