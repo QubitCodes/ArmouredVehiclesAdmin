@@ -6,11 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { ArrowLeft, Info, X, Cloud, ChevronDown, Search } from "lucide-react";
-import { useState, useEffect } from "react";
+import { ArrowLeft, Info, X, ChevronDown, Search, Upload } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { useState, useEffect, useRef } from "react";
 import { useNatureOfBusiness } from "@/hooks/vendor/dashboard/use-nature-of-business";
 import { useEndUseMarkets } from "@/hooks/vendor/dashboard/use-end-use-markets";
 import { useCountries, type Country } from "@/hooks/vendor/dashboard/use-countries";
+import { useOnboardingStep3 } from "@/hooks/vendor/dashboard/use-onboarding-step3";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,19 +34,36 @@ const declarationSchema = z.object({
   endUseMarket: z
     .array(z.string())
     .min(1, "Please select at least one end-use market"),
-  licenses: z.array(z.string()).min(1, "Please select at least one license type"),
+  licenses: z.array(z.string()).min(1, "Please select at least one license type. License files are mandatory."),
   operatingCountries: z
     .array(z.string())
     .min(1, "Please select at least one country"),
   countryInput: z.string().optional(),
   onSanctionsList: z.enum(["yes", "no"]),
-  businessLicense: z.any().optional(),
-  defenseApproval: z.any().optional(),
+  businessLicense: z.any().refine((file) => file !== undefined && file instanceof File, {
+    message: "Business License is required",
+  }),
   companyProfile: z.any().optional(),
+  licenseFiles: z.record(z.string(), z.any()).optional(),
   agreeToCompliance: z.boolean().refine((val) => val === true, {
     message: "You must agree to the compliance terms",
   }),
-});
+}).refine(
+  (data) => {
+    // If licenses are selected, all must have files
+    if (data.licenses && data.licenses.length > 0) {
+      const licenseFiles = data.licenseFiles || {};
+      return data.licenses.every(
+        (license) => licenseFiles[license] && licenseFiles[license] instanceof File
+      );
+    }
+    return true;
+  },
+  {
+    message: "Please upload files for all selected licenses. License files are mandatory.",
+    path: ["licenseFiles"], // This will show the error on the licenseFiles field
+  }
+);
 
 type DeclarationFormValues = z.infer<typeof declarationSchema>;
 
@@ -61,20 +80,18 @@ const licenseOptions = [
 
 export default function DeclarationPage() {
   const router = useRouter();
+  const step3Mutation = useOnboardingStep3();
   
-  // Fetch nature of business options from API
+  // Fetch all data - single loading state
   const { data: natureOfBusinessOptions = [], isLoading: isNatureOfBusinessLoading } = useNatureOfBusiness();
-  
-  // Fetch end-use market options from API
   const { data: endUseMarketOptions = [], isLoading: isEndUseMarketsLoading } = useEndUseMarkets();
-  
-  // Fetch countries from API
   const { data: countryOptions = [], isLoading: isCountriesLoading } = useCountries();
+  
+  // Single combined loading state
+  const isLoading = isNatureOfBusinessLoading || isEndUseMarketsLoading || isCountriesLoading;
   
   const [countrySearch, setCountrySearch] = useState("");
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
-
-  console.log(natureOfBusinessOptions);
 
   const form = useForm<DeclarationFormValues>({
     resolver: zodResolver(declarationSchema),
@@ -87,18 +104,34 @@ export default function DeclarationPage() {
       countryInput: "",
       onSanctionsList: "no",
       businessLicense: undefined,
-      defenseApproval: undefined,
       companyProfile: undefined,
+      licenseFiles: {},
       agreeToCompliance: false,
     },
   });
 
   const onSubmit = async (data: DeclarationFormValues) => {
     try {
-      console.log("Declaration data:", data);
+      // Map form data to API schema
+      const payload = {
+        natureOfBusiness: data.natureOfBusiness,
+        controlledDualUseItems: data.controlledDualUseItems || "",
+        licenseTypes: data.licenses,
+        endUseMarkets: data.endUseMarket,
+        operatingCountries: data.operatingCountries,
+        isOnSanctionsList: data.onSanctionsList === "yes",
+        businessLicenseUrl: "demo", // Backend will handle file upload and generate URL
+        defenseApprovalUrl: "demo", // This field was removed from the form
+        companyProfileUrl: "demo", // Backend will handle file upload and generate URL
+        complianceTermsAccepted: data.agreeToCompliance === true, // Ensure it's explicitly true
+        businessLicense: data.businessLicense instanceof File ? data.businessLicense : undefined,
+        companyProfile: data.companyProfile instanceof File ? data.companyProfile : undefined,
+        licenseFiles: data.licenseFiles || {},
+      };
+      
+      await step3Mutation.mutateAsync(payload);
+      
       toast.success("Declaration information saved successfully");
-      // TODO: Implement API call to save declaration information
-      // Navigate to next step (Account Preferences)
       router.push("/vendor/account-preferences");
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -169,6 +202,110 @@ export default function DeclarationPage() {
         "operatingCountries",
         current.filter((c) => c !== countryValue)
       );
+    }
+  };
+
+  // File upload refs and previews
+  const businessLicenseRef = useRef<HTMLInputElement>(null);
+  const companyProfileRef = useRef<HTMLInputElement>(null);
+  const [businessLicensePreview, setBusinessLicensePreview] = useState<string | null>(null);
+  const [companyProfilePreview, setCompanyProfilePreview] = useState<string | null>(null);
+  const licenseFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [licensePreviews, setLicensePreviews] = useState<Record<string, string | null>>({});
+
+  // Handle file selection for business license
+  const handleBusinessLicenseSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+        form.setValue("businessLicense", file, { shouldValidate: true });
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setBusinessLicensePreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setBusinessLicensePreview(null);
+        }
+      } else {
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
+      }
+    }
+  };
+
+  // Handle remove business license
+  const handleRemoveBusinessLicense = () => {
+    form.setValue("businessLicense", undefined, { shouldValidate: true });
+    setBusinessLicensePreview(null);
+    if (businessLicenseRef.current) {
+      businessLicenseRef.current.value = "";
+    }
+  };
+
+  // Handle file selection for company profile
+  const handleCompanyProfileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+        form.setValue("companyProfile", file, { shouldValidate: true });
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setCompanyProfilePreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setCompanyProfilePreview(null);
+        }
+      } else {
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
+      }
+    }
+  };
+
+  // Handle remove company profile
+  const handleRemoveCompanyProfile = () => {
+    form.setValue("companyProfile", undefined, { shouldValidate: true });
+    setCompanyProfilePreview(null);
+    if (companyProfileRef.current) {
+      companyProfileRef.current.value = "";
+    }
+  };
+
+  // Handle license file selection
+  const handleLicenseFileSelect = (licenseValue: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+        const currentFiles = form.getValues("licenseFiles") || {};
+        form.setValue("licenseFiles", { ...currentFiles, [licenseValue]: file }, { shouldValidate: true });
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setLicensePreviews(prev => ({ ...prev, [licenseValue]: e.target?.result as string }));
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setLicensePreviews(prev => ({ ...prev, [licenseValue]: null }));
+        }
+      } else {
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
+      }
+    }
+  };
+
+  // Handle remove license file
+  const handleRemoveLicenseFile = (licenseValue: string) => {
+    const currentFiles = form.getValues("licenseFiles") || {};
+    const { [licenseValue]: removed, ...rest } = currentFiles;
+    form.setValue("licenseFiles", rest, { shouldValidate: true });
+    setLicensePreviews(prev => {
+      const { [licenseValue]: removed, ...rest } = prev;
+      return rest;
+    });
+    if (licenseFileRefs.current[licenseValue]) {
+      licenseFileRefs.current[licenseValue]!.value = "";
     }
   };
 
@@ -308,7 +445,7 @@ export default function DeclarationPage() {
                   name="natureOfBusiness"
                   render={() => (
                     <FormItem>
-                      {isNatureOfBusinessLoading ? (
+                      {isLoading ? (
                         <div className="text-sm text-gray-500">Loading...</div>
                       ) : (
                         <div className="grid grid-cols-4 gap-3">
@@ -434,7 +571,7 @@ export default function DeclarationPage() {
                       name="endUseMarket"
                       render={() => (
                         <FormItem>
-                          {isEndUseMarketsLoading ? (
+                          {isLoading ? (
                             <div className="text-sm text-gray-500">Loading...</div>
                           ) : (
                             <div className="flex flex-wrap gap-4">
@@ -682,7 +819,7 @@ export default function DeclarationPage() {
 
                             {/* Countries List - Show 5 items with scrolling */}
                             <div className="overflow-y-auto p-2" style={{ maxHeight: '200px' }}>
-                              {isCountriesLoading ? (
+                              {isLoading ? (
                                 <div className="text-sm text-gray-500 p-4 text-center">
                                   Loading countries...
                                 </div>
@@ -805,7 +942,7 @@ export default function DeclarationPage() {
 
               {/* File Uploads */}
               <div className="space-y-6 mb-8">
-                {/* Two Column Layout for Business License and Defense Approval */}
+                {/* Business License and Company Profile - 2 columns */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Business License */}
                   <FormField
@@ -813,18 +950,50 @@ export default function DeclarationPage() {
                     name="businessLicense"
                     render={() => (
                       <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Upload Business License*
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Upload Business License{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
                         </FormLabel>
                         <FormControl>
-                          <div className="border-2 border-dashed border-border p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity rounded-none">
-                            <Cloud className="w-10 h-10 text-border mb-3" />
-                            <p className="text-sm font-medium text-black mb-1">
-                              Choose a File or Drag & Drop It Here
-                            </p>
-                            <p className="text-xs text-gray-500 text-center max-w-md">
-                              JPEG, PNG, PDF, and MP4 formats, up to 10 MB.
-                            </p>
+                          <div className="space-y-2">
+                            <input
+                              ref={businessLicenseRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg,application/pdf"
+                              onChange={handleBusinessLicenseSelect}
+                              className="hidden"
+                            />
+                            {businessLicensePreview ? (
+                              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                <img
+                                  src={businessLicensePreview}
+                                  alt="Business License Preview"
+                                  className="w-full h-64 object-contain"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveBusinessLicense}
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  aria-label="Remove file"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => businessLicenseRef.current?.click()}
+                                className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                              >
+                                <Upload className="w-10 h-10 text-secondary mb-3" />
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-500 text-center max-w-md">
+                                  Accepted files: JPEG, PNG and PDF.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -832,24 +1001,55 @@ export default function DeclarationPage() {
                     )}
                   />
 
-                  {/* Defense Approval */}
+                  {/* Company Profile */}
                   <FormField
                     control={form.control}
-                    name="defenseApproval"
+                    name="companyProfile"
                     render={() => (
                       <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Upload Any Defense-Related Approval
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Upload Company Profile / Product Catalog (Recommended)
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
                         </FormLabel>
                         <FormControl>
-                          <div className="border-2 border-dashed border-border p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity rounded-none">
-                            <Cloud className="w-10 h-10 text-border mb-3" />
-                            <p className="text-sm font-medium text-black mb-1">
-                              Choose a File or Drag & Drop It Here
-                            </p>
-                            <p className="text-xs text-gray-500 text-center max-w-md">
-                              JPEG, PNG, PDF, and MP4 formats, up to 10 MB.
-                            </p>
+                          <div className="space-y-2">
+                            <input
+                              ref={companyProfileRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg,application/pdf"
+                              onChange={handleCompanyProfileSelect}
+                              className="hidden"
+                            />
+                            {companyProfilePreview ? (
+                              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                <img
+                                  src={companyProfilePreview}
+                                  alt="Company Profile Preview"
+                                  className="w-full h-64 object-contain"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveCompanyProfile}
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  aria-label="Remove file"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => companyProfileRef.current?.click()}
+                                className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                              >
+                                <Upload className="w-10 h-10 text-secondary mb-3" />
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-500 text-center max-w-md">
+                                  Accepted files: JPEG, PNG and PDF.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -858,30 +1058,89 @@ export default function DeclarationPage() {
                   />
                 </div>
 
-                {/* Company Profile - Full Width */}
-                <FormField
-                  control={form.control}
-                  name="companyProfile"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-bold text-black">
-                        Upload Company Profile / Product Catalog (Recommended)
-                      </FormLabel>
-                      <FormControl>
-                        <div className="border-2 border-dashed border-border p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity rounded-none">
-                          <Cloud className="w-10 h-10 text-border mb-3" />
-                          <p className="text-sm font-medium text-black mb-1">
-                            Choose a File or Drag & Drop It Here
-                          </p>
-                          <p className="text-xs text-gray-500 text-center max-w-md">
-                            JPEG, PNG, PDF, and MP4 formats, up to 10 MB.
-                          </p>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* License Files - Show upload for each selected license in 2 columns */}
+                {selectedLicenses.length > 0 && (
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="licenseFiles"
+                      render={() => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-bold text-black">
+                            Do you hold any of the following licenses?
+                            <span className="text-red-500 ml-1">*</span>
+                          </FormLabel>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {selectedLicenses.map((licenseValue) => {
+                              const license = licenseOptions.find((l) => l.value === licenseValue);
+                              if (!license) return null;
+                              const preview = licensePreviews[licenseValue];
+                              return (
+                                <FormField
+                                  key={licenseValue}
+                                  control={form.control}
+                                  name={`licenseFiles.${licenseValue}`}
+                                  render={() => (
+                                    <FormItem>
+                                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                                        Upload {license.label}{" "}
+                                        <span className="text-red-500">*</span>
+                                      </FormLabel>
+                                      <FormControl>
+                                        <div className="space-y-2">
+                                          <input
+                                            ref={(el) => {
+                                              licenseFileRefs.current[licenseValue] = el;
+                                            }}
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/jpg,application/pdf"
+                                            onChange={(e) => handleLicenseFileSelect(licenseValue, e)}
+                                            className="hidden"
+                                          />
+                                          {preview ? (
+                                            <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                              <img
+                                                src={preview}
+                                                alt={`${license.label} Preview`}
+                                                className="w-full h-64 object-contain"
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveLicenseFile(licenseValue)}
+                                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                aria-label="Remove file"
+                                              >
+                                                <X className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <div
+                                              onClick={() => licenseFileRefs.current[licenseValue]?.click()}
+                                              className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                                            >
+                                              <Upload className="w-10 h-10 text-secondary mb-3" />
+                                              <p className="text-sm font-medium text-gray-700 mb-1">
+                                                Choose a File
+                                              </p>
+                                              <p className="text-xs text-gray-500 text-center max-w-md">
+                                                Accepted files: JPEG, PNG and PDF.
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              );
+                            })}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -932,9 +1191,17 @@ export default function DeclarationPage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                disabled={step3Mutation.isPending}
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                NEXT
+                {step3Mutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner size="sm" className="text-white" />
+                    SUBMITTING...
+                  </span>
+                ) : (
+                  "NEXT"
+                )}
               </Button>
             </div>
           </form>
