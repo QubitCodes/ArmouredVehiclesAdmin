@@ -6,8 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { ArrowLeft, Info, X, Cloud } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Info, X, Cloud, ChevronDown, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNatureOfBusiness } from "@/hooks/vendor/dashboard/use-nature-of-business";
+import { useEndUseMarkets } from "@/hooks/vendor/dashboard/use-end-use-markets";
+import { useCountries, type Country } from "@/hooks/vendor/dashboard/use-countries";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +23,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const declarationSchema = z.object({
   natureOfBusiness: z
@@ -30,7 +32,7 @@ const declarationSchema = z.object({
   endUseMarket: z
     .array(z.string())
     .min(1, "Please select at least one end-use market"),
-  licenses: z.string().min(1, "Please select a license type"),
+  licenses: z.array(z.string()).min(1, "Please select at least one license type"),
   operatingCountries: z
     .array(z.string())
     .min(1, "Please select at least one country"),
@@ -46,75 +48,42 @@ const declarationSchema = z.object({
 
 type DeclarationFormValues = z.infer<typeof declarationSchema>;
 
-const natureOfBusinessOptions = [
-  "Manufacturer",
-  "OEM Dealer",
-  "Retailer",
-  "Defense Supplier",
-  "Vehicle Armoring",
-  "Wholesaler / Distributor",
-  "E-commerce Seller",
-  "Importer / Exporter",
-  "Trading Company",
-  "Service Provider",
-  "Government Agency",
-  "Contractor / Subcontractor",
-  "Logistics / Freight Services",
-  "Construction / Engineering",
-  "Technology / IT Solutions Provider",
-  "Healthcare / Medical Supplier",
-  "Education / Training Provider",
-  "Financial / Consulting Services",
-  "Nonprofit / NGO",
-  "Other",
-];
 
-const endUseMarketOptions = [
-  "Civilian",
-  "Military",
-  "Law Enforcement",
-  "Government",
-  "Export",
-];
 
 const licenseOptions = [
-  { value: "mod", label: "MOD License" },
+  { value: "authority_license", label: "Authority License" },
   { value: "eocn", label: "EOCN Approval" },
   { value: "itar", label: "ITAR Registration" },
   { value: "local", label: "Local approval from authorities" },
   { value: "none", label: "None" },
 ];
 
-const countryOptions = [
-  { value: "ae", label: "United Arab Emirates (UAE)", flag: "🇦🇪" },
-  { value: "sa", label: "Saudi Arabia (KSA)", flag: "🇸🇦" },
-  { value: "qa", label: "Qatar", flag: "🇶🇦" },
-  { value: "om", label: "Oman", flag: "🇴🇲" },
-  { value: "in", label: "India", flag: "🇮🇳" },
-  { value: "id", label: "Indonesia", flag: "🇮🇩" },
-  { value: "ir", label: "Iran", flag: "🇮🇷" },
-  { value: "iq", label: "Iraq", flag: "🇮🇶" },
-  { value: "ie", label: "Ireland", flag: "🇮🇪" },
-];
 
 export default function DeclarationPage() {
   const router = useRouter();
+  
+  // Fetch nature of business options from API
+  const { data: natureOfBusinessOptions = [], isLoading: isNatureOfBusinessLoading } = useNatureOfBusiness();
+  
+  // Fetch end-use market options from API
+  const { data: endUseMarketOptions = [], isLoading: isEndUseMarketsLoading } = useEndUseMarkets();
+  
+  // Fetch countries from API
+  const { data: countryOptions = [], isLoading: isCountriesLoading } = useCountries();
+  
   const [countrySearch, setCountrySearch] = useState("");
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+
+  console.log(natureOfBusinessOptions);
 
   const form = useForm<DeclarationFormValues>({
     resolver: zodResolver(declarationSchema),
     defaultValues: {
-      natureOfBusiness: [
-        "Manufacturer",
-        "OEM Dealer",
-        "Retailer",
-        "Defense Supplier",
-        "Vehicle Armoring",
-      ],
+      natureOfBusiness: [],
       controlledDualUseItems: "",
-      endUseMarket: ["Civilian", "Military"],
-      licenses: "eocn",
-      operatingCountries: ["ae", "sa", "qa", "om"],
+      endUseMarket: [],
+      licenses: [],
+      operatingCountries: [],
       countryInput: "",
       onSanctionsList: "no",
       businessLicense: undefined,
@@ -147,6 +116,7 @@ export default function DeclarationPage() {
 
   const selectedNatureOfBusiness = form.watch("natureOfBusiness");
   const selectedEndUseMarket = form.watch("endUseMarket");
+  const selectedLicenses = form.watch("licenses");
   const selectedCountries = form.watch("operatingCountries");
 
   const handleRemoveNatureOfBusiness = (item: string) => {
@@ -165,6 +135,14 @@ export default function DeclarationPage() {
     );
   };
 
+  const handleRemoveLicense = (item: string) => {
+    const current = form.getValues("licenses");
+    form.setValue(
+      "licenses",
+      current.filter((i) => i !== item)
+    );
+  };
+
   const handleRemoveCountry = (countryValue: string) => {
     const current = form.getValues("operatingCountries");
     form.setValue(
@@ -173,7 +151,7 @@ export default function DeclarationPage() {
     );
   };
 
-  const filteredCountries = countryOptions.filter((country) =>
+  const filteredCountries = countryOptions.filter((country: Country) =>
     country.label.toLowerCase().includes(countrySearch.toLowerCase())
   );
 
@@ -193,6 +171,23 @@ export default function DeclarationPage() {
       );
     }
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.country-dropdown-container')) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+
+    if (isCountryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isCountryDropdownOpen]);
 
   return (
     <div className="min-h-screen bg-bg-medium flex items-center justify-center px-4 py-8">
@@ -258,16 +253,17 @@ export default function DeclarationPage() {
           </div>
         </div>
 
-        {/* Form Container */}
+        {/* COMPLIANCE & ACTIVITY DECLARATION Heading */}
+        <div>
+          <h2 className="text-2xl pb-3 font-bold text-black uppercase">
+            COMPLIANCE & ACTIVITY DECLARATION
+          </h2>
+        </div>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
-              <h2 className="text-2xl font-bold text-black mb-8">
-                COMPLIANCE & ACTIVITY DECLARATION
-              </h2>
-
-              {/* Nature of Business */}
-              <div className="space-y-4 mb-8">
+            {/* Nature of Business - Separate Container */}
+              <div className="space-y-3 bg-bg-light p-6">
                 <FormLabel className="text-sm font-bold text-black">
                   Nature of Business:
                 </FormLabel>
@@ -312,54 +308,57 @@ export default function DeclarationPage() {
                   name="natureOfBusiness"
                   render={() => (
                     <FormItem>
-                      <div className="grid grid-cols-4 gap-3">
-                        {natureOfBusinessOptions.map((option) => (
-                          <FormField
-                            key={option}
-                            control={form.control}
-                            name="natureOfBusiness"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={option}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(option)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([
-                                              ...field.value,
-                                              option,
-                                            ])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== option
-                                              )
-                                            );
-                                      }}
-                                      className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                    {option}
-                                  </FormLabel>
-                                </FormItem>
-                              );
-                            }}
-                          />
-                        ))}
-                      </div>
+                      {isNatureOfBusinessLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-3">
+                          {natureOfBusinessOptions.map((option) => (
+                            <FormField
+                              key={option.id}
+                              control={form.control}
+                              name="natureOfBusiness"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={option.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(option.name)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([
+                                                ...field.value,
+                                                option.name,
+                                              ])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== option.name
+                                                )
+                                              );
+                                        }}
+                                        className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                      {option.name}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-            </div>
 
             {/* Controlled/Dual Use Items, End-Use Market, Licenses - Separate Light Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-28">
                 {/* Left Column */}
                 <div className="space-y-8">
@@ -435,47 +434,51 @@ export default function DeclarationPage() {
                       name="endUseMarket"
                       render={() => (
                         <FormItem>
-                          <div className="flex flex-wrap gap-4">
-                            {endUseMarketOptions.map((option) => (
-                              <FormField
-                                key={option}
-                                control={form.control}
-                                name="endUseMarket"
-                                render={({ field }) => {
-                                  return (
-                                    <FormItem
-                                      key={option}
-                                      className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value?.includes(
-                                            option
-                                          )}
-                                          onCheckedChange={(checked) => {
-                                            return checked
-                                              ? field.onChange([
-                                                  ...field.value,
-                                                  option,
-                                                ])
-                                              : field.onChange(
-                                                  field.value?.filter(
-                                                    (value) => value !== option
-                                                  )
-                                                );
-                                          }}
-                                          className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                        {option}
-                                      </FormLabel>
-                                    </FormItem>
-                                  );
-                                }}
-                              />
-                            ))}
-                          </div>
+                          {isEndUseMarketsLoading ? (
+                            <div className="text-sm text-gray-500">Loading...</div>
+                          ) : (
+                            <div className="flex flex-wrap gap-4">
+                              {endUseMarketOptions.map((option) => (
+                                <FormField
+                                  key={option.id}
+                                  control={form.control}
+                                  name="endUseMarket"
+                                  render={({ field }) => {
+                                    return (
+                                      <FormItem
+                                        key={option.id}
+                                        className="flex flex-row items-start space-x-3 space-y-0"
+                                      >
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={field.value?.includes(
+                                              option.name
+                                            )}
+                                            onCheckedChange={(checked) => {
+                                              return checked
+                                                ? field.onChange([
+                                                    ...field.value,
+                                                    option.name,
+                                                  ])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                      (value) => value !== option.name
+                                                    )
+                                                  );
+                                            }}
+                                            className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                          {option.name}
+                                        </FormLabel>
+                                      </FormItem>
+                                    );
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -485,64 +488,97 @@ export default function DeclarationPage() {
 
                 {/* Right Column - Licenses */}
                 <div className="space-y-4">
+                  <FormLabel className="text-sm font-bold text-black">
+                    Do you hold any of the following licenses?
+                  </FormLabel>
+
+                  {/* Input Field with Tags and Count */}
+                  <div className="relative">
+                    <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
+                      {/* Selected Tags */}
+                      {selectedLicenses.length > 0 && (
+                        <>
+                          {selectedLicenses.map((licenseValue) => {
+                            const license = licenseOptions.find(
+                              (l) => l.value === licenseValue
+                            );
+                            if (!license) return null;
+                            return (
+                              <div
+                                key={licenseValue}
+                                className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
+                              >
+                                <span className="text-sm text-black">
+                                  {license.label}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveLicense(licenseValue)}
+                                  className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
+                                >
+                                  <X className="w-3.5 h-3.5 text-border" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                    {/* Count Badge */}
+                    {selectedLicenses.length > 0 && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
+                        <span className="text-sm font-medium text-black">
+                          {selectedLicenses.length}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Checkboxes Grid */}
                   <FormField
                     control={form.control}
                     name="licenses"
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Do you hold any of the following licenses?
-                        </FormLabel>
-                        <FormControl>
-                          <div className="space-y-3">
-                            {licenseOptions.map((option) => (
-                              <div
-                                key={option.value}
-                                className="flex items-center space-x-2"
-                              >
-                                <label
-                                  htmlFor={`licenses-${option.value}`}
-                                  className="relative flex items-center cursor-pointer"
-                                >
-                                  <input
-                                    type="radio"
-                                    id={`licenses-${option.value}`}
-                                    name="licenses"
-                                    value={option.value}
-                                    checked={field.value === option.value}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        field.onChange(option.value);
-                                      }
-                                    }}
-                                    className="sr-only"
-                                  />
-                                  <span
-                                    className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
-                                      field.value === option.value
-                                        ? "border-border"
-                                        : ""
-                                    }`}
+                        <div className="grid grid-cols-1 gap-3">
+                          {licenseOptions.map((option) => (
+                            <FormField
+                              key={option.value}
+                              control={form.control}
+                              name="licenses"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={option.value}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
                                   >
-                                    {field.value === option.value && (
-                                      <span className="h-2 w-2 rounded-full bg-border"></span>
-                                    )}
-                                  </span>
-                                </label>
-                                <label
-                                  htmlFor={`licenses-${option.value}`}
-                                  className={`text-sm font-medium leading-none cursor-pointer ${
-                                    field.value === option.value
-                                      ? "text-black"
-                                      : "text-gray-500"
-                                  }`}
-                                >
-                                  {option.label}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        </FormControl>
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(option.value)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([
+                                                ...field.value,
+                                                option.value,
+                                              ])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== option.value
+                                                )
+                                              );
+                                        }}
+                                        className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                      {option.label}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -552,98 +588,145 @@ export default function DeclarationPage() {
             </div>
 
             {/* Countries Section - Separate Light Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6 shadow-lg">
               <div className="space-y-4">
                 <FormLabel className="text-sm font-bold text-black">
-                  Countries:
+                  Countries you operate in or export to:
                 </FormLabel>
 
-                {/* Input Field with Tags and Count */}
-                <div className="relative">
-                  <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
-                    {/* Selected Tags */}
-                    {selectedCountries.length > 0 ? (
-                      <>
-                        {selectedCountries.map((countryValue) => {
-                          const country = countryOptions.find(
-                            (c) => c.value === countryValue
-                          );
-                          if (!country) return null;
-                          return (
-                            <div
-                              key={countryValue}
-                              className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
-                            >
-                              <span className="text-lg">{country.flag}</span>
-                              <span className="text-sm text-black">
-                                {country.label}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveCountry(countryValue)
-                                }
-                                className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
-                              >
-                                <X className="w-3.5 h-3.5 text-border" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </>
-                    ) : (
-                      <input
-                        type="text"
-                        placeholder="In"
-                        value={countrySearch}
-                        onChange={(e) => setCountrySearch(e.target.value)}
-                        className="bg-transparent border-0 outline-none text-sm text-gray-400 placeholder:text-gray-400 flex-1 min-w-[100px]"
-                      />
-                    )}
-                  </div>
-                  {/* Count Badge */}
-                  {selectedCountries.length > 0 && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
-                      <span className="text-sm font-medium text-black">
-                        {selectedCountries.length}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Country Checkboxes Grid */}
                 <FormField
                   control={form.control}
                   name="operatingCountries"
                   render={() => (
                     <FormItem>
-                      <div className="grid grid-cols-4 gap-3">
-                        {(countrySearch
-                          ? filteredCountries
-                          : countryOptions
-                        ).map((country) => (
-                          <div
-                            key={country.value}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              checked={selectedCountries.includes(
-                                country.value
+                      {/* Input Field with Tags and Dropdown */}
+                      <div className="relative country-dropdown-container">
+                        <div
+                          className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2 cursor-text"
+                          onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                        >
+                          {/* Selected Tags */}
+                          {selectedCountries.length > 0 ? (
+                            <>
+                              {selectedCountries.map((countryValue) => {
+                                const country = countryOptions.find(
+                                  (c: Country) => c.value === countryValue
+                                );
+                                if (!country) return null;
+                                return (
+                                  <div
+                                    key={countryValue}
+                                    className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5 rounded"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span className="text-lg">{country.flag}</span>
+                                    <span className="text-sm text-black">
+                                      {country.label}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveCountry(countryValue);
+                                      }}
+                                      className="hover:opacity-70 transition-opacity p-0.5 shrink-0"
+                                    >
+                                      <X className="w-3.5 h-3.5 text-border" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400">
+                              Select countries...
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Dropdown Arrow */}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                          {selectedCountries.length > 0 && (
+                            <div className="bg-bg-light border border-border w-8 h-8 flex items-center justify-center rounded">
+                              <span className="text-sm font-medium text-black">
+                                {selectedCountries.length}
+                              </span>
+                            </div>
+                          )}
+                          <ChevronDown
+                            className={`h-5 w-5 text-gray-400 transition-transform ${
+                              isCountryDropdownOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {isCountryDropdownOpen && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-border shadow-lg rounded-md flex flex-col">
+                            {/* Search Input */}
+                            <div className="p-3 border-b border-border bg-white">
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                  type="text"
+                                  placeholder="Search countries..."
+                                  value={countrySearch}
+                                  onChange={(e) => {
+                                    setCountrySearch(e.target.value);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="pl-9 h-9 bg-bg-medium border-border"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Countries List - Show 5 items with scrolling */}
+                            <div className="overflow-y-auto p-2" style={{ maxHeight: '200px' }}>
+                              {isCountriesLoading ? (
+                                <div className="text-sm text-gray-500 p-4 text-center">
+                                  Loading countries...
+                                </div>
+                              ) : filteredCountries.length === 0 ? (
+                                <div className="text-sm text-gray-500 p-4 text-center">
+                                  No countries found
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  {(countrySearch
+                                    ? filteredCountries
+                                    : countryOptions
+                                  ).map((country: Country) => {
+                                    const isSelected = selectedCountries.includes(
+                                      country.value
+                                    );
+                                    return (
+                                      <label
+                                        key={country.value}
+                                        className="flex items-center gap-3 p-2 hover:bg-bg-medium rounded cursor-pointer transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Checkbox
+                                          checked={isSelected}
+                                          onCheckedChange={(checked) => {
+                                            handleCountryCheckboxChange(
+                                              country.value,
+                                              checked as boolean
+                                            );
+                                          }}
+                                          className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                        />
+                                        <span className="text-lg">{country.flag}</span>
+                                        <span className="text-sm font-medium text-black flex-1">
+                                          {country.label}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
                               )}
-                              onCheckedChange={(checked) =>
-                                handleCountryCheckboxChange(
-                                  country.value,
-                                  checked as boolean
-                                )
-                              }
-                              className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                            />
-                            <span className="text-lg">{country.flag}</span>
-                            <label className="text-sm font-medium text-black cursor-pointer">
-                              {country.label}
-                            </label>
+                            </div>
                           </div>
-                        ))}
+                        )}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -653,7 +736,7 @@ export default function DeclarationPage() {
             </div>
 
             {/* Continue in original container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6 shadow-lg">
               {/* Sanctions/Watchlists */}
               <div className="space-y-4 mb-8">
                 <FormField
@@ -803,7 +886,7 @@ export default function DeclarationPage() {
             </div>
 
             {/* Compliance Terms - Separate Light Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6 shadow-lg">
               <div className="space-y-4">
                 <div className="text-sm font-normal text-black">
                   Agree to Compliance Terms
@@ -824,7 +907,7 @@ export default function DeclarationPage() {
                         <FormLabel className="text-sm font-normal text-black cursor-pointer">
                           I acknowledge that all transactions are subject to UAE
                           and international laws and may be screened, paused, or
-                          reported in accordance with ArmoredMart's regulatory
+                          reported in accordance with ArmoredMart&apos;s regulatory
                           obligations.
                         </FormLabel>
                         <FormMessage />
