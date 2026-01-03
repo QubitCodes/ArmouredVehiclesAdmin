@@ -24,7 +24,6 @@ import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-pr
 import { useOnboardingStep0 } from "@/hooks/vendor/dashboard/use-onboarding-step0";
 
 const createStoreSchema = z.object({
-  country: z.string().min(1, "Country is required"),
   companyName: z.string().min(1, "Company name is required"),
   email: z
     .string()
@@ -35,14 +34,6 @@ const createStoreSchema = z.object({
 });
 
 type CreateStoreFormValues = z.infer<typeof createStoreSchema>;
-
-const countries = [
-  { value: "ae", label: "United Arab Emirates", flag: "🇦🇪" },
-  { value: "us", label: "United States", flag: "🇺🇸" },
-  { value: "gb", label: "United Kingdom", flag: "🇬🇧" },
-  { value: "in", label: "India", flag: "🇮🇳" },
-  { value: "sa", label: "Saudi Arabia", flag: "🇸🇦" },
-];
 
 const phoneCountryCodes = [
   { value: "971", code: "+971", flag: "🇦🇪", label: "United Arab Emirates" },
@@ -58,7 +49,6 @@ export default function CreateStorePage() {
   const form = useForm<CreateStoreFormValues>({
     resolver: zodResolver(createStoreSchema),
     defaultValues: {
-      country: "ae",
       companyName: "",
       email: "",
       phoneCountryCode: "971",
@@ -143,9 +133,9 @@ export default function CreateStorePage() {
         (code) => code.value === data.phoneCountryCode
       );
 
-      // Prepare API payload
+      // Prepare API payload (using default country "ae" since country field is removed from form)
       const payload = {
-        country: data.country,
+        country: "ae",
         companyName: data.companyName,
         companyEmail: data.email,
         companyPhone: data.phoneNumber,
@@ -174,9 +164,6 @@ export default function CreateStorePage() {
     }
   };
 
-  const selectedCountry = countries.find(
-    (c) => c.value === form.watch("country")
-  );
   const selectedPhoneCode = phoneCountryCodes.find(
     (c) => c.value === form.watch("phoneCountryCode")
   );
@@ -225,40 +212,6 @@ export default function CreateStorePage() {
                 isProfileLoading ? "opacity-50 pointer-events-none" : "opacity-100"
               }`}
             >
-              {/* Country Field */}
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                      Country <span className="text-red-500">*</span>
-                      <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <select
-                          {...field}
-                          className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
-                        >
-                          {countries.map((country) => (
-                            <option key={country.value} value={country.value}>
-                              {country.label}
-                            </option>
-                          ))}
-                        </select>
-                        {selectedCountry && (
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
-                            {selectedCountry.flag}
-                          </span>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               {/* Company Name Field */}
               <FormField
                 control={form.control}
@@ -281,7 +234,7 @@ export default function CreateStorePage() {
                 )}
               />
 
-              {/* Email Field */}
+              {/* Email Field - Read Only */}
               <FormField
                 control={form.control}
                 name="email"
@@ -295,7 +248,8 @@ export default function CreateStorePage() {
                       <Input
                         type="email"
                         placeholder="info@blueweb2.com"
-                        className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                        className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed"
+                        readOnly
                         {...field}
                       />
                     </FormControl>
@@ -304,7 +258,7 @@ export default function CreateStorePage() {
                 )}
               />
 
-              {/* Store Phone Number Field */}
+              {/* Store Phone Number Field - Read Only */}
               <div className="space-y-2">
                 <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
                   Store Phone Number <span className="text-red-500">*</span>
@@ -320,7 +274,8 @@ export default function CreateStorePage() {
                           <div className="relative">
                             <select
                               {...field}
-                              className="w-full bg-bg-medium border border-gray-300 h-11 pl-10 pr-6 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                              className="w-full bg-gray-100 border border-gray-300 h-11 pl-10 pr-6 text-sm cursor-not-allowed outline-none appearance-none"
+                              disabled
                             >
                               {phoneCountryCodes.map((code) => (
                                 <option key={code.value} value={code.value}>
@@ -348,7 +303,8 @@ export default function CreateStorePage() {
                           <Input
                             type="tel"
                             placeholder="9072725777"
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed"
+                            readOnly
                             {...field}
                           />
                         </FormControl>

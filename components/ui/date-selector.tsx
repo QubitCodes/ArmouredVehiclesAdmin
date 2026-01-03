@@ -12,6 +12,8 @@ interface DateSelectorProps {
   dayPlaceholder?: string;
   monthPlaceholder?: string;
   yearPlaceholder?: string;
+  includeFutureYears?: boolean;
+  futureYearsCount?: number;
 }
 
 const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
@@ -24,6 +26,8 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
       dayPlaceholder = "Day",
       monthPlaceholder = "Month",
       yearPlaceholder = "Year",
+      includeFutureYears = false,
+      futureYearsCount = 20,
       ...props
     },
     ref
@@ -44,7 +48,15 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
       "December",
     ];
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
+    let years: number[];
+    if (includeFutureYears) {
+      // Generate years from (currentYear + futureYearsCount) down to (currentYear - 100)
+      const startYear = currentYear + futureYearsCount;
+      const endYear = currentYear - 100;
+      years = Array.from({ length: startYear - endYear + 1 }, (_, i) => startYear - i);
+    } else {
+      years = Array.from({ length: 100 }, (_, i) => currentYear - i);
+    }
 
     const handleDayChange = (day: string) => {
       onChange?.({
