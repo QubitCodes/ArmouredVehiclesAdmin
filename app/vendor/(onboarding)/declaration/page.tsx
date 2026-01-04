@@ -725,7 +725,7 @@ export default function DeclarationPage() {
             </div>
 
             {/* Countries Section - Separate Light Container */}
-            <div className="bg-bg-light p-6 shadow-lg">
+            <div className="bg-bg-light p-6">
               <div className="space-y-4">
                 <FormLabel className="text-sm font-bold text-black">
                   Countries you operate in or export to:
@@ -873,7 +873,7 @@ export default function DeclarationPage() {
             </div>
 
             {/* Continue in original container */}
-            <div className="bg-bg-light p-6 shadow-lg">
+            <div className="bg-bg-light p-6">
               {/* Sanctions/Watchlists */}
               <div className="space-y-4 mb-8">
                 <FormField

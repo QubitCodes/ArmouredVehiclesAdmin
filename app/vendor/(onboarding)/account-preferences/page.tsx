@@ -7,11 +7,13 @@ import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { ArrowLeft, X } from "lucide-react";
-import { useState } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
+import { useVendorCategories } from "@/hooks/vendor/dashboard/use-vendor-categories";
+import { useOnboardingStep4 } from "@/hooks/vendor/dashboard/use-onboarding-step4";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Form,
   FormControl,
@@ -21,85 +23,64 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-const accountPreferencesSchema = z
-  .object({
-    categories: z
-      .array(z.string())
-      .min(1, "Please select at least one category"),
-    registerAs: z.string().min(1, "Please select registration type"),
-    preferredCurrency: z.string().min(1, "Please select a currency"),
-    sponsorContent: z.enum(["yes", "no"]),
-    platformPassword: z.string().min(1, "Password is required"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((data) => data.platformPassword === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+
+const accountPreferencesSchema = z.object({
+  categories: z
+    .array(z.string())
+    .min(1, "Please select at least one category"),
+  registerAs: z
+    .string()
+    .min(1, "Please select registration type"),
+  preferredCurrency: z
+    .string()
+    .min(1, "Please select a currency"),
+  sponsorContent: z.enum(["yes", "no"], {
+    message: "Please select whether you wish to sponsor content/listings",
+  }),
+  captcha: turnstileSiteKey
+    ? z.string().min(1, "Please complete the CAPTCHA verification")
+    : z.string().optional(),
+});
 
 type AccountPreferencesFormValues = z.infer<typeof accountPreferencesSchema>;
 
-const categoryOptions = [
-  "Engine Systems",
-  "Braking Systems",
-  "Runflat & Tire Systems",
-  "Turrets & Mounts (Controlled item MOD/EOCN)",
-  "Transmission & Drivetrain",
-  "Chassis & Suspension",
-  "Electrical Systems (Controlled if Mil Standard)",
-  "Surveillance & Monitoring",
-  "Lighting Systems (Controlled if Mil Standard)",
-  "HVAC & Thermal Management",
-  "Ballistic Protection (Controlled item MOD/EOCN)",
-  "Body & Structure Reinforcements",
-  "Gunports, Hinges & Weapon-Mount Interfaces (Controlled item MOD/EOCN)",
-  "Countermeasures",
-  "Fuel & Water Systems",
-  "Communication Equipment (Controlled items)",
-  "Interior Kits",
-  "Fabrication & Integration (Controlled item MOD/ITAR-Design Control)",
-  "Drive-Side Conversion Components (LHD ↔ RHD)",
-  "Exterior Accessories",
-  "OEM Components",
-  "Value-Oriented OEM Chassis",
-  "Military & Tactical Chassis Suppliers (Controlled- End User declaration)",
-  "Recovery & Mobility",
-];
-
 const currencyOptions = [
-  { value: "aed", label: "AED" },
-  { value: "usd", label: "USD" },
-  { value: "eur", label: "EUR" },
-  { value: "other", label: "Other" },
+  { value: "AED", label: "AED" },
+  { value: "USD", label: "USD" },
 ];
 
 export default function AccountPreferencesPage() {
   const router = useRouter();
+  const { data: categoryOptions = [], isLoading: isCategoriesLoading } = useVendorCategories();
+  const step4Mutation = useOnboardingStep4();
 
   const form = useForm<AccountPreferencesFormValues>({
     resolver: zodResolver(accountPreferencesSchema),
     defaultValues: {
-      categories: [
-        "Engine Systems",
-        "Braking Systems",
-        "Runflat & Tire Systems",
-        "Turrets & Mounts (Controlled item MOD/EOCN)",
-      ],
+      categories: [],
       registerAs: "verified-supplier",
-      preferredCurrency: "aed",
+      preferredCurrency: "AED",
       sponsorContent: "no",
-      platformPassword: "",
-      confirmPassword: "",
+      captcha: "",
     },
   });
 
   const onSubmit = async (data: AccountPreferencesFormValues) => {
     try {
-      console.log("Account preferences data:", data);
+      // Transform form data to match API schema
+      const apiPayload = {
+        sellingCategories: data.categories,
+        registerAs: data.registerAs === "verified-supplier" ? "Verified Supplier" : data.registerAs,
+        preferredCurrency: data.preferredCurrency.toUpperCase(),
+        sponsorContent: data.sponsorContent === "yes",
+        isDraft: false,
+        password: "demo-demo",
+      };
+
+      await step4Mutation.mutateAsync(apiPayload);
       toast.success("Account preferences saved successfully");
-      // TODO: Implement API call to save account preferences
-      // Navigate to next step (Verification)
-      router.push("/vendor/verification");
+      router.push("/vendor/add-payment-method");
     } catch (error) {
       const axiosError = error as AxiosError<{
         message?: string;
@@ -189,18 +170,19 @@ export default function AccountPreferencesPage() {
         </div>
 
         {/* ACCOUNT PREFERENCES Heading - Outside Form */}
-        <h2 className="text-2xl font-bold text-black mb-8">
+        <h2 className="text-2xl pb-3 font-bold text-black uppercase">
           ACCOUNT PREFERENCES
         </h2>
 
         {/* Form Container */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6">
               {/* Select Categories */}
               <div className="space-y-4 mb-8">
-                <FormLabel className="text-sm font-bold text-black">
+                <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
                   Select Categories You Want to Sell In:
+                  <span className="text-red-500">*</span>
                 </FormLabel>
 
                 {/* Input Field with Tags and Count */}
@@ -245,45 +227,49 @@ export default function AccountPreferencesPage() {
                   name="categories"
                   render={() => (
                     <FormItem>
-                      <div className="grid grid-cols-4 gap-3">
-                        {categoryOptions.map((option) => (
-                          <FormField
-                            key={option}
-                            control={form.control}
-                            name="categories"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={option}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(option)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([
-                                              ...field.value,
-                                              option,
-                                            ])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== option
-                                              )
-                                            );
-                                      }}
-                                      className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                    {option}
-                                  </FormLabel>
-                                </FormItem>
-                              );
-                            }}
-                          />
-                        ))}
-                      </div>
+                      {isCategoriesLoading ? (
+                        <div className="text-sm text-gray-500">Loading categories...</div>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-3">
+                          {categoryOptions.map((option) => (
+                            <FormField
+                              key={option.id}
+                              control={form.control}
+                              name="categories"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={option.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(option.name)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([
+                                                ...field.value,
+                                                option.name,
+                                              ])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== option.name
+                                                )
+                                              );
+                                        }}
+                                        className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                      {option.name}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -294,14 +280,15 @@ export default function AccountPreferencesPage() {
             {/* Request to Register As and Preferred Currency - Separate Containers */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column - Request to Register As */}
-              <div className="bg-bg-light px-4 py-8 shadow-lg">
+              <div className="bg-bg-light p-6">
                 <FormField
                   control={form.control}
                   name="registerAs"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-bold text-black">
+                      <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
                         Request to Register As:
+                        <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <div className="space-y-3">
@@ -355,14 +342,15 @@ export default function AccountPreferencesPage() {
               </div>
 
               {/* Right Column - Preferred Currency */}
-              <div className="bg-bg-light px-4 py-8 shadow-lg">
+              <div className="bg-bg-light p-6">
                 <FormField
                   control={form.control}
                   name="preferredCurrency"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-bold text-black">
+                      <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
                         Preferred Currency:
+                        <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <div className="flex flex-wrap gap-6">
@@ -422,14 +410,15 @@ export default function AccountPreferencesPage() {
             </div>
 
             {/* Sponsor Content - Separate Light Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6">
               <FormField
                 control={form.control}
                 name="sponsorContent"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-bold text-black">
+                    <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
                       Do you wish to sponsor content/listings?
+                      <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <div className="flex gap-6">
@@ -486,57 +475,50 @@ export default function AccountPreferencesPage() {
               />
             </div>
 
-            {/* Set Platform Password and Confirm Password - Single Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Column - Set Platform Password */}
-                <div>
-                  <FormField
-                    control={form.control}
-                    name="platformPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Set Platform Password:
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Enter Your New Password"
-                            className="bg-bg-medium border border-border h-11 focus:border-border focus:ring-1 focus:ring-border rounded-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Right Column - Confirm Password */}
-                <div>
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Confirm Password:
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Re-enter Your Password"
-                            className="bg-bg-medium border border-border h-11 focus:border-border focus:ring-1 focus:ring-border rounded-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+            {/* CAPTCHA Verification - Separate Light Container */}
+            <div className="bg-bg-light p-6">
+              <FormField
+                control={form.control}
+                name="captcha"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-bold text-black mb-4 flex items-center gap-1">
+                      CAPTCHA Verification
+                      <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      {turnstileSiteKey ? (
+                        <Turnstile
+                          siteKey={turnstileSiteKey}
+                          onSuccess={(token: string) => {
+                            field.onChange(token || "");
+                          }}
+                          onError={() => {
+                            field.onChange("");
+                          }}
+                          onExpire={() => {
+                            field.onChange("");
+                          }}
+                          options={{
+                            theme: "light",
+                            size: "normal",
+                          }}
+                        />
+                      ) : (
+                        <div className="p-4 border border-border bg-bg-medium">
+                          <p className="text-sm text-gray-600">
+                            CAPTCHA is not configured. Please set NEXT_PUBLIC_TURNSTILE_SITE_KEY in your environment variables.
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            For development, CAPTCHA validation is disabled. The form can be submitted without CAPTCHA.
+                          </p>
+                        </div>
+                      )}
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Navigation Buttons */}
@@ -553,9 +535,17 @@ export default function AccountPreferencesPage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                disabled={step4Mutation.isPending}
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                NEXT
+                {step4Mutation.isPending ? (
+                  <>
+                    <Spinner className="w-4 h-4 mr-2" />
+                    SAVING...
+                  </>
+                ) : (
+                  "NEXT"
+                )}
               </Button>
             </div>
           </form>
