@@ -6,7 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { Upload, Info, ChevronDown, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { useFinancialInstitutions } from "@/hooks/vendor/dashboard/use-financial-institutions";
+import { useProofTypes } from "@/hooks/vendor/dashboard/use-proof-types";
+import { Spinner } from "@/components/ui/spinner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,40 +23,55 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-const paymentMethodSchema = z.object({
-  cardNumber: z
-    .string()
-    .min(1, "Card number is required")
-    .regex(/^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$/, "Please enter a valid card number"),
-  cardHolderName: z.string().min(1, "Card holder name is required"),
-  expiryDate: z
-    .string()
-    .min(1, "Expiry date is required")
-    .regex(/^\d{2}\/\d{2}$/, "Please enter a valid expiry date (MM/YY)"),
-  cvv: z
-    .string()
-    .min(1, "CVV is required")
-    .regex(/^\d{3,4}$/, "Please enter a valid CVV"),
-});
+const paymentMethodSchema = z
+  .object({
+    country: z.string().min(1, "Country is required"),
+    financialInstitution: z.string().min(1, "Financial institution is required"),
+    routingCode: z.string().optional(),
+    bankAccountNumber: z.string().min(1, "Bank account number is required"),
+    confirmAccountNumber: z.string().min(1, "Please confirm account number"),
+    proofType: z.string().min(1, "Proof type is required"),
+    proofDocument: z.any().refine((file) => file !== undefined && file instanceof File, {
+      message: "Proof document is required",
+    }),
+  })
+  .refine((data) => data.bankAccountNumber === data.confirmAccountNumber, {
+    message: "Account numbers do not match",
+    path: ["confirmAccountNumber"],
+  });
 
 type PaymentMethodFormValues = z.infer<typeof paymentMethodSchema>;
 
 export default function AddPaymentMethodPage() {
   const router = useRouter();
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const proofFileRef = useRef<HTMLInputElement>(null);
+
+  // Fetch reference data from API
+  const {
+    data: financialInstitutionsData = [],
+    isLoading: isFinancialInstitutionsLoading,
+  } = useFinancialInstitutions();
+  const { data: proofTypesData = [], isLoading: isProofTypesLoading } =
+    useProofTypes();
 
   const form = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(paymentMethodSchema),
     defaultValues: {
-      cardNumber: "",
-      cardHolderName: "",
-      expiryDate: "",
-      cvv: "",
+      country: "AE",
+      financialInstitution: "",
+      routingCode: "",
+      bankAccountNumber: "",
+      confirmAccountNumber: "",
+      proofType: "",
     },
   });
 
   const onSubmit = async (data: PaymentMethodFormValues) => {
     try {
       console.log("Payment method data:", data);
+      console.log("Uploaded file:", uploadedFile);
       toast.success("Payment method added successfully");
       // TODO: Implement API call to save payment method
       // Navigate to next step
@@ -71,21 +90,36 @@ export default function AddPaymentMethodPage() {
     }
   };
 
-  // Format card number with spaces
-  const formatCardNumber = (value: string) => {
-    const cleaned = value.replace(/\s/g, "");
-    const match = cleaned.match(/.{1,4}/g);
-    return match ? match.join(" ") : cleaned;
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+        setUploadedFile(file);
+        form.setValue("proofDocument", file, { shouldValidate: true });
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setProofPreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setProofPreview(null);
+        }
+      } else {
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
+      }
+    }
   };
 
-  // Format expiry date as MM/YY
-  const formatExpiryDate = (value: string) => {
-    const cleaned = value.replace(/\D/g, "");
-    if (cleaned.length >= 2) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}`;
+  const handleRemoveProof = () => {
+    form.setValue("proofDocument", undefined, { shouldValidate: true });
+    setUploadedFile(null);
+    setProofPreview(null);
+    if (proofFileRef.current) {
+      proofFileRef.current.value = "";
     }
-    return cleaned;
   };
+
 
   return (
     <div className="min-h-screen bg-bg-medium flex items-center justify-center px-4 py-8">
@@ -138,103 +172,143 @@ export default function AddPaymentMethodPage() {
                 </span>
               </div>
 
-              {/* Step 5: Add Payment Method */}
+              {/* Step 5: Add Bank account */}
               <div className="flex flex-col items-center flex-1">
                 <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
                   <span className="text-white text-base font-bold">✓</span>
                 </div>
                 <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Add Payment Method
+                  Add Bank account
+                </span>
+              </div>
+
+              {/* Step 6: Verification */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
+                  <span className="text-black text-sm font-bold">5</span>
+                </div>
+                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
+                  Verification
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ADD PAYMENT METHOD Heading */}
-        <h2 className="text-2xl pb-3 font-bold text-black uppercase">
-          ADD PAYMENT METHOD
+        {/* ADD BANK ACCOUNT Heading */}
+        <h2 className="text-2xl font-bold text-black uppercase">
+          ADD BANK ACCOUNT
         </h2>
 
         {/* Form Container */}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Payment Details - Separate Light Container */}
-            <div className="bg-bg-light p-6 space-y-6">
-              {/* Card Number */}
-              <FormField
-                control={form.control}
-                name="cardNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
-                      Card Number:
-                      <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        className="bg-bg-medium border-border h-[44px]"
-                        {...field}
-                        onChange={(e) => {
-                          const formatted = formatCardNumber(e.target.value);
-                          field.onChange(formatted);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-3">
+            {/* Info Message */}
+            <div className="bg-[#DAD4C5] p-4 flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+              <p className="text-sm text-gray-800">
+                You are adding your bank account for the <strong>UAE</strong>{" "}
+                marketplace. You can add additional bank accounts for other
+                regions you choose to sell in once registration is complete.
+              </p>
+            </div>
 
-              {/* Card Holder Name */}
-              <FormField
-                control={form.control}
-                name="cardHolderName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
-                      Card Holder Name:
-                      <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="John Doe"
-                        className="bg-bg-medium border-border h-[44px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Expiry Date and CVV - Grid */}
+            <div className="bg-bg-light p-6 space-y-5">
+              {/* Country and Financial Institution */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Expiry Date */}
                 <FormField
                   control={form.control}
-                  name="expiryDate"
+                  name="country"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
-                        Expiry Date:
+                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                        Country
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <select
+                            {...field}
+                            className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                          >
+                            <option value="AE">🇦🇪 United Arab Emirates</option>
+                            <option value="SA">🇸🇦 Saudi Arabia</option>
+                            <option value="KW">🇰🇼 Kuwait</option>
+                            <option value="QA">🇶🇦 Qatar</option>
+                            <option value="BH">🇧🇭 Bahrain</option>
+                            <option value="OM">🇴🇲 Oman</option>
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="financialInstitution"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                        Financial Institution Name
                         <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          {isFinancialInstitutionsLoading ? (
+                            <div className="w-full bg-bg-medium border border-gray-300 h-11 px-4 flex items-center">
+                              <Spinner className="w-4 h-4" />
+                              <span className="ml-2 text-sm text-gray-500">
+                                Loading...
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <select
+                                {...field}
+                                className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                              >
+                                <option value="">Select</option>
+                                {financialInstitutionsData.map(
+                                  (institution) => (
+                                    <option
+                                      key={institution.id}
+                                      value={institution.id}
+                                    >
+                                      {institution.name}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                            </>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Routing Code and Proof Type */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="routingCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                        Routing or SWIFT code (depending on your region)
+                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
                       </FormLabel>
                       <FormControl>
                         <Input
                           type="text"
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          className="bg-bg-medium border-border h-[44px]"
+                          placeholder="Enter your IBAN number"
+                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
                           {...field}
-                          onChange={(e) => {
-                            const formatted = formatExpiryDate(e.target.value);
-                            field.onChange(formatted);
-                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -242,29 +316,160 @@ export default function AddPaymentMethodPage() {
                   )}
                 />
 
-                {/* CVV */}
                 <FormField
                   control={form.control}
-                  name="cvv"
+                  name="proofType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-bold text-black flex items-center gap-1">
-                        CVV:
+                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                        Proof Type
                         <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="123"
-                          maxLength={4}
-                          className="bg-bg-medium border-border h-[44px]"
-                          {...field}
-                        />
+                        <div className="relative">
+                          {isProofTypesLoading ? (
+                            <div className="w-full bg-bg-medium border border-gray-300 h-11 px-4 flex items-center">
+                              <Spinner className="w-4 h-4" />
+                              <span className="ml-2 text-sm text-gray-500">
+                                Loading...
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <select
+                                {...field}
+                                className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                              >
+                                <option value="">Select</option>
+                                {proofTypesData.map((proofType) => (
+                                  <option
+                                    key={proofType.id}
+                                    value={proofType.id}
+                                  >
+                                    {proofType.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                            </>
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Bank Account Number and Upload Proof - Side by Side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Side - Bank Account Number Fields */}
+                <div className="space-y-5">
+                  {/* Bank Account Number */}
+                  <FormField
+                    control={form.control}
+                    name="bankAccountNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Bank Account Number
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            placeholder="Enter account number"
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Re-Type Bank Account Number */}
+                  <FormField
+                    control={form.control}
+                    name="confirmAccountNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Re-Type Bank Account Number
+                          <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            placeholder="Confirm account number"
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Right Side - Upload Proof */}
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="proofDocument"
+                    render={() => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Upload Proof
+                          <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="space-y-2">
+                            <input
+                              ref={proofFileRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg,application/pdf"
+                              onChange={handleFileUpload}
+                              className="hidden"
+                            />
+                            {proofPreview ? (
+                              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                <img
+                                  src={proofPreview}
+                                  alt="Proof Document Preview"
+                                  className="w-full h-64 object-contain"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveProof}
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  aria-label="Remove file"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => proofFileRef.current?.click()}
+                                className="border-2 border-dashed border-gray-300 p-4 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                              >
+                                <Upload className="w-10 h-10 text-secondary mb-3" />
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-400 mt-2">
+                                  Accepted files: JPEG, PNG, PDF (max 10 MB).
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
@@ -276,15 +481,14 @@ export default function AddPaymentMethodPage() {
                 className="bg-bg-light text-black hover:bg-bg-medium font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
                 onClick={() => router.push("/vendor/account-preferences")}
               >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                PREVIOUS
+                BACK
               </Button>
               <Button
                 type="submit"
                 variant="secondary"
                 className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
               >
-                NEXT
+                CONTINUE
               </Button>
             </div>
           </form>
@@ -293,4 +497,3 @@ export default function AddPaymentMethodPage() {
     </div>
   );
 }
-
