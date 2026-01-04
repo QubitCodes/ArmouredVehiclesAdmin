@@ -9,10 +9,19 @@ const publicRoutes = [
   "/vendor/verify-email",
   "/vendor/add-phone",
   "/vendor/verify-phone",
-  "/vendor/create-store",
-  "/vendor/company-information",
   "/vendor/login",
   "/vendor/login/verify-email",
+];
+
+// Onboarding routes that require authentication but are part of the onboarding flow
+const onboardingRoutes = [
+  "/vendor/create-store",
+  "/vendor/company-information",
+  "/vendor/contact-person",
+  "/vendor/declaration",
+  "/vendor/account-preferences",
+  "/vendor/bank-account",
+  "/vendor/verification",
 ];
 
 // Protected routes that require authentication
@@ -26,9 +35,15 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
+  // Check if the route is an onboarding route
+  const isOnboardingRoute = onboardingRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+
   // Check if the route is a protected admin route
+  // Onboarding routes require auth but are handled by VerificationGuard
   const isProtectedRoute = protectedRoutes.some(
-    (route) => pathname.startsWith(route) && !isPublicRoute
+    (route) => pathname.startsWith(route) && !isPublicRoute && !isOnboardingRoute
   );
 
   // Get the access tokens from cookies (separate for admin and vendor)
@@ -49,6 +64,19 @@ export function middleware(request: NextRequest) {
       const loginPath = isVendorRoute ? "/vendor/login" : "/admin/login";
       const loginUrl = new URL(loginPath, request.url);
       // Preserve the intended destination for redirect after login
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // Onboarding routes require authentication but are handled by VerificationGuard
+  // for email/phone verification and onboarding status checks
+  if (isOnboardingRoute) {
+    const isVendorRoute = pathname.startsWith("/vendor");
+    const hasToken = isVendorRoute ? vendorToken : false;
+
+    if (!hasToken) {
+      const loginUrl = new URL("/vendor/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
