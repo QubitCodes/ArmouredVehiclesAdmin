@@ -3,12 +3,10 @@ import { AxiosError } from "axios";
 import api from "@/lib/api";
 
 export interface OnboardingStep0Request {
-  country: string;
   companyName: string;
   companyEmail: string;
   companyPhone: string;
   companyPhoneCountryCode: string;
-  typeOfBuyer: string;
 }
 
 export interface OnboardingStep0Response {

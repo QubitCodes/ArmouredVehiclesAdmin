@@ -115,8 +115,8 @@ export function VerificationGuard({ children }: { children: React.ReactNode }) {
 
     // Check onboarding status
     if (onboardingProgress) {
-      // If onboarding is pending, redirect to the appropriate step
-      if (onboardingProgress.status === "pending") {
+      // If onboarding is pending or in_progress, redirect to the appropriate step
+      if (onboardingProgress.status === "pending" || onboardingProgress.status === "in_progress") {
         const targetRoute =
           ONBOARDING_STEP_ROUTES[onboardingProgress.currentStep] ||
           ONBOARDING_STEP_ROUTES[0]; // Default to step 0 if invalid
@@ -127,7 +127,7 @@ export function VerificationGuard({ children }: { children: React.ReactNode }) {
         }
         return;
       }
-      // If onboarding is completed, allow access to protected routes
+      // If onboarding is completed or in other statuses (pending_verification, under_review, approved, rejected, suspended), allow access to protected routes
     }
   }, [
     data,

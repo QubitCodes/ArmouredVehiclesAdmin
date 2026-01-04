@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
@@ -133,14 +133,12 @@ export default function CreateStorePage() {
         (code) => code.value === data.phoneCountryCode
       );
 
-      // Prepare API payload (using default country "ae" since country field is removed from form)
+      // Prepare API payload
       const payload = {
-        country: "ae",
         companyName: data.companyName,
         companyEmail: data.email,
         companyPhone: data.phoneNumber,
         companyPhoneCountryCode: selectedPhoneCode?.code || `+${data.phoneCountryCode}`,
-        typeOfBuyer: "individual",
       };
 
       // Call the API
@@ -164,8 +162,12 @@ export default function CreateStorePage() {
     }
   };
 
+  const phoneCountryCode = useWatch({
+    control: form.control,
+    name: "phoneCountryCode",
+  });
   const selectedPhoneCode = phoneCountryCodes.find(
-    (c) => c.value === form.watch("phoneCountryCode")
+    (c) => c.value === phoneCountryCode
   );
 
   return (

@@ -3,7 +3,14 @@ import { AxiosError } from "axios";
 import api from "@/lib/api";
 
 export interface OnboardingProgressResponse {
-  status: "pending" | "completed";
+  status:
+    | "pending"
+    | "in_progress"
+    | "pending_verification"
+    | "under_review"
+    | "approved"
+    | "rejected"
+    | "suspended";
   currentStep: number;
   totalSteps: number;
   remainingSteps: number;
@@ -27,4 +34,3 @@ export function useOnboardingProgress(enabled: boolean = true) {
     refetchOnWindowFocus: false,
   });
 }
-
