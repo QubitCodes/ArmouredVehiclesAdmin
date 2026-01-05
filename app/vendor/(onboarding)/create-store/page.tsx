@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { ArrowLeft, Info } from "lucide-react";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,10 +19,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Select } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
+import { useOnboardingStep0 } from "@/hooks/vendor/dashboard/use-onboarding-step0";
 
 const createStoreSchema = z.object({
-  country: z.string().min(1, "Country is required"),
   companyName: z.string().min(1, "Company name is required"),
   email: z
     .string()
@@ -32,14 +34,6 @@ const createStoreSchema = z.object({
 });
 
 type CreateStoreFormValues = z.infer<typeof createStoreSchema>;
-
-const countries = [
-  { value: "ae", label: "United Arab Emirates", flag: "🇦🇪" },
-  { value: "us", label: "United States", flag: "🇺🇸" },
-  { value: "gb", label: "United Kingdom", flag: "🇬🇧" },
-  { value: "in", label: "India", flag: "🇮🇳" },
-  { value: "sa", label: "Saudi Arabia", flag: "🇸🇦" },
-];
 
 const phoneCountryCodes = [
   { value: "971", code: "+971", flag: "🇦🇪", label: "United Arab Emirates" },
@@ -55,7 +49,6 @@ export default function CreateStorePage() {
   const form = useForm<CreateStoreFormValues>({
     resolver: zodResolver(createStoreSchema),
     defaultValues: {
-      country: "ae",
       companyName: "",
       email: "",
       phoneCountryCode: "971",
@@ -63,18 +56,98 @@ export default function CreateStorePage() {
     },
   });
 
+  // Fetch onboarding profile to auto-fill form
+  const { data: profileData, isLoading: isProfileLoading } =
+    useOnboardingProfile();
+
+  // Mutation for step0 API
+  const step0Mutation = useOnboardingStep0();
+
+  // Auto-fill form fields when profile data is available
+  useEffect(() => {
+    if (profileData && !isProfileLoading) {
+      const updates: Partial<CreateStoreFormValues> = {};
+
+      // Auto-fill email from user
+      if (profileData.user?.email && !form.getValues("email")) {
+        updates.email = profileData.user.email;
+      }
+
+      // Auto-fill company name from user name
+      if (profileData.user?.name && !form.getValues("companyName")) {
+        updates.companyName = profileData.user.name;
+      }
+
+      // Auto-fill phone number from user
+      if (profileData.user?.phone) {
+        const phone = profileData.user.phone.trim();
+        
+        // Check if phone includes country code (starts with +)
+        if (phone.startsWith("+")) {
+          // Remove + and any spaces, then try to match country codes
+          const phoneWithoutPlus = phone.replace(/^\+/, "").replace(/\s/g, "");
+          
+          // Try to match country codes (try longer codes first)
+          const sortedCodes = [...phoneCountryCodes].sort(
+            (a, b) => b.value.length - a.value.length
+          );
+          
+          for (const codeOption of sortedCodes) {
+            if (phoneWithoutPlus.startsWith(codeOption.value)) {
+              const phoneNumber = phoneWithoutPlus.slice(
+                codeOption.value.length
+              );
+              
+              if (phoneNumber && !form.getValues("phoneCountryCode")) {
+                updates.phoneCountryCode = codeOption.value;
+              }
+              
+              if (phoneNumber && !form.getValues("phoneNumber")) {
+                updates.phoneNumber = phoneNumber;
+              }
+              break;
+            }
+          }
+        } else {
+          // Phone number without country code - just set the number
+          const phoneNumber = phone.replace(/\s/g, "");
+          if (phoneNumber && !form.getValues("phoneNumber")) {
+            updates.phoneNumber = phoneNumber;
+          }
+        }
+      }
+
+      // Apply updates if any
+      if (Object.keys(updates).length > 0) {
+        Object.entries(updates).forEach(([key, value]) => {
+          form.setValue(key as keyof CreateStoreFormValues, value as string);
+        });
+      }
+    }
+  }, [profileData, isProfileLoading, form]);
+
   const onSubmit = async (data: CreateStoreFormValues) => {
     try {
-      // TODO: Implement API call to create store
-      // const response = await createStoreMutation.mutateAsync(data);
+      // Find the country code object to get the code with "+"
+      const selectedPhoneCode = phoneCountryCodes.find(
+        (code) => code.value === data.phoneCountryCode
+      );
 
-      console.log("Store data to be sent:", data);
+      // Prepare API payload
+      const payload = {
+        companyName: data.companyName,
+        companyEmail: data.email,
+        companyPhone: data.phoneNumber,
+        companyPhoneCountryCode: selectedPhoneCode?.code || `+${data.phoneCountryCode}`,
+      };
+
+      // Call the API
+      await step0Mutation.mutateAsync(payload);
+
       toast.success("Store created successfully!");
 
       // Redirect to company information page
-      setTimeout(() => {
-        router.push("/vendor/company-information");
-      }, 1500);
+      router.push("/vendor/company-information");
     } catch (error) {
       const axiosError = error as AxiosError<{
         message?: string;
@@ -89,11 +162,12 @@ export default function CreateStorePage() {
     }
   };
 
-  const selectedCountry = countries.find(
-    (c) => c.value === form.watch("country")
-  );
+  const phoneCountryCode = useWatch({
+    control: form.control,
+    name: "phoneCountryCode",
+  });
   const selectedPhoneCode = phoneCountryCodes.find(
-    (c) => c.value === form.watch("phoneCountryCode")
+    (c) => c.value === phoneCountryCode
   );
 
   return (
@@ -109,44 +183,37 @@ export default function CreateStorePage() {
           <ArrowLeft className="w-5 h-5 text-black" />
         </button>
 
-        <div className="w-full max-w-md space-y-8 bg-bg-light p-6">
+        <div className="w-full max-w-md space-y-8 bg-bg-light p-6 relative">
+          {/* Loading Overlay */}
+          {isProfileLoading && (
+            <div className="absolute inset-0 bg-bg-light/95 backdrop-blur-md flex items-center justify-center z-50 rounded-lg">
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-secondary/20 rounded-full animate-ping" />
+                  <div className="relative bg-secondary/10 rounded-full p-4">
+                    <Spinner size="xl" className="text-secondary" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-medium text-gray-800">
+                    Loading profile data
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Please wait...
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Form */}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              {/* Country Field */}
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                      Country <span className="text-red-500">*</span>
-                      <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <select
-                          {...field}
-                          className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
-                        >
-                          {countries.map((country) => (
-                            <option key={country.value} value={country.value}>
-                              {country.label}
-                            </option>
-                          ))}
-                        </select>
-                        {selectedCountry && (
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
-                            {selectedCountry.flag}
-                          </span>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
+            <form 
+              onSubmit={form.handleSubmit(onSubmit)} 
+              className={`space-y-5 transition-opacity duration-200 ${
+                isProfileLoading ? "opacity-50 pointer-events-none" : "opacity-100"
+              }`}
+            >
               {/* Company Name Field */}
               <FormField
                 control={form.control}
@@ -169,7 +236,7 @@ export default function CreateStorePage() {
                 )}
               />
 
-              {/* Email Field */}
+              {/* Email Field - Read Only */}
               <FormField
                 control={form.control}
                 name="email"
@@ -183,7 +250,8 @@ export default function CreateStorePage() {
                       <Input
                         type="email"
                         placeholder="info@blueweb2.com"
-                        className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                        className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed"
+                        readOnly
                         {...field}
                       />
                     </FormControl>
@@ -192,7 +260,7 @@ export default function CreateStorePage() {
                 )}
               />
 
-              {/* Store Phone Number Field */}
+              {/* Store Phone Number Field - Read Only */}
               <div className="space-y-2">
                 <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
                   Store Phone Number <span className="text-red-500">*</span>
@@ -208,7 +276,8 @@ export default function CreateStorePage() {
                           <div className="relative">
                             <select
                               {...field}
-                              className="w-full bg-bg-medium border border-gray-300 h-11 pl-10 pr-6 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                              className="w-full bg-gray-100 border border-gray-300 h-11 pl-10 pr-6 text-sm cursor-not-allowed outline-none appearance-none"
+                              disabled
                             >
                               {phoneCountryCodes.map((code) => (
                                 <option key={code.value} value={code.value}>
@@ -236,7 +305,8 @@ export default function CreateStorePage() {
                           <Input
                             type="tel"
                             placeholder="9072725777"
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed"
+                            readOnly
                             {...field}
                           />
                         </FormControl>
@@ -251,13 +321,21 @@ export default function CreateStorePage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="w-full text-white font-bold uppercase tracking-wide py-2 text-base shadow-lg hover:shadow-xl transition-all relative"
+                disabled={step0Mutation.isPending}
+                className="w-full text-white font-bold uppercase tracking-wide py-2 text-base shadow-lg hover:shadow-xl transition-all relative disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   clipPath:
                     "polygon(16px 0%, 100% 0%, 100% 100%, 16px 100%, 0% 50%)",
                 }}
               >
-                CREATE
+                {step0Mutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner size="sm" className="text-white" />
+                    CREATING...
+                  </span>
+                ) : (
+                  "CREATE"
+                )}
               </Button>
             </form>
           </Form>
@@ -267,12 +345,12 @@ export default function CreateStorePage() {
       {/* Right Column - Promotional Content */}
       <div className="hidden lg:flex flex-1 bg-secondary flex-col items-center justify-center px-12 py-16 text-white">
         <div className="max-w-md space-y-6">
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+          <h1 className="text-4xl md:text-5xl leading-tight font-sans">
             Create Your Store on
-            <br />
-            <span className="font-bold">Armored Mart</span>
+            {/* <br /> */}
+            <span className="font-bold"> Armored Mart</span>
           </h1>
-          <p className="text-lg md:text-xl leading-relaxed opacity-95">
+          <p className="text-lg md:text-xl leading-relaxed opacity-95 pt-3">
             Reach thousands of verified buyers in the defense and automotive
             industries. Setting up your Armored Mart store is the first step
             toward growing your business online.

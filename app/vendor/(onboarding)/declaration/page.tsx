@@ -6,8 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { ArrowLeft, Info, X, Cloud } from "lucide-react";
-import { useState } from "react";
+import { Info, X, ChevronDown, Search, Upload } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { useState, useEffect, useRef } from "react";
+import { useNatureOfBusiness } from "@/hooks/vendor/dashboard/use-nature-of-business";
+import { useEndUseMarkets } from "@/hooks/vendor/dashboard/use-end-use-markets";
+import { useCountries, type Country } from "@/hooks/vendor/dashboard/use-countries";
+import { useOnboardingStep3 } from "@/hooks/vendor/dashboard/use-onboarding-step3";
+import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +26,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const declarationSchema = z.object({
   natureOfBusiness: z
@@ -30,106 +35,151 @@ const declarationSchema = z.object({
   endUseMarket: z
     .array(z.string())
     .min(1, "Please select at least one end-use market"),
-  licenses: z.string().min(1, "Please select a license type"),
+  licenses: z.array(z.string()).min(1, "Please select at least one license type. License files are mandatory."),
   operatingCountries: z
     .array(z.string())
     .min(1, "Please select at least one country"),
   countryInput: z.string().optional(),
   onSanctionsList: z.enum(["yes", "no"]),
-  businessLicense: z.any().optional(),
-  defenseApproval: z.any().optional(),
-  companyProfile: z.any().optional(),
+  businessLicenseFile: z.any().refine((file) => file !== undefined && file instanceof File, {
+    message: "Business License is required",
+  }),
+  companyProfileFile: z.any().optional(),
+  modLicenseFile: z.any().optional(),
+  eocnApprovalFile: z.any().optional(),
+  itarRegistrationFile: z.any().optional(),
+  localAuthorityApprovalFile: z.any().optional(),
   agreeToCompliance: z.boolean().refine((val) => val === true, {
     message: "You must agree to the compliance terms",
   }),
-});
+}).refine(
+  (data) => {
+    // If authority_license is selected, modLicenseFile is required
+    if (data.licenses.includes("authority_license")) {
+      return data.modLicenseFile !== undefined && data.modLicenseFile instanceof File;
+    }
+    return true;
+  },
+  {
+    message: "Please upload Authority License file. License files are mandatory.",
+    path: ["modLicenseFile"],
+  }
+).refine(
+  (data) => {
+    // If eocn is selected, eocnApprovalFile is required
+    if (data.licenses.includes("eocn")) {
+      return data.eocnApprovalFile !== undefined && data.eocnApprovalFile instanceof File;
+    }
+    return true;
+  },
+  {
+    message: "Please upload EOCN Approval file. License files are mandatory.",
+    path: ["eocnApprovalFile"],
+  }
+).refine(
+  (data) => {
+    // If itar is selected, itarRegistrationFile is required
+    if (data.licenses.includes("itar")) {
+      return data.itarRegistrationFile !== undefined && data.itarRegistrationFile instanceof File;
+    }
+    return true;
+  },
+  {
+    message: "Please upload ITAR Registration file. License files are mandatory.",
+    path: ["itarRegistrationFile"],
+  }
+).refine(
+  (data) => {
+    // If local is selected, localAuthorityApprovalFile is required
+    if (data.licenses.includes("local")) {
+      return data.localAuthorityApprovalFile !== undefined && data.localAuthorityApprovalFile instanceof File;
+    }
+    return true;
+  },
+  {
+    message: "Please upload Local approval from authorities file. License files are mandatory.",
+    path: ["localAuthorityApprovalFile"],
+  }
+);
 
 type DeclarationFormValues = z.infer<typeof declarationSchema>;
 
-const natureOfBusinessOptions = [
-  "Manufacturer",
-  "OEM Dealer",
-  "Retailer",
-  "Defense Supplier",
-  "Vehicle Armoring",
-  "Wholesaler / Distributor",
-  "E-commerce Seller",
-  "Importer / Exporter",
-  "Trading Company",
-  "Service Provider",
-  "Government Agency",
-  "Contractor / Subcontractor",
-  "Logistics / Freight Services",
-  "Construction / Engineering",
-  "Technology / IT Solutions Provider",
-  "Healthcare / Medical Supplier",
-  "Education / Training Provider",
-  "Financial / Consulting Services",
-  "Nonprofit / NGO",
-  "Other",
-];
 
-const endUseMarketOptions = [
-  "Civilian",
-  "Military",
-  "Law Enforcement",
-  "Government",
-  "Export",
-];
 
 const licenseOptions = [
-  { value: "mod", label: "MOD License" },
+  { value: "authority_license", label: "Authority License" },
   { value: "eocn", label: "EOCN Approval" },
   { value: "itar", label: "ITAR Registration" },
   { value: "local", label: "Local approval from authorities" },
   { value: "none", label: "None" },
 ];
 
-const countryOptions = [
-  { value: "ae", label: "United Arab Emirates (UAE)", flag: "🇦🇪" },
-  { value: "sa", label: "Saudi Arabia (KSA)", flag: "🇸🇦" },
-  { value: "qa", label: "Qatar", flag: "🇶🇦" },
-  { value: "om", label: "Oman", flag: "🇴🇲" },
-  { value: "in", label: "India", flag: "🇮🇳" },
-  { value: "id", label: "Indonesia", flag: "🇮🇩" },
-  { value: "ir", label: "Iran", flag: "🇮🇷" },
-  { value: "iq", label: "Iraq", flag: "🇮🇶" },
-  { value: "ie", label: "Ireland", flag: "🇮🇪" },
-];
+// License type to file field mapping
+const LICENSE_TO_FILE_FIELD: Record<string, string> = {
+  "authority_license": "modLicenseFile",
+  "eocn": "eocnApprovalFile",
+  "itar": "itarRegistrationFile",
+  "local": "localAuthorityApprovalFile",
+};
+
 
 export default function DeclarationPage() {
   const router = useRouter();
+  const step3Mutation = useOnboardingStep3();
+  
+  // Fetch all data - single loading state
+  const { data: natureOfBusinessOptions = [], isLoading: isNatureOfBusinessLoading } = useNatureOfBusiness();
+  const { data: endUseMarketOptions = [], isLoading: isEndUseMarketsLoading } = useEndUseMarkets();
+  const { data: countryOptions = [], isLoading: isCountriesLoading } = useCountries();
+  
+  // Single combined loading state
+  const isLoading = isNatureOfBusinessLoading || isEndUseMarketsLoading || isCountriesLoading;
+  
   const [countrySearch, setCountrySearch] = useState("");
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
 
   const form = useForm<DeclarationFormValues>({
     resolver: zodResolver(declarationSchema),
     defaultValues: {
-      natureOfBusiness: [
-        "Manufacturer",
-        "OEM Dealer",
-        "Retailer",
-        "Defense Supplier",
-        "Vehicle Armoring",
-      ],
+      natureOfBusiness: [],
       controlledDualUseItems: "",
-      endUseMarket: ["Civilian", "Military"],
-      licenses: "eocn",
-      operatingCountries: ["ae", "sa", "qa", "om"],
+      endUseMarket: [],
+      licenses: [],
+      operatingCountries: [],
       countryInput: "",
       onSanctionsList: "no",
-      businessLicense: undefined,
-      defenseApproval: undefined,
-      companyProfile: undefined,
+      businessLicenseFile: undefined,
+      companyProfileFile: undefined,
+      modLicenseFile: undefined,
+      eocnApprovalFile: undefined,
+      itarRegistrationFile: undefined,
+      localAuthorityApprovalFile: undefined,
       agreeToCompliance: false,
     },
   });
 
   const onSubmit = async (data: DeclarationFormValues) => {
     try {
-      console.log("Declaration data:", data);
+      // Map form data to API schema
+      const payload = {
+        natureOfBusiness: data.natureOfBusiness,
+        controlledDualUseItems: data.controlledDualUseItems || undefined,
+        licenseTypes: data.licenses,
+        endUseMarkets: data.endUseMarket,
+        operatingCountries: data.operatingCountries,
+        isOnSanctionsList: data.onSanctionsList === "yes",
+        complianceTermsAccepted: data.agreeToCompliance === true,
+        businessLicenseFile: data.businessLicenseFile instanceof File ? data.businessLicenseFile : undefined,
+        companyProfileFile: data.companyProfileFile instanceof File ? data.companyProfileFile : undefined,
+        modLicenseFile: data.modLicenseFile instanceof File ? data.modLicenseFile : undefined,
+        eocnApprovalFile: data.eocnApprovalFile instanceof File ? data.eocnApprovalFile : undefined,
+        itarRegistrationFile: data.itarRegistrationFile instanceof File ? data.itarRegistrationFile : undefined,
+        localAuthorityApprovalFile: data.localAuthorityApprovalFile instanceof File ? data.localAuthorityApprovalFile : undefined,
+      };
+      
+      await step3Mutation.mutateAsync(payload);
+      
       toast.success("Declaration information saved successfully");
-      // TODO: Implement API call to save declaration information
-      // Navigate to next step (Account Preferences)
       router.push("/vendor/account-preferences");
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -147,6 +197,7 @@ export default function DeclarationPage() {
 
   const selectedNatureOfBusiness = form.watch("natureOfBusiness");
   const selectedEndUseMarket = form.watch("endUseMarket");
+  const selectedLicenses = form.watch("licenses");
   const selectedCountries = form.watch("operatingCountries");
 
   const handleRemoveNatureOfBusiness = (item: string) => {
@@ -165,6 +216,14 @@ export default function DeclarationPage() {
     );
   };
 
+  const handleRemoveLicense = (item: string) => {
+    const current = form.getValues("licenses");
+    form.setValue(
+      "licenses",
+      current.filter((i) => i !== item)
+    );
+  };
+
   const handleRemoveCountry = (countryValue: string) => {
     const current = form.getValues("operatingCountries");
     form.setValue(
@@ -173,7 +232,7 @@ export default function DeclarationPage() {
     );
   };
 
-  const filteredCountries = countryOptions.filter((country) =>
+  const filteredCountries = countryOptions.filter((country: Country) =>
     country.label.toLowerCase().includes(countrySearch.toLowerCase())
   );
 
@@ -194,80 +253,147 @@ export default function DeclarationPage() {
     }
   };
 
+  // File upload refs and previews
+  const businessLicenseRef = useRef<HTMLInputElement>(null);
+  const companyProfileRef = useRef<HTMLInputElement>(null);
+  const [businessLicensePreview, setBusinessLicensePreview] = useState<string | null>(null);
+  const [companyProfilePreview, setCompanyProfilePreview] = useState<string | null>(null);
+  const licenseFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [licensePreviews, setLicensePreviews] = useState<Record<string, string | null>>({});
+
+  // Handle file selection for business license
+  const handleBusinessLicenseSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+        form.setValue("businessLicenseFile", file, { shouldValidate: true });
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setBusinessLicensePreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setBusinessLicensePreview(null);
+        }
+      } else {
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
+      }
+    }
+  };
+
+  // Handle remove business license
+  const handleRemoveBusinessLicense = () => {
+    form.setValue("businessLicenseFile", undefined, { shouldValidate: true });
+    setBusinessLicensePreview(null);
+    if (businessLicenseRef.current) {
+      businessLicenseRef.current.value = "";
+    }
+  };
+
+  // Handle file selection for company profile
+  const handleCompanyProfileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+        form.setValue("companyProfileFile", file, { shouldValidate: true });
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setCompanyProfilePreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setCompanyProfilePreview(null);
+        }
+      } else {
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
+      }
+    }
+  };
+
+  // Handle remove company profile
+  const handleRemoveCompanyProfile = () => {
+    form.setValue("companyProfileFile", undefined, { shouldValidate: true });
+    setCompanyProfilePreview(null);
+    if (companyProfileRef.current) {
+      companyProfileRef.current.value = "";
+    }
+  };
+
+  // Handle license file selection
+  const handleLicenseFileSelect = (licenseValue: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+        const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+        if (fileFieldName) {
+          form.setValue(fileFieldName, file, { shouldValidate: true });
+          if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setLicensePreviews(prev => ({ ...prev, [licenseValue]: e.target?.result as string }));
+            };
+            reader.readAsDataURL(file);
+          } else {
+            setLicensePreviews(prev => ({ ...prev, [licenseValue]: null }));
+          }
+        }
+      } else {
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
+      }
+    }
+  };
+
+  // Handle remove license file
+  const handleRemoveLicenseFile = (licenseValue: string) => {
+    const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+    if (fileFieldName) {
+      form.setValue(fileFieldName, undefined, { shouldValidate: true });
+      setLicensePreviews(prev => {
+        const { [licenseValue]: removed, ...rest } = prev;
+        return rest;
+      });
+      if (licenseFileRefs.current[licenseValue]) {
+        licenseFileRefs.current[licenseValue]!.value = "";
+      }
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.country-dropdown-container')) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+
+    if (isCountryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isCountryDropdownOpen]);
+
   return (
     <div className="min-h-screen bg-bg-medium flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-7xl">
         {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="relative">
-            {/* Horizontal connecting line */}
-            <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-border"></div>
+        <OnboardingProgressBar currentStep={3} />
 
-            {/* Steps Container */}
-            <div className="relative flex items-start justify-between w-full">
-              {/* Step 1: Company Information */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Company Information
-                </span>
-              </div>
-
-              {/* Step 2: Contact Person */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Contact Person
-                </span>
-              </div>
-
-              {/* Step 3: Declaration */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Declaration
-                </span>
-              </div>
-
-              {/* Step 4: Account Preferences */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
-                  <span className="text-black text-sm font-bold">4</span>
-                </div>
-                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
-                  Account Preferences
-                </span>
-              </div>
-
-              {/* Step 5: Verification */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
-                  <span className="text-black text-sm font-bold">5</span>
-                </div>
-                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
-                  Verification
-                </span>
-              </div>
-            </div>
-          </div>
+        {/* COMPLIANCE & ACTIVITY DECLARATION Heading */}
+        <div>
+          <h2 className="text-2xl pb-3 font-bold text-black uppercase">
+            COMPLIANCE & ACTIVITY DECLARATION
+          </h2>
         </div>
 
-        {/* Form Container */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
-              <h2 className="text-2xl font-bold text-black mb-8">
-                COMPLIANCE & ACTIVITY DECLARATION
-              </h2>
-
-              {/* Nature of Business */}
-              <div className="space-y-4 mb-8">
+            {/* Nature of Business - Separate Container */}
+              <div className="space-y-3 bg-bg-light p-6">
                 <FormLabel className="text-sm font-bold text-black">
                   Nature of Business:
                 </FormLabel>
@@ -312,54 +438,57 @@ export default function DeclarationPage() {
                   name="natureOfBusiness"
                   render={() => (
                     <FormItem>
-                      <div className="grid grid-cols-4 gap-3">
-                        {natureOfBusinessOptions.map((option) => (
-                          <FormField
-                            key={option}
-                            control={form.control}
-                            name="natureOfBusiness"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={option}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(option)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([
-                                              ...field.value,
-                                              option,
-                                            ])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== option
-                                              )
-                                            );
-                                      }}
-                                      className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                    {option}
-                                  </FormLabel>
-                                </FormItem>
-                              );
-                            }}
-                          />
-                        ))}
-                      </div>
+                      {isLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-3">
+                          {natureOfBusinessOptions.map((option) => (
+                            <FormField
+                              key={option.id}
+                              control={form.control}
+                              name="natureOfBusiness"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={option.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(option.name)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([
+                                                ...field.value,
+                                                option.name,
+                                              ])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== option.name
+                                                )
+                                              );
+                                        }}
+                                        className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                      {option.name}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-            </div>
 
             {/* Controlled/Dual Use Items, End-Use Market, Licenses - Separate Light Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-28">
                 {/* Left Column */}
                 <div className="space-y-8">
@@ -435,47 +564,51 @@ export default function DeclarationPage() {
                       name="endUseMarket"
                       render={() => (
                         <FormItem>
-                          <div className="flex flex-wrap gap-4">
-                            {endUseMarketOptions.map((option) => (
-                              <FormField
-                                key={option}
-                                control={form.control}
-                                name="endUseMarket"
-                                render={({ field }) => {
-                                  return (
-                                    <FormItem
-                                      key={option}
-                                      className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value?.includes(
-                                            option
-                                          )}
-                                          onCheckedChange={(checked) => {
-                                            return checked
-                                              ? field.onChange([
-                                                  ...field.value,
-                                                  option,
-                                                ])
-                                              : field.onChange(
-                                                  field.value?.filter(
-                                                    (value) => value !== option
-                                                  )
-                                                );
-                                          }}
-                                          className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                        {option}
-                                      </FormLabel>
-                                    </FormItem>
-                                  );
-                                }}
-                              />
-                            ))}
-                          </div>
+                          {isLoading ? (
+                            <div className="text-sm text-gray-500">Loading...</div>
+                          ) : (
+                            <div className="flex flex-wrap gap-4">
+                              {endUseMarketOptions.map((option) => (
+                                <FormField
+                                  key={option.id}
+                                  control={form.control}
+                                  name="endUseMarket"
+                                  render={({ field }) => {
+                                    return (
+                                      <FormItem
+                                        key={option.id}
+                                        className="flex flex-row items-start space-x-3 space-y-0"
+                                      >
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={field.value?.includes(
+                                              option.name
+                                            )}
+                                            onCheckedChange={(checked) => {
+                                              return checked
+                                                ? field.onChange([
+                                                    ...field.value,
+                                                    option.name,
+                                                  ])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                      (value) => value !== option.name
+                                                    )
+                                                  );
+                                            }}
+                                            className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                          {option.name}
+                                        </FormLabel>
+                                      </FormItem>
+                                    );
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -485,64 +618,97 @@ export default function DeclarationPage() {
 
                 {/* Right Column - Licenses */}
                 <div className="space-y-4">
+                  <FormLabel className="text-sm font-bold text-black">
+                    Do you hold any of the following licenses?
+                  </FormLabel>
+
+                  {/* Input Field with Tags and Count */}
+                  <div className="relative">
+                    <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
+                      {/* Selected Tags */}
+                      {selectedLicenses.length > 0 && (
+                        <>
+                          {selectedLicenses.map((licenseValue) => {
+                            const license = licenseOptions.find(
+                              (l) => l.value === licenseValue
+                            );
+                            if (!license) return null;
+                            return (
+                              <div
+                                key={licenseValue}
+                                className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
+                              >
+                                <span className="text-sm text-black">
+                                  {license.label}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveLicense(licenseValue)}
+                                  className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
+                                >
+                                  <X className="w-3.5 h-3.5 text-border" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                    {/* Count Badge */}
+                    {selectedLicenses.length > 0 && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
+                        <span className="text-sm font-medium text-black">
+                          {selectedLicenses.length}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Checkboxes Grid */}
                   <FormField
                     control={form.control}
                     name="licenses"
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Do you hold any of the following licenses?
-                        </FormLabel>
-                        <FormControl>
-                          <div className="space-y-3">
-                            {licenseOptions.map((option) => (
-                              <div
-                                key={option.value}
-                                className="flex items-center space-x-2"
-                              >
-                                <label
-                                  htmlFor={`licenses-${option.value}`}
-                                  className="relative flex items-center cursor-pointer"
-                                >
-                                  <input
-                                    type="radio"
-                                    id={`licenses-${option.value}`}
-                                    name="licenses"
-                                    value={option.value}
-                                    checked={field.value === option.value}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        field.onChange(option.value);
-                                      }
-                                    }}
-                                    className="sr-only"
-                                  />
-                                  <span
-                                    className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
-                                      field.value === option.value
-                                        ? "border-border"
-                                        : ""
-                                    }`}
+                        <div className="grid grid-cols-1 gap-3">
+                          {licenseOptions.map((option) => (
+                            <FormField
+                              key={option.value}
+                              control={form.control}
+                              name="licenses"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={option.value}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
                                   >
-                                    {field.value === option.value && (
-                                      <span className="h-2 w-2 rounded-full bg-border"></span>
-                                    )}
-                                  </span>
-                                </label>
-                                <label
-                                  htmlFor={`licenses-${option.value}`}
-                                  className={`text-sm font-medium leading-none cursor-pointer ${
-                                    field.value === option.value
-                                      ? "text-black"
-                                      : "text-gray-500"
-                                  }`}
-                                >
-                                  {option.label}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        </FormControl>
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(option.value)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([
+                                                ...field.value,
+                                                option.value,
+                                              ])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== option.value
+                                                )
+                                              );
+                                        }}
+                                        className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                      {option.label}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -552,98 +718,145 @@ export default function DeclarationPage() {
             </div>
 
             {/* Countries Section - Separate Light Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6">
               <div className="space-y-4">
                 <FormLabel className="text-sm font-bold text-black">
-                  Countries:
+                  Countries you operate in or export to:
                 </FormLabel>
 
-                {/* Input Field with Tags and Count */}
-                <div className="relative">
-                  <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
-                    {/* Selected Tags */}
-                    {selectedCountries.length > 0 ? (
-                      <>
-                        {selectedCountries.map((countryValue) => {
-                          const country = countryOptions.find(
-                            (c) => c.value === countryValue
-                          );
-                          if (!country) return null;
-                          return (
-                            <div
-                              key={countryValue}
-                              className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
-                            >
-                              <span className="text-lg">{country.flag}</span>
-                              <span className="text-sm text-black">
-                                {country.label}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveCountry(countryValue)
-                                }
-                                className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
-                              >
-                                <X className="w-3.5 h-3.5 text-border" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </>
-                    ) : (
-                      <input
-                        type="text"
-                        placeholder="In"
-                        value={countrySearch}
-                        onChange={(e) => setCountrySearch(e.target.value)}
-                        className="bg-transparent border-0 outline-none text-sm text-gray-400 placeholder:text-gray-400 flex-1 min-w-[100px]"
-                      />
-                    )}
-                  </div>
-                  {/* Count Badge */}
-                  {selectedCountries.length > 0 && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
-                      <span className="text-sm font-medium text-black">
-                        {selectedCountries.length}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Country Checkboxes Grid */}
                 <FormField
                   control={form.control}
                   name="operatingCountries"
                   render={() => (
                     <FormItem>
-                      <div className="grid grid-cols-4 gap-3">
-                        {(countrySearch
-                          ? filteredCountries
-                          : countryOptions
-                        ).map((country) => (
-                          <div
-                            key={country.value}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              checked={selectedCountries.includes(
-                                country.value
+                      {/* Input Field with Tags and Dropdown */}
+                      <div className="relative country-dropdown-container">
+                        <div
+                          className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2 cursor-text"
+                          onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                        >
+                          {/* Selected Tags */}
+                          {selectedCountries.length > 0 ? (
+                            <>
+                              {selectedCountries.map((countryValue) => {
+                                const country = countryOptions.find(
+                                  (c: Country) => c.value === countryValue
+                                );
+                                if (!country) return null;
+                                return (
+                                  <div
+                                    key={countryValue}
+                                    className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5 rounded"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span className="text-lg">{country.flag}</span>
+                                    <span className="text-sm text-black">
+                                      {country.label}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveCountry(countryValue);
+                                      }}
+                                      className="hover:opacity-70 transition-opacity p-0.5 shrink-0"
+                                    >
+                                      <X className="w-3.5 h-3.5 text-border" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400">
+                              Select countries...
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Dropdown Arrow */}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                          {selectedCountries.length > 0 && (
+                            <div className="bg-bg-light border border-border w-8 h-8 flex items-center justify-center rounded">
+                              <span className="text-sm font-medium text-black">
+                                {selectedCountries.length}
+                              </span>
+                            </div>
+                          )}
+                          <ChevronDown
+                            className={`h-5 w-5 text-gray-400 transition-transform ${
+                              isCountryDropdownOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {isCountryDropdownOpen && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-border shadow-lg rounded-md flex flex-col">
+                            {/* Search Input */}
+                            <div className="p-3 border-b border-border bg-white">
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                  type="text"
+                                  placeholder="Search countries..."
+                                  value={countrySearch}
+                                  onChange={(e) => {
+                                    setCountrySearch(e.target.value);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="pl-9 h-9 bg-bg-medium border-border"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Countries List - Show 5 items with scrolling */}
+                            <div className="overflow-y-auto p-2" style={{ maxHeight: '200px' }}>
+                              {isLoading ? (
+                                <div className="text-sm text-gray-500 p-4 text-center">
+                                  Loading countries...
+                                </div>
+                              ) : filteredCountries.length === 0 ? (
+                                <div className="text-sm text-gray-500 p-4 text-center">
+                                  No countries found
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  {(countrySearch
+                                    ? filteredCountries
+                                    : countryOptions
+                                  ).map((country: Country) => {
+                                    const isSelected = selectedCountries.includes(
+                                      country.value
+                                    );
+                                    return (
+                                      <label
+                                        key={country.value}
+                                        className="flex items-center gap-3 p-2 hover:bg-bg-medium rounded cursor-pointer transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Checkbox
+                                          checked={isSelected}
+                                          onCheckedChange={(checked) => {
+                                            handleCountryCheckboxChange(
+                                              country.value,
+                                              checked as boolean
+                                            );
+                                          }}
+                                          className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                        />
+                                        <span className="text-lg">{country.flag}</span>
+                                        <span className="text-sm font-medium text-black flex-1">
+                                          {country.label}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
                               )}
-                              onCheckedChange={(checked) =>
-                                handleCountryCheckboxChange(
-                                  country.value,
-                                  checked as boolean
-                                )
-                              }
-                              className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                            />
-                            <span className="text-lg">{country.flag}</span>
-                            <label className="text-sm font-medium text-black cursor-pointer">
-                              {country.label}
-                            </label>
+                            </div>
                           </div>
-                        ))}
+                        )}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -653,7 +866,7 @@ export default function DeclarationPage() {
             </div>
 
             {/* Continue in original container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6">
               {/* Sanctions/Watchlists */}
               <div className="space-y-4 mb-8">
                 <FormField
@@ -722,26 +935,58 @@ export default function DeclarationPage() {
 
               {/* File Uploads */}
               <div className="space-y-6 mb-8">
-                {/* Two Column Layout for Business License and Defense Approval */}
+                {/* Business License and Company Profile - 2 columns */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Business License */}
                   <FormField
                     control={form.control}
-                    name="businessLicense"
+                    name="businessLicenseFile"
                     render={() => (
                       <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Upload Business License*
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Upload Business License{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
                         </FormLabel>
                         <FormControl>
-                          <div className="border-2 border-dashed border-border p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity rounded-none">
-                            <Cloud className="w-10 h-10 text-border mb-3" />
-                            <p className="text-sm font-medium text-black mb-1">
-                              Choose a File or Drag & Drop It Here
-                            </p>
-                            <p className="text-xs text-gray-500 text-center max-w-md">
-                              JPEG, PNG, PDF, and MP4 formats, up to 10 MB.
-                            </p>
+                          <div className="space-y-2">
+                            <input
+                              ref={businessLicenseRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg,application/pdf"
+                              onChange={handleBusinessLicenseSelect}
+                              className="hidden"
+                            />
+                            {businessLicensePreview ? (
+                              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                <img
+                                  src={businessLicensePreview}
+                                  alt="Business License Preview"
+                                  className="w-full h-64 object-contain"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveBusinessLicense}
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  aria-label="Remove file"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => businessLicenseRef.current?.click()}
+                                className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                              >
+                                <Upload className="w-10 h-10 text-secondary mb-3" />
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-500 text-center max-w-md">
+                                  Accepted files: JPEG, PNG and PDF.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -749,24 +994,55 @@ export default function DeclarationPage() {
                     )}
                   />
 
-                  {/* Defense Approval */}
+                  {/* Company Profile */}
                   <FormField
                     control={form.control}
-                    name="defenseApproval"
+                    name="companyProfileFile"
                     render={() => (
                       <FormItem>
-                        <FormLabel className="text-sm font-bold text-black">
-                          Upload Any Defense-Related Approval
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Upload Company Profile / Product Catalog (Recommended)
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
                         </FormLabel>
                         <FormControl>
-                          <div className="border-2 border-dashed border-border p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity rounded-none">
-                            <Cloud className="w-10 h-10 text-border mb-3" />
-                            <p className="text-sm font-medium text-black mb-1">
-                              Choose a File or Drag & Drop It Here
-                            </p>
-                            <p className="text-xs text-gray-500 text-center max-w-md">
-                              JPEG, PNG, PDF, and MP4 formats, up to 10 MB.
-                            </p>
+                          <div className="space-y-2">
+                            <input
+                              ref={companyProfileRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg,application/pdf"
+                              onChange={handleCompanyProfileSelect}
+                              className="hidden"
+                            />
+                            {companyProfilePreview ? (
+                              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                <img
+                                  src={companyProfilePreview}
+                                  alt="Company Profile Preview"
+                                  className="w-full h-64 object-contain"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveCompanyProfile}
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  aria-label="Remove file"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => companyProfileRef.current?.click()}
+                                className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                              >
+                                <Upload className="w-10 h-10 text-secondary mb-3" />
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-500 text-center max-w-md">
+                                  Accepted files: JPEG, PNG and PDF.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -775,35 +1051,89 @@ export default function DeclarationPage() {
                   />
                 </div>
 
-                {/* Company Profile - Full Width */}
-                <FormField
-                  control={form.control}
-                  name="companyProfile"
-                  render={() => (
-                    <FormItem>
+                {/* License Files - Show upload for each selected license in 2 columns */}
+                {selectedLicenses.length > 0 && (
+                  <div className="space-y-4">
+                    <div>
                       <FormLabel className="text-sm font-bold text-black">
-                        Upload Company Profile / Product Catalog (Recommended)
+                        Do you hold any of the following licenses?
+                        <span className="text-red-500 ml-1">*</span>
                       </FormLabel>
-                      <FormControl>
-                        <div className="border-2 border-dashed border-border p-8 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity rounded-none">
-                          <Cloud className="w-10 h-10 text-border mb-3" />
-                          <p className="text-sm font-medium text-black mb-1">
-                            Choose a File or Drag & Drop It Here
-                          </p>
-                          <p className="text-xs text-gray-500 text-center max-w-md">
-                            JPEG, PNG, PDF, and MP4 formats, up to 10 MB.
-                          </p>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        {selectedLicenses.map((licenseValue) => {
+                          const license = licenseOptions.find((l) => l.value === licenseValue);
+                          if (!license || licenseValue === "none") return null;
+                          const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+                          if (!fileFieldName) return null;
+                          const preview = licensePreviews[licenseValue];
+                          return (
+                            <FormField
+                              key={licenseValue}
+                              control={form.control}
+                              name={fileFieldName}
+                              render={() => (
+                                    <FormItem>
+                                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                                        Upload {license.label}{" "}
+                                        <span className="text-red-500">*</span>
+                                      </FormLabel>
+                                      <FormControl>
+                                        <div className="space-y-2">
+                                          <input
+                                            ref={(el) => {
+                                              licenseFileRefs.current[licenseValue] = el;
+                                            }}
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/jpg,application/pdf"
+                                            onChange={(e) => handleLicenseFileSelect(licenseValue, e)}
+                                            className="hidden"
+                                          />
+                                          {preview ? (
+                                            <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                              <img
+                                                src={preview}
+                                                alt={`${license.label} Preview`}
+                                                className="w-full h-64 object-contain"
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveLicenseFile(licenseValue)}
+                                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                aria-label="Remove file"
+                                              >
+                                                <X className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <div
+                                              onClick={() => licenseFileRefs.current[licenseValue]?.click()}
+                                              className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                                            >
+                                              <Upload className="w-10 h-10 text-secondary mb-3" />
+                                              <p className="text-sm font-medium text-gray-700 mb-1">
+                                                Choose a File
+                                              </p>
+                                              <p className="text-xs text-gray-500 text-center max-w-md">
+                                                Accepted files: JPEG, PNG and PDF.
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              );
+                            })}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Compliance Terms - Separate Light Container */}
-            <div className="bg-bg-light px-4 py-8 shadow-lg">
+            <div className="bg-bg-light p-6 shadow-lg">
               <div className="space-y-4">
                 <div className="text-sm font-normal text-black">
                   Agree to Compliance Terms
@@ -824,7 +1154,7 @@ export default function DeclarationPage() {
                         <FormLabel className="text-sm font-normal text-black cursor-pointer">
                           I acknowledge that all transactions are subject to UAE
                           and international laws and may be screened, paused, or
-                          reported in accordance with ArmoredMart's regulatory
+                          reported in accordance with ArmoredMart&apos;s regulatory
                           obligations.
                         </FormLabel>
                         <FormMessage />
@@ -840,18 +1170,25 @@ export default function DeclarationPage() {
               <Button
                 type="button"
                 variant="secondary"
-                className="bg-bg-light text-black hover:bg-bg-medium font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
                 onClick={() => router.push("/vendor/contact-person")}
               >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                PREVIOUS
+                Previous
               </Button>
               <Button
                 type="submit"
                 variant="secondary"
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                disabled={step3Mutation.isPending}
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                NEXT
+                {step3Mutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner size="sm" className="text-white" />
+                    SUBMITTING...
+                  </span>
+                ) : (
+                  "NEXT"
+                )}
               </Button>
             </div>
           </form>

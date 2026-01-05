@@ -64,7 +64,7 @@
   --popover: #F0EBE3;
   --popover-foreground: #1a1a1a;
   /* Primary: Green (#3D4A26) */
-  --primary: #3D4A26;
+  --primary: #3d4a26;
   --primary-foreground: #ffffff;
   /* Secondary: Orange (#D35400) */
   --secondary: #D35400;
@@ -144,5 +144,14 @@
 @layer utilities {
   .font-heading {
     font-family: var(--font-heading);
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
   }
 }
