@@ -11,6 +11,7 @@ import { useState, useRef } from "react";
 import { useFinancialInstitutions } from "@/hooks/vendor/dashboard/use-financial-institutions";
 import { useProofTypes } from "@/hooks/vendor/dashboard/use-proof-types";
 import { Spinner } from "@/components/ui/spinner";
+import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,75 +126,7 @@ export default function AddPaymentMethodPage() {
     <div className="min-h-screen bg-bg-medium flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-7xl">
         {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="relative">
-            {/* Horizontal connecting line */}
-            <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-border"></div>
-
-            {/* Steps Container */}
-            <div className="relative flex items-start justify-between w-full">
-              {/* Step 1: Company Information */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Company Information
-                </span>
-              </div>
-
-              {/* Step 2: Contact Person */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Contact Person
-                </span>
-              </div>
-
-              {/* Step 3: Declaration */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Declaration
-                </span>
-              </div>
-
-              {/* Step 4: Account Preferences */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Account Preferences
-                </span>
-              </div>
-
-              {/* Step 5: Add Bank account */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center relative z-10">
-                  <span className="text-white text-base font-bold">✓</span>
-                </div>
-                <span className="text-sm font-bold text-black mt-2 text-center leading-tight">
-                  Add Bank account
-                </span>
-              </div>
-
-              {/* Step 6: Verification */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 rounded-full bg-bg-light border-2 border-border flex items-center justify-center relative z-10">
-                  <span className="text-black text-sm font-bold">5</span>
-                </div>
-                <span className="text-sm font-medium text-black mt-2 text-center leading-tight">
-                  Verification
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <OnboardingProgressBar currentStep={5} />
 
         {/* ADD BANK ACCOUNT Heading */}
         <h2 className="text-2xl font-bold text-black uppercase">
@@ -478,10 +411,10 @@ export default function AddPaymentMethodPage() {
               <Button
                 type="button"
                 variant="secondary"
-                className="bg-bg-light text-black hover:bg-bg-medium font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
                 onClick={() => router.push("/vendor/account-preferences")}
               >
-                BACK
+                Previous
               </Button>
               <Button
                 type="submit"
