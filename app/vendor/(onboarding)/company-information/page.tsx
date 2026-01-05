@@ -118,7 +118,7 @@ export default function CompanyInformationPage() {
   const form = useForm<CompanyInformationFormValues>({
     resolver: zodResolver(companyInformationSchema),
     defaultValues: {
-      countryOfRegistration: "ae",
+      countryOfRegistration: "United Arab Emirates",
       registeredCompanyName: "",
       yearOfEstablishment: "",
       tradeBrandName: "",
@@ -238,7 +238,7 @@ export default function CompanyInformationPage() {
     name: "countryOfRegistration",
   });
   const selectedCountry = (countries as Country[]).find(
-    (c) => c.value === countryOfRegistration
+    (c) => c.label === countryOfRegistration
   );
 
   return (
@@ -278,7 +278,7 @@ export default function CompanyInformationPage() {
                               <option value="">Loading countries...</option>
                             ) : (
                               (countries as Country[]).map((country) => (
-                                <option key={country.value} value={country.value}>
+                                <option key={country.value} value={country.label}>
                                   {country.label}
                                 </option>
                               ))

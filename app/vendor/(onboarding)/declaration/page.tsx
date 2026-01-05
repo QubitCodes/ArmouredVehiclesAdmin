@@ -224,11 +224,11 @@ export default function DeclarationPage() {
     );
   };
 
-  const handleRemoveCountry = (countryValue: string) => {
+  const handleRemoveCountry = (countryName: string) => {
     const current = form.getValues("operatingCountries");
     form.setValue(
       "operatingCountries",
-      current.filter((c) => c !== countryValue)
+      current.filter((c) => c !== countryName)
     );
   };
 
@@ -237,18 +237,18 @@ export default function DeclarationPage() {
   );
 
   const handleCountryCheckboxChange = (
-    countryValue: string,
+    countryName: string,
     checked: boolean
   ) => {
     const current = form.getValues("operatingCountries");
     if (checked) {
-      if (!current.includes(countryValue)) {
-        form.setValue("operatingCountries", [...current, countryValue]);
+      if (!current.includes(countryName)) {
+        form.setValue("operatingCountries", [...current, countryName]);
       }
     } else {
       form.setValue(
         "operatingCountries",
-        current.filter((c) => c !== countryValue)
+        current.filter((c) => c !== countryName)
       );
     }
   };
@@ -738,14 +738,14 @@ export default function DeclarationPage() {
                           {/* Selected Tags */}
                           {selectedCountries.length > 0 ? (
                             <>
-                              {selectedCountries.map((countryValue) => {
+                              {selectedCountries.map((countryName) => {
                                 const country = countryOptions.find(
-                                  (c: Country) => c.value === countryValue
+                                  (c: Country) => c.label === countryName
                                 );
                                 if (!country) return null;
                                 return (
                                   <div
-                                    key={countryValue}
+                                    key={countryName}
                                     className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5 rounded"
                                     onClick={(e) => e.stopPropagation()}
                                   >
@@ -757,7 +757,7 @@ export default function DeclarationPage() {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleRemoveCountry(countryValue);
+                                        handleRemoveCountry(countryName);
                                       }}
                                       className="hover:opacity-70 transition-opacity p-0.5 shrink-0"
                                     >
@@ -827,7 +827,7 @@ export default function DeclarationPage() {
                                     : countryOptions
                                   ).map((country: Country) => {
                                     const isSelected = selectedCountries.includes(
-                                      country.value
+                                      country.label
                                     );
                                     return (
                                       <label
@@ -839,7 +839,7 @@ export default function DeclarationPage() {
                                           checked={isSelected}
                                           onCheckedChange={(checked) => {
                                             handleCountryCheckboxChange(
-                                              country.value,
+                                              country.label,
                                               checked as boolean
                                             );
                                           }}

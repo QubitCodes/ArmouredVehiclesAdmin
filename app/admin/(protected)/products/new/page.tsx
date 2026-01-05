@@ -31,9 +31,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { DateSelector } from "@/components/ui/date-selector";
-import { useCreateProduct, useUpdateProduct } from "@/hooks/admin/product-management/use-products";
-import { useMainCategories, useCategoriesByParent } from "@/hooks/admin/product-management/use-categories";
-import type { CreateProductRequest, UpdateProductRequest, Product } from "@/services/admin/product.service";
+import {
+  useCreateProduct,
+  useUpdateProduct,
+} from "@/hooks/admin/product-management/use-products";
+import {
+  useMainCategories,
+  useCategoriesByParent,
+} from "@/hooks/admin/product-management/use-categories";
+import type {
+  CreateProductRequest,
+  UpdateProductRequest,
+  Product,
+} from "@/services/admin/product.service";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -236,11 +246,13 @@ export default function NewProductPage() {
 
   // Watch mainCategoryId to fetch categories when it changes
   const mainCategoryId = form.watch("mainCategoryId");
-  const { data: categories = [], isLoading: isLoadingCategories } = useCategoriesByParent(mainCategoryId);
-  
+  const { data: categories = [], isLoading: isLoadingCategories } =
+    useCategoriesByParent(mainCategoryId);
+
   // Watch categoryId to fetch subcategories when it changes
   const categoryId = form.watch("categoryId");
-  const { data: subCategories = [], isLoading: isLoadingSubCategories } = useCategoriesByParent(categoryId);
+  const { data: subCategories = [], isLoading: isLoadingSubCategories } =
+    useCategoriesByParent(categoryId);
 
   const materials = form.watch("materials") || [];
   const features = form.watch("features") || [];
@@ -331,12 +343,15 @@ export default function NewProductPage() {
     return isValid;
   };
 
-  const cleanDataForApi = (data: ProductFormValues, fields: string[]): Record<string, unknown> => {
+  const cleanDataForApi = (
+    data: ProductFormValues,
+    fields: string[]
+  ): Record<string, unknown> => {
     const cleanedData: Record<string, unknown> = {};
-    
+
     fields.forEach((field) => {
       const value = data[field as keyof ProductFormValues];
-      
+
       if (field === "signatureDate") {
         // Handle signatureDate object specially
         if (value && typeof value === "object") {
@@ -358,7 +373,7 @@ export default function NewProductPage() {
         cleanedData[field] = value;
       }
     });
-    
+
     return cleanedData;
   };
 
@@ -373,18 +388,20 @@ export default function NewProductPage() {
       if (currentStep === 1) {
         // Step 1: POST basic information
         const basicInfoData = cleanDataForApi(formData, currentSection.fields);
-        
+
         const response = await createProductMutation.mutateAsync(
           basicInfoData as unknown as CreateProductRequest
         );
-        
+
         // Extract product ID from response (could be response.id or response.data.id)
-        const productResponse = response as Product | { data?: Product; id?: string };
-        const newProductId = 
-          (productResponse as Product).id || 
+        const productResponse = response as
+          | Product
+          | { data?: Product; id?: string };
+        const newProductId =
+          (productResponse as Product).id ||
           (productResponse as { data?: Product }).data?.id ||
           (productResponse as { id?: string }).id;
-        
+
         if (newProductId) {
           setProductId(String(newProductId));
           toast.success("Product created successfully!");
@@ -401,14 +418,14 @@ export default function NewProductPage() {
         }
 
         const updateData = cleanDataForApi(formData, currentSection.fields);
-        
+
         await updateProductMutation.mutateAsync({
           id: productId,
           data: updateData as UpdateProductRequest,
         });
-        
+
         toast.success("Product updated successfully!");
-        
+
         if (currentStep < SECTIONS.length) {
           setCurrentStep(currentStep + 1);
           window.scrollTo({ top: 0, behavior: "smooth" });
@@ -424,10 +441,11 @@ export default function NewProductPage() {
         error?: string;
       }>;
 
-      let errorMessage = currentStep === 1 
-        ? "Failed to create product. Please try again."
-        : "Failed to update product. Please try again.";
-      
+      let errorMessage =
+        currentStep === 1
+          ? "Failed to create product. Please try again."
+          : "Failed to update product. Please try again.";
+
       if (axiosError?.response?.data?.message) {
         errorMessage = axiosError.response.data.message;
       } else if (axiosError?.response?.data?.error) {
@@ -445,7 +463,6 @@ export default function NewProductPage() {
     }
   };
 
-
   const renderStepContent = (stepId: number) => {
     switch (stepId) {
       case 1:
@@ -461,16 +478,116 @@ export default function NewProductPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Product Name *</FormLabel>
-                      <FormControl>
-                        <Input
+                    <FormControl>
+                      <Input
                         placeholder="Clear title (e.g., BR6 Ballistic Glass Kit for Toyota LC300)"
                         {...field}
-                        />
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 md:grid-cols-3 py-6">
+                <FormField
+                  control={form.control}
+                  name="mainCategoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Main Category</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value?.toString() || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(
+                              val === "" ? undefined : parseInt(val)
+                            );
+                            // Reset category and subcategory when main category changes
+                            form.setValue("categoryId", undefined);
+                            form.setValue("subCategoryId", undefined);
+                          }}
+                          placeholder="Select Main Category"
+                          disabled={isLoadingCategories}
+                        >
+                          <option value="">Select Main Category</option>
+                          {mainCategories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Category</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value?.toString() || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(
+                              val === "" ? undefined : parseInt(val)
+                            );
+                            // Reset subcategory when category changes
+                            form.setValue("subCategoryId", undefined);
+                          }}
+                          placeholder="Select Category"
+                          disabled={!mainCategoryId || isLoadingSubCategories}
+                        >
+                          <option value="">Select Category</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="subCategoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Subcategory</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value?.toString() || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(
+                              val === "" ? undefined : parseInt(val)
+                            );
+                          }}
+                          placeholder="Select Subcategory"
+                          disabled={!categoryId || isLoadingSubCategories}
+                        >
+                          <option value="">Select Subcategory</option>
+                          {subCategories.map((subCategory) => (
+                            <option key={subCategory.id} value={subCategory.id}>
+                              {subCategory.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}
@@ -489,136 +606,39 @@ export default function NewProductPage() {
                 )}
               />
 
-              <div className="grid gap-4 md:grid-cols-3 py-6">
-                  <FormField
-                    control={form.control}
-                    name="mainCategoryId"
-                    render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Select Main Category</FormLabel>
-                        <FormControl>
-                        <Select
-                          value={field.value?.toString() || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(
-                                val === "" ? undefined : parseInt(val)
-                              );
-                            // Reset category and subcategory when main category changes
-                            form.setValue("categoryId", undefined);
-                            form.setValue("subCategoryId", undefined);
-                          }}
-                          placeholder="Select Main Category"
-                          disabled={isLoadingCategories}
-                        >
-                          <option value="">Select Main Category</option>
-                          {mainCategories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                        </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="categoryId"
-                    render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Select Category</FormLabel>
-                        <FormControl>
-                        <Select
-                          value={field.value?.toString() || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(
-                                val === "" ? undefined : parseInt(val)
-                              );
-                            // Reset subcategory when category changes
-                            form.setValue("subCategoryId", undefined);
-                          }}
-                          placeholder="Select Category"
-                          disabled={!mainCategoryId || isLoadingSubCategories}
-                        >
-                          <option value="">Select Category</option>
-                          {categories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                        </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="subCategoryId"
-                    render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Select Subcategory</FormLabel>
-                        <FormControl>
-                        <Select
-                          value={field.value?.toString() || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(
-                                val === "" ? undefined : parseInt(val)
-                              );
-                            }}
-                          placeholder="Select Subcategory"
-                          disabled={!categoryId || isLoadingSubCategories}
-                        >
-                          <option value="">Select Subcategory</option>
-                          {subCategories.map((subCategory) => (
-                            <option key={subCategory.id} value={subCategory.id}>
-                              {subCategory.name}
-                            </option>
-                          ))}
-                        </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                  <FormField
-                    control={form.control}
+              <FormField
+                control={form.control}
                 name="certifications"
-                    render={({ field }) => (
-                      <FormItem>
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>Certifications / Standards</FormLabel>
-                        <FormControl>
-                          <Input
+                    <FormControl>
+                      <Input
                         placeholder="e.g., CEN BR6, STANAG 4569, MIL-STD, DOT, ISO"
                         {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
+              <FormField
+                control={form.control}
                 name="controlledItemType"
-                    render={({ field }) => (
-                      <FormItem>
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>Controlled Item Type</FormLabel>
-                        <FormControl>
-                      <Input placeholder="e.g., MOD/EOCN Controlled, Dual-use item, ITAR-regulated, DG, Not Controlled" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., MOD/EOCN Controlled, Dual-use item, ITAR-regulated, DG, Not Controlled"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
@@ -638,13 +658,13 @@ export default function NewProductPage() {
                   )}
                 />
 
-                  <FormField
-                    control={form.control}
-                    name="countryOfOrigin"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country of Origin</FormLabel>
-                        <FormControl>
+                <FormField
+                  control={form.control}
+                  name="countryOfOrigin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country of Origin</FormLabel>
+                      <FormControl>
                         <Select
                           value={field.value || ""}
                           onChange={field.onChange}
@@ -656,12 +676,12 @@ export default function NewProductPage() {
                           <option value="UK">United Kingdom</option>
                           <option value="GER">Germany</option>
                         </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="grid gap-4 md:grid-cols-3">
                 <FormField
@@ -720,23 +740,23 @@ export default function NewProductPage() {
                 />
               </div>
 
-                <FormField
-                  control={form.control}
+              <FormField
+                control={form.control}
                 name="description"
-                  render={({ field }) => (
-                    <FormItem>
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>Description</FormLabel>
-                      <FormControl>
+                    <FormControl>
                       <textarea
                         className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
                         placeholder="General product description"
                         {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
         );
@@ -745,103 +765,103 @@ export default function NewProductPage() {
         return (
           <div className="space-y-6">
             {/* Technical Specifications Section */}
-          <Card>
-            <CardHeader>
+            <Card>
+              <CardHeader>
                 <CardTitle>TECHNICAL SPECIFICATIONS:</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-4">
-                <FormField
-                  control={form.control}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-4">
+                  <FormField
+                    control={form.control}
                     name="dimensionLength"
-                  render={({ field }) => (
-                    <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Dimensions - Length</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
+                        <FormControl>
+                          <Input
+                            type="number"
                             step="0.1"
                             placeholder="120.5"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
-                              val === "" ? undefined : parseFloat(val)
-                            );
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(
+                                val === "" ? undefined : parseFloat(val)
+                              );
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
+                  <FormField
+                    control={form.control}
                     name="dimensionWidth"
-                  render={({ field }) => (
-                    <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Width</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
+                        <FormControl>
+                          <Input
+                            type="number"
                             step="0.1"
                             placeholder="80.3"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
-                              val === "" ? undefined : parseFloat(val)
-                            );
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(
+                                val === "" ? undefined : parseFloat(val)
+                              );
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
+                  <FormField
+                    control={form.control}
                     name="dimensionHeight"
-                  render={({ field }) => (
-                    <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Height</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
+                        <FormControl>
+                          <Input
+                            type="number"
                             step="0.1"
                             placeholder="5.2"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
-                              val === "" ? undefined : parseFloat(val)
-                            );
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(
+                                val === "" ? undefined : parseFloat(val)
+                              );
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
+                  <FormField
+                    control={form.control}
                     name="dimensionUnit"
-                  render={({ field }) => (
-                    <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Unit</FormLabel>
-                      <FormControl>
+                        <FormControl>
                           <Select
                             value={field.value || "mm"}
                             onChange={field.onChange}
@@ -852,116 +872,116 @@ export default function NewProductPage() {
                             <option value="m">m</option>
                             <option value="in">inches</option>
                           </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-              <div>
-                <Label className="mb-2 block">Materials</Label>
-                {materials.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("materials", index, e.target.value)
-                      }
-                      placeholder="Hardened Steel"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("materials", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("materials")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Material
-                </Button>
-              </div>
+                <div>
+                  <Label className="mb-2 block">Materials</Label>
+                  {materials.map((item, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        onChange={(e) =>
+                          updateArrayItem("materials", index, e.target.value)
+                        }
+                        placeholder="Hardened Steel"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("materials", index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem("materials")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Material
+                  </Button>
+                </div>
 
-              <div>
-                <Label className="mb-2 block">Features</Label>
-                {features.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("features", index, e.target.value)
-                      }
-                      placeholder="Blast Resistant"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("features", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("features")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Feature
-                </Button>
-              </div>
+                <div>
+                  <Label className="mb-2 block">Features</Label>
+                  {features.map((item, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        onChange={(e) =>
+                          updateArrayItem("features", index, e.target.value)
+                        }
+                        placeholder="Blast Resistant"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("features", index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem("features")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Feature
+                  </Button>
+                </div>
 
-              <div>
-                <Label className="mb-2 block">Performance</Label>
-                {performance.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("performance", index, e.target.value)
-                      }
-                      placeholder="Stops 7.62x51mm NATO"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("performance", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("performance")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Performance
-                </Button>
-              </div>
+                <div>
+                  <Label className="mb-2 block">Performance</Label>
+                  {performance.map((item, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        onChange={(e) =>
+                          updateArrayItem("performance", index, e.target.value)
+                        }
+                        placeholder="Stops 7.62x51mm NATO"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("performance", index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem("performance")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Performance
+                  </Button>
+                </div>
 
-              <div>
+                <div>
                   <Label className="mb-2 block">Specifications</Label>
                   {specifications.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        onChange={(e) =>
                           updateArrayItem(
                             "specifications",
                             index,
@@ -969,27 +989,27 @@ export default function NewProductPage() {
                           )
                         }
                         placeholder="STANAG Level 2"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
                         onClick={() => removeArrayItem("specifications", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => addArrayItem("specifications")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Specification
-                </Button>
-              </div>
+                  </Button>
+                </div>
 
                 <FormField
                   control={form.control}
@@ -1055,144 +1075,144 @@ export default function NewProductPage() {
                   </Button>
                 </div>
 
-              <div>
-                <Label className="mb-2 block">Sizes</Label>
-                {sizes.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("sizes", index, e.target.value)
-                      }
-                      placeholder="Standard"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("sizes", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("sizes")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Size
-                </Button>
-              </div>
+                <div>
+                  <Label className="mb-2 block">Sizes</Label>
+                  {sizes.map((item, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        onChange={(e) =>
+                          updateArrayItem("sizes", index, e.target.value)
+                        }
+                        placeholder="Standard"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("sizes", index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem("sizes")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Size
+                  </Button>
+                </div>
 
-              <div>
-                <Label className="mb-2 block">Thickness</Label>
-                {thickness.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("thickness", index, e.target.value)
-                      }
-                      placeholder="25mm"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("thickness", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("thickness")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Thickness
-                </Button>
-              </div>
+                <div>
+                  <Label className="mb-2 block">Thickness</Label>
+                  {thickness.map((item, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        onChange={(e) =>
+                          updateArrayItem("thickness", index, e.target.value)
+                        }
+                        placeholder="25mm"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("thickness", index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem("thickness")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Thickness
+                  </Button>
+                </div>
 
-              <div>
+                <div>
                   <Label className="mb-2 block">Color Options</Label>
-                {colors.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("colors", index, e.target.value)
-                      }
-                      placeholder="Black"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("colors", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("colors")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Color
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  {colors.map((item, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        onChange={(e) =>
+                          updateArrayItem("colors", index, e.target.value)
+                        }
+                        placeholder="Black"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("colors", index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem("colors")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Color
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Weight and Dimensions Section */}
-          <Card>
-            <CardHeader>
+            <Card>
+              <CardHeader>
                 <CardTitle>Weight and Dimensions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-3">
-                <FormField
-                  control={form.control}
+                  <FormField
+                    control={form.control}
                     name="weightValue"
-                  render={({ field }) => (
-                    <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Weight (per unit)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
+                        <FormControl>
+                          <Input
+                            type="number"
                             step="0.1"
                             placeholder="Eg. 1.2"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(
                                 val === "" ? undefined : parseFloat(val)
-                            );
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                              );
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
+                  <FormField
+                    control={form.control}
                     name="weightUnit"
-                  render={({ field }) => (
-                    <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Unit</FormLabel>
                         <FormControl>
                           <Select
@@ -1218,35 +1238,35 @@ export default function NewProductPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Packing Weight (gross)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
+                        <FormControl>
+                          <Input
+                            type="number"
                             step="0.1"
                             placeholder="Eg. 1.2"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(
                                 val === "" ? undefined : parseFloat(val)
-                            );
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                              );
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
+                  <FormField
+                    control={form.control}
                     name="packingWeightUnit"
-                  render={({ field }) => (
-                    <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Unit</FormLabel>
-                      <FormControl>
+                        <FormControl>
                           <Select
                             value={field.value || "kg"}
                             onChange={field.onChange}
@@ -1256,11 +1276,11 @@ export default function NewProductPage() {
                             <option value="g">g</option>
                             <option value="lb">lb</option>
                           </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div>
@@ -1268,13 +1288,13 @@ export default function NewProductPage() {
                     Packing Dimensions (L × W × H)
                   </FormLabel>
                   <div className="grid gap-4 md:grid-cols-4">
-                <FormField
-                  control={form.control}
+                    <FormField
+                      control={form.control}
                       name="packingLength"
-                  render={({ field }) => (
-                    <FormItem>
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Length</FormLabel>
-                      <FormControl>
+                          <FormControl>
                             <Input
                               type="number"
                               step="0.1"
@@ -1290,47 +1310,47 @@ export default function NewProductPage() {
                               name={field.name}
                               ref={field.ref}
                             />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
+                    <FormField
+                      control={form.control}
                       name="packingWidth"
-                  render={({ field }) => (
-                    <FormItem>
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Width</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
+                          <FormControl>
+                            <Input
+                              type="number"
                               step="0.1"
                               placeholder="Eg. 90"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
+                              value={field.value ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(
                                   val === "" ? undefined : parseFloat(val)
-                            );
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                                );
+                              }}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
+                    <FormField
+                      control={form.control}
                       name="packingHeight"
-                  render={({ field }) => (
-                    <FormItem>
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Height</FormLabel>
-                      <FormControl>
+                          <FormControl>
                             <Input
                               type="number"
                               step="0.1"
@@ -1346,22 +1366,22 @@ export default function NewProductPage() {
                               name={field.name}
                               ref={field.ref}
                             />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
+                    <FormField
+                      control={form.control}
                       name="packingDimensionUnit"
-                  render={({ field }) => (
+                      render={({ field }) => (
                         <FormItem>
                           <FormLabel>Unit</FormLabel>
-                      <FormControl>
+                          <FormControl>
                             <Select
                               value={field.value || "inches"}
-                          onChange={field.onChange}
+                              onChange={field.onChange}
                               placeholder="Unit"
                             >
                               <option value="cm">cm</option>
@@ -1500,13 +1520,13 @@ export default function NewProductPage() {
                 </Button>
               </div>
 
-                <FormField
-                  control={form.control}
+              <FormField
+                control={form.control}
                 name="productionLeadTime"
-                  render={({ field }) => (
-                    <FormItem>
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>Production Lead Time (in days)</FormLabel>
-                      <FormControl>
+                    <FormControl>
                       <Input
                         type="number"
                         placeholder="Enter days required to produce one order"
@@ -1521,19 +1541,19 @@ export default function NewProductPage() {
                         name={field.name}
                         ref={field.ref}
                       />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={form.control}
+              <FormField
+                control={form.control}
                 name="readyStockAvailable"
-                  render={({ field }) => (
+                render={({ field }) => (
                   <FormItem className="pt-6 pb-3">
                     <FormLabel>Ready Stock Available?</FormLabel>
-                      <FormControl>
+                    <FormControl>
                       <RadioGroup
                         value={
                           field.value === true
@@ -1548,11 +1568,11 @@ export default function NewProductPage() {
                         <RadioGroupItem value="yes" label="Yes" />
                         <RadioGroupItem value="no" label="No" />
                       </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
@@ -1677,18 +1697,18 @@ export default function NewProductPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 pb-6">
-              <FormField
-                control={form.control}
+                <FormField
+                  control={form.control}
                   name="manufacturingSource"
-                render={({ field }) => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>
                         Is this product manufactured in-house or sourced?
                       </FormLabel>
-                    <FormControl>
+                      <FormControl>
                         <Select
                           value={field.value || ""}
-                        onChange={field.onChange}
+                          onChange={field.onChange}
                           placeholder="Select"
                         >
                           <option value="">Select</option>
@@ -1714,8 +1734,8 @@ export default function NewProductPage() {
                           <Input
                             placeholder="e.g., Blueweb Auto Industries LLC"
                             {...field}
-                      />
-                    </FormControl>
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1868,19 +1888,19 @@ export default function NewProductPage() {
                 </>
               )}
 
-                  <FormField
-                    control={form.control}
+              <FormField
+                control={form.control}
                 name="complianceConfirmed"
-                    render={({ field }) => (
+                render={({ field }) => (
                   <FormItem className="flex items-center space-x-3 space-y-0 pt-6 pb-3">
-                        <FormControl>
+                    <FormControl>
                       <input
                         type="checkbox"
                         checked={field.value || false}
                         onChange={field.onChange}
                         className="h-4 w-4 mt-1"
-                          />
-                        </FormControl>
+                      />
+                    </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>
                         I confirm that the above product listing is truthful,
@@ -1888,27 +1908,27 @@ export default function NewProductPage() {
                         any export or import controls.
                       </FormLabel>
                     </div>
-                      </FormItem>
-                    )}
-                  />
-
-              <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                  name="supplierSignature"
-                render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Supplier Digital Signature / Name:</FormLabel>
-                    <FormControl>
-                      <Input
-                          placeholder="Supplier Digital Signature / Name"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="supplierSignature"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Supplier Digital Signature / Name:</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Supplier Digital Signature / Name"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
@@ -1992,7 +2012,7 @@ export default function NewProductPage() {
       </div>
 
       <Form {...form}>
-        <form 
+        <form
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -2026,7 +2046,10 @@ export default function NewProductPage() {
               type="button"
               variant="outline"
               onClick={() => router.back()}
-              disabled={createProductMutation.isPending || updateProductMutation.isPending}
+              disabled={
+                createProductMutation.isPending ||
+                updateProductMutation.isPending
+              }
             >
               Cancel
             </Button>
@@ -2036,19 +2059,27 @@ export default function NewProductPage() {
                 type="button"
                 variant="outline"
                 onClick={handlePrevious}
-                disabled={currentStep === 1 || createProductMutation.isPending || updateProductMutation.isPending}
+                disabled={
+                  currentStep === 1 ||
+                  createProductMutation.isPending ||
+                  updateProductMutation.isPending
+                }
               >
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Previous
               </Button>
 
               {currentStep < SECTIONS.length ? (
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={handleNext}
-                  disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                  disabled={
+                    createProductMutation.isPending ||
+                    updateProductMutation.isPending
+                  }
                 >
-                  {createProductMutation.isPending || updateProductMutation.isPending ? (
+                  {createProductMutation.isPending ||
+                  updateProductMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {currentStep === 1 ? "Creating..." : "Updating..."}

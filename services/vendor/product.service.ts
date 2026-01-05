@@ -18,6 +18,7 @@ export interface Product {
 
 export interface CreateProductRequest {
   name: string;
+  vendorId?: string | number;
   sku?: string;
   mainCategoryId?: number;
   categoryId?: number;

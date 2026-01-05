@@ -11,8 +11,10 @@ import { useState, useRef } from "react";
 import { useFinancialInstitutions } from "@/hooks/vendor/dashboard/use-financial-institutions";
 import { useProofTypes } from "@/hooks/vendor/dashboard/use-proof-types";
 import { useOnboardingStep5 } from "@/hooks/vendor/dashboard/use-onboarding-step5";
+import { useCountries, type Country } from "@/hooks/vendor/dashboard/use-countries";
 import { Spinner } from "@/components/ui/spinner";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,13 +58,14 @@ export default function AddPaymentMethodPage() {
   } = useFinancialInstitutions();
   const { data: proofTypesData = [], isLoading: isProofTypesLoading } =
     useProofTypes();
+  const { data: countries = [], isLoading: isCountriesLoading } = useCountries();
   
   const step5Mutation = useOnboardingStep5();
 
   const form = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(paymentMethodSchema),
     defaultValues: {
-      bankCountry: "AE",
+      bankCountry: "United Arab Emirates",
       financialInstitution: "",
       swiftCode: "",
       bankAccountNumber: "",
@@ -168,20 +171,17 @@ export default function AddPaymentMethodPage() {
                         Country
                       </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <select
-                            {...field}
-                            className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
-                          >
-                            <option value="AE">🇦🇪 United Arab Emirates</option>
-                            <option value="SA">🇸🇦 Saudi Arabia</option>
-                            <option value="KW">🇰🇼 Kuwait</option>
-                            <option value="QA">🇶🇦 Qatar</option>
-                            <option value="BH">🇧🇭 Bahrain</option>
-                            <option value="OM">🇴🇲 Oman</option>
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                        </div>
+                        <SearchableSelect
+                          options={(countries as Country[]).map((country) => ({
+                            value: country.label,
+                            label: country.label,
+                            flag: country.flag,
+                          }))}
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          placeholder="Select Country"
+                          disabled={isCountriesLoading}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
