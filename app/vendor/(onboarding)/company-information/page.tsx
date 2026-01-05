@@ -135,6 +135,24 @@ export default function CompanyInformationPage() {
     },
   });
 
+  // {
+  //   "countryOfRegistration": "string",
+  //   "registeredCompanyName": "string",
+  //   "tradeBrandName": "string",
+  //   "yearOfEstablishment": 0,
+  //   "legalEntityId": "string",
+  //   "legalEntityIssueDate": "2026-01-05",
+  //   "legalEntityExpiryDate": "2026-01-05",
+  //   "cityOfficeAddress": "string",
+  //   "officialWebsite": "string",
+  //   "entityType": "manufacturer",
+  //   "dunsNumber": "string",
+  //   "vatCertificateFile": "string",
+  //   "taxVatNumber": "string",
+  //   "taxIssuingDate": "2026-01-05",
+  //   "taxExpiryDate": "2026-01-05"
+  // }
+
   // Auto-fill company name when profile data is available
   useEffect(() => {
     if (profileData && !isProfileLoading) {
@@ -191,21 +209,16 @@ export default function CompanyInformationPage() {
         officialWebsite: data.officialWebsite || undefined,
         entityType: data.entityType,
         dunsNumber: data.dunsNumber || undefined,
-        vatCertificate: data.vatCertificate as File | undefined,
+        vatCertificateFile: data.vatCertificate as File | undefined,
         taxVatNumber: data.taxVatNumber || undefined,
         taxIssuingDate: data.taxIssueDate ? dateObjectToISOString(data.taxIssueDate) : undefined,
         taxExpiryDate: data.taxExpiryDate ? dateObjectToISOString(data.taxExpiryDate) : undefined,
       };
 
-      console.log("Payload:", payload);
-      console.log("File:", data.vatCertificate);
-
-
-
-      // await step1Mutation.mutateAsync(payload);
+      await step1Mutation.mutateAsync(payload);
       toast.success("Company information saved successfully!");
       // Redirect to contact-person page
-      // router.push("/vendor/contact-person");
+      router.push("/vendor/contact-person");
     } catch (error) {
       const axiosError = error as AxiosError<{
         message?: string;

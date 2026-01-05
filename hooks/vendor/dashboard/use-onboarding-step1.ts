@@ -14,7 +14,7 @@ export interface OnboardingStep1Request {
   officialWebsite?: string;
   entityType: string;
   dunsNumber?: string;
-  vatCertificate?: File;
+  vatCertificateFile?: File;
   taxVatNumber?: string;
   taxIssuingDate?: string;
   taxExpiryDate?: string;
@@ -56,8 +56,8 @@ export function useOnboardingStep1() {
       if (data.dunsNumber) {
         formData.append("dunsNumber", data.dunsNumber);
       }
-      if (data.vatCertificate) {
-        formData.append("vatCertificate", data.vatCertificate);
+      if (data.vatCertificateFile) {
+        formData.append("vatCertificateFile", data.vatCertificateFile);
       }
       if (data.taxVatNumber) {
         formData.append("taxVatNumber", data.taxVatNumber);
