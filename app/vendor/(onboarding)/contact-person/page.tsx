@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { Info, Upload, ArrowLeft, X, ChevronDown } from "lucide-react";
+import { Info, Upload, X, ChevronDown } from "lucide-react";
 import { useState, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,6 @@ export default function ContactPersonPage() {
     defaultValues: {
       fullName: "",
       jobTitle: "",
-      passport: undefined,
       workEmail: "",
       phoneCountryCode: "971",
       phoneNumber: "",
@@ -113,9 +112,9 @@ export default function ContactPersonPage() {
       // Prepare API payload
       const payload = {
         contactFullName: data.fullName,
-        contactJobTitle: data.jobTitle,
+        contactJobTitle: data.jobTitle || undefined,
         contactWorkEmail: data.workEmail,
-        contactIdDocumentUrl: "demo",
+        contactIdDocumentFile: data.passport as File | undefined,
         contactMobile: data.phoneNumber,
         contactMobileCountryCode: selectedPhoneCode?.code || `+${data.phoneCountryCode}`,
         termsAccepted: data.confirmAccuracy,
