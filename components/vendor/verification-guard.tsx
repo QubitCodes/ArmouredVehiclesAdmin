@@ -127,7 +127,15 @@ export function VerificationGuard({ children }: { children: React.ReactNode }) {
         }
         return;
       }
-      // If onboarding is completed or in other statuses (pending_verification, under_review, approved, rejected, suspended), allow access to protected routes
+      // If onboarding is NOT pending or in_progress, redirect to dashboard
+      // Statuses: pending_verification, under_review, approved, rejected, suspended
+      const isOnOnboardingRoute = Object.values(ONBOARDING_STEP_ROUTES).some(
+        (route) => pathname?.startsWith(route)
+      );
+      if (isOnOnboardingRoute && pathname !== "/vendor") {
+        router.push("/vendor");
+        return;
+      }
     }
   }, [
     data,

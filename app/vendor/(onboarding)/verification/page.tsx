@@ -7,7 +7,9 @@ import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useVerificationMethods } from "@/hooks/vendor/dashboard/use-verification-methods";
+import { useSubmitVerification } from "@/hooks/vendor/dashboard/use-submit-verification";
 import { Spinner } from "@/components/ui/spinner";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
 
@@ -28,8 +30,11 @@ type VerificationFormValues = z.infer<typeof verificationSchema>;
 
 export default function VerificationPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: verificationMethods = [], isLoading: isMethodsLoading } =
     useVerificationMethods();
+    
+  const submitVerificationMutation = useSubmitVerification();
 
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationSchema),
@@ -48,17 +53,24 @@ export default function VerificationPage() {
         (method) => method.isAvailable
       );
       if (defaultMethod) {
-        form.setValue("verificationMethod", defaultMethod.id.toString());
+        form.setValue("verificationMethod", defaultMethod.name);
       }
     }
   }, [verificationMethods, form]);
 
   const onSubmit = async (data: VerificationFormValues) => {
     try {
-      // TODO: Implement API call to submit verification method
-      console.log("Verification method selected:", data.verificationMethod);
+      const payload = {
+        verificationMethod: data.verificationMethod,
+      };
+
+      await submitVerificationMutation.mutateAsync(payload);
+      
+      // Invalidate onboarding progress to refetch updated status
+      await queryClient.invalidateQueries({ queryKey: ["vendor-onboarding-progress"] });
+      
       toast.success("Verification preference submitted successfully!");
-      // Redirect to dashboard or next step
+      // Redirect to dashboard
       router.push("/vendor");
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -123,7 +135,7 @@ export default function VerificationPage() {
                             .sort((a, b) => a.displayOrder - b.displayOrder)
                             .map((method) => {
                               const isSelected =
-                                field.value === method.id.toString();
+                                field.value === method.name;
                               const isDisabled = !method.isAvailable;
 
                               return (
@@ -140,7 +152,7 @@ export default function VerificationPage() {
                                   }`}
                                   onClick={() => {
                                     if (method.isAvailable) {
-                                      field.onChange(method.id.toString());
+                                      field.onChange(method.name);
                                     }
                                   }}
                                 >
@@ -213,9 +225,17 @@ export default function VerificationPage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[300px] h-[48px]"
+                disabled={submitVerificationMutation.isPending}
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[300px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Submit for Approval
+                {submitVerificationMutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner size="sm" className="text-white" />
+                    SUBMITTING...
+                  </span>
+                ) : (
+                  "Submit for Approval"
+                )}
               </Button>
             </div>
           </form>
