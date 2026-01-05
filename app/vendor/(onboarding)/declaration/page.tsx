@@ -41,28 +41,64 @@ const declarationSchema = z.object({
     .min(1, "Please select at least one country"),
   countryInput: z.string().optional(),
   onSanctionsList: z.enum(["yes", "no"]),
-  businessLicense: z.any().refine((file) => file !== undefined && file instanceof File, {
+  businessLicenseFile: z.any().refine((file) => file !== undefined && file instanceof File, {
     message: "Business License is required",
   }),
-  companyProfile: z.any().optional(),
-  licenseFiles: z.record(z.string(), z.any()).optional(),
+  companyProfileFile: z.any().optional(),
+  modLicenseFile: z.any().optional(),
+  eocnApprovalFile: z.any().optional(),
+  itarRegistrationFile: z.any().optional(),
+  localAuthorityApprovalFile: z.any().optional(),
   agreeToCompliance: z.boolean().refine((val) => val === true, {
     message: "You must agree to the compliance terms",
   }),
 }).refine(
   (data) => {
-    // If licenses are selected, all must have files
-    if (data.licenses && data.licenses.length > 0) {
-      const licenseFiles = data.licenseFiles || {};
-      return data.licenses.every(
-        (license) => licenseFiles[license] && licenseFiles[license] instanceof File
-      );
+    // If authority_license is selected, modLicenseFile is required
+    if (data.licenses.includes("authority_license")) {
+      return data.modLicenseFile !== undefined && data.modLicenseFile instanceof File;
     }
     return true;
   },
   {
-    message: "Please upload files for all selected licenses. License files are mandatory.",
-    path: ["licenseFiles"], // This will show the error on the licenseFiles field
+    message: "Please upload Authority License file. License files are mandatory.",
+    path: ["modLicenseFile"],
+  }
+).refine(
+  (data) => {
+    // If eocn is selected, eocnApprovalFile is required
+    if (data.licenses.includes("eocn")) {
+      return data.eocnApprovalFile !== undefined && data.eocnApprovalFile instanceof File;
+    }
+    return true;
+  },
+  {
+    message: "Please upload EOCN Approval file. License files are mandatory.",
+    path: ["eocnApprovalFile"],
+  }
+).refine(
+  (data) => {
+    // If itar is selected, itarRegistrationFile is required
+    if (data.licenses.includes("itar")) {
+      return data.itarRegistrationFile !== undefined && data.itarRegistrationFile instanceof File;
+    }
+    return true;
+  },
+  {
+    message: "Please upload ITAR Registration file. License files are mandatory.",
+    path: ["itarRegistrationFile"],
+  }
+).refine(
+  (data) => {
+    // If local is selected, localAuthorityApprovalFile is required
+    if (data.licenses.includes("local")) {
+      return data.localAuthorityApprovalFile !== undefined && data.localAuthorityApprovalFile instanceof File;
+    }
+    return true;
+  },
+  {
+    message: "Please upload Local approval from authorities file. License files are mandatory.",
+    path: ["localAuthorityApprovalFile"],
   }
 );
 
@@ -77,6 +113,14 @@ const licenseOptions = [
   { value: "local", label: "Local approval from authorities" },
   { value: "none", label: "None" },
 ];
+
+// License type to file field mapping
+const LICENSE_TO_FILE_FIELD: Record<string, string> = {
+  "authority_license": "modLicenseFile",
+  "eocn": "eocnApprovalFile",
+  "itar": "itarRegistrationFile",
+  "local": "localAuthorityApprovalFile",
+};
 
 
 export default function DeclarationPage() {
@@ -104,9 +148,12 @@ export default function DeclarationPage() {
       operatingCountries: [],
       countryInput: "",
       onSanctionsList: "no",
-      businessLicense: undefined,
-      companyProfile: undefined,
-      licenseFiles: {},
+      businessLicenseFile: undefined,
+      companyProfileFile: undefined,
+      modLicenseFile: undefined,
+      eocnApprovalFile: undefined,
+      itarRegistrationFile: undefined,
+      localAuthorityApprovalFile: undefined,
       agreeToCompliance: false,
     },
   });
@@ -116,18 +163,18 @@ export default function DeclarationPage() {
       // Map form data to API schema
       const payload = {
         natureOfBusiness: data.natureOfBusiness,
-        controlledDualUseItems: data.controlledDualUseItems || "",
+        controlledDualUseItems: data.controlledDualUseItems || undefined,
         licenseTypes: data.licenses,
         endUseMarkets: data.endUseMarket,
         operatingCountries: data.operatingCountries,
         isOnSanctionsList: data.onSanctionsList === "yes",
-        businessLicenseUrl: "demo", // Backend will handle file upload and generate URL
-        defenseApprovalUrl: "demo", // This field was removed from the form
-        companyProfileUrl: "demo", // Backend will handle file upload and generate URL
-        complianceTermsAccepted: data.agreeToCompliance === true, // Ensure it's explicitly true
-        businessLicense: data.businessLicense instanceof File ? data.businessLicense : undefined,
-        companyProfile: data.companyProfile instanceof File ? data.companyProfile : undefined,
-        licenseFiles: data.licenseFiles || {},
+        complianceTermsAccepted: data.agreeToCompliance === true,
+        businessLicenseFile: data.businessLicenseFile instanceof File ? data.businessLicenseFile : undefined,
+        companyProfileFile: data.companyProfileFile instanceof File ? data.companyProfileFile : undefined,
+        modLicenseFile: data.modLicenseFile instanceof File ? data.modLicenseFile : undefined,
+        eocnApprovalFile: data.eocnApprovalFile instanceof File ? data.eocnApprovalFile : undefined,
+        itarRegistrationFile: data.itarRegistrationFile instanceof File ? data.itarRegistrationFile : undefined,
+        localAuthorityApprovalFile: data.localAuthorityApprovalFile instanceof File ? data.localAuthorityApprovalFile : undefined,
       };
       
       await step3Mutation.mutateAsync(payload);
@@ -219,7 +266,7 @@ export default function DeclarationPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type.startsWith("image/") || file.type === "application/pdf") {
-        form.setValue("businessLicense", file, { shouldValidate: true });
+        form.setValue("businessLicenseFile", file, { shouldValidate: true });
         if (file.type.startsWith("image/")) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -237,7 +284,7 @@ export default function DeclarationPage() {
 
   // Handle remove business license
   const handleRemoveBusinessLicense = () => {
-    form.setValue("businessLicense", undefined, { shouldValidate: true });
+    form.setValue("businessLicenseFile", undefined, { shouldValidate: true });
     setBusinessLicensePreview(null);
     if (businessLicenseRef.current) {
       businessLicenseRef.current.value = "";
@@ -249,7 +296,7 @@ export default function DeclarationPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type.startsWith("image/") || file.type === "application/pdf") {
-        form.setValue("companyProfile", file, { shouldValidate: true });
+        form.setValue("companyProfileFile", file, { shouldValidate: true });
         if (file.type.startsWith("image/")) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -267,7 +314,7 @@ export default function DeclarationPage() {
 
   // Handle remove company profile
   const handleRemoveCompanyProfile = () => {
-    form.setValue("companyProfile", undefined, { shouldValidate: true });
+    form.setValue("companyProfileFile", undefined, { shouldValidate: true });
     setCompanyProfilePreview(null);
     if (companyProfileRef.current) {
       companyProfileRef.current.value = "";
@@ -279,16 +326,18 @@ export default function DeclarationPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type.startsWith("image/") || file.type === "application/pdf") {
-        const currentFiles = form.getValues("licenseFiles") || {};
-        form.setValue("licenseFiles", { ...currentFiles, [licenseValue]: file }, { shouldValidate: true });
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setLicensePreviews(prev => ({ ...prev, [licenseValue]: e.target?.result as string }));
-          };
-          reader.readAsDataURL(file);
-        } else {
-          setLicensePreviews(prev => ({ ...prev, [licenseValue]: null }));
+        const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+        if (fileFieldName) {
+          form.setValue(fileFieldName, file, { shouldValidate: true });
+          if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setLicensePreviews(prev => ({ ...prev, [licenseValue]: e.target?.result as string }));
+            };
+            reader.readAsDataURL(file);
+          } else {
+            setLicensePreviews(prev => ({ ...prev, [licenseValue]: null }));
+          }
         }
       } else {
         toast.error("Please select an image file (JPEG, PNG) or PDF");
@@ -298,15 +347,16 @@ export default function DeclarationPage() {
 
   // Handle remove license file
   const handleRemoveLicenseFile = (licenseValue: string) => {
-    const currentFiles = form.getValues("licenseFiles") || {};
-    const { [licenseValue]: removed, ...rest } = currentFiles;
-    form.setValue("licenseFiles", rest, { shouldValidate: true });
-    setLicensePreviews(prev => {
-      const { [licenseValue]: removed, ...rest } = prev;
-      return rest;
-    });
-    if (licenseFileRefs.current[licenseValue]) {
-      licenseFileRefs.current[licenseValue]!.value = "";
+    const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+    if (fileFieldName) {
+      form.setValue(fileFieldName, undefined, { shouldValidate: true });
+      setLicensePreviews(prev => {
+        const { [licenseValue]: removed, ...rest } = prev;
+        return rest;
+      });
+      if (licenseFileRefs.current[licenseValue]) {
+        licenseFileRefs.current[licenseValue]!.value = "";
+      }
     }
   };
 
@@ -890,7 +940,7 @@ export default function DeclarationPage() {
                   {/* Business License */}
                   <FormField
                     control={form.control}
-                    name="businessLicense"
+                    name="businessLicenseFile"
                     render={() => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
@@ -947,7 +997,7 @@ export default function DeclarationPage() {
                   {/* Company Profile */}
                   <FormField
                     control={form.control}
-                    name="companyProfile"
+                    name="companyProfileFile"
                     render={() => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
@@ -1004,26 +1054,24 @@ export default function DeclarationPage() {
                 {/* License Files - Show upload for each selected license in 2 columns */}
                 {selectedLicenses.length > 0 && (
                   <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="licenseFiles"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-black">
-                            Do you hold any of the following licenses?
-                            <span className="text-red-500 ml-1">*</span>
-                          </FormLabel>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {selectedLicenses.map((licenseValue) => {
-                              const license = licenseOptions.find((l) => l.value === licenseValue);
-                              if (!license) return null;
-                              const preview = licensePreviews[licenseValue];
-                              return (
-                                <FormField
-                                  key={licenseValue}
-                                  control={form.control}
-                                  name={`licenseFiles.${licenseValue}`}
-                                  render={() => (
+                    <div>
+                      <FormLabel className="text-sm font-bold text-black">
+                        Do you hold any of the following licenses?
+                        <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        {selectedLicenses.map((licenseValue) => {
+                          const license = licenseOptions.find((l) => l.value === licenseValue);
+                          if (!license || licenseValue === "none") return null;
+                          const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+                          if (!fileFieldName) return null;
+                          const preview = licensePreviews[licenseValue];
+                          return (
+                            <FormField
+                              key={licenseValue}
+                              control={form.control}
+                              name={fileFieldName}
+                              render={() => (
                                     <FormItem>
                                       <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
                                         Upload {license.label}{" "}
@@ -1077,11 +1125,8 @@ export default function DeclarationPage() {
                                 />
                               );
                             })}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
