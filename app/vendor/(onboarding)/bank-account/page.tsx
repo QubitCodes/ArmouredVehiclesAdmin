@@ -10,6 +10,7 @@ import { Upload, Info, ChevronDown, X } from "lucide-react";
 import { useState, useRef } from "react";
 import { useFinancialInstitutions } from "@/hooks/vendor/dashboard/use-financial-institutions";
 import { useProofTypes } from "@/hooks/vendor/dashboard/use-proof-types";
+import { useOnboardingStep5 } from "@/hooks/vendor/dashboard/use-onboarding-step5";
 import { Spinner } from "@/components/ui/spinner";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
 
@@ -26,13 +27,13 @@ import {
 
 const paymentMethodSchema = z
   .object({
-    country: z.string().min(1, "Country is required"),
+    bankCountry: z.string().min(1, "Country is required"),
     financialInstitution: z.string().min(1, "Financial institution is required"),
-    routingCode: z.string().optional(),
+    swiftCode: z.string().optional(),
     bankAccountNumber: z.string().min(1, "Bank account number is required"),
     confirmAccountNumber: z.string().min(1, "Please confirm account number"),
     proofType: z.string().min(1, "Proof type is required"),
-    proofDocument: z.any().refine((file) => file !== undefined && file instanceof File, {
+    bankProofFile: z.any().refine((file) => file !== undefined && file instanceof File, {
       message: "Proof document is required",
     }),
   })
@@ -45,7 +46,6 @@ type PaymentMethodFormValues = z.infer<typeof paymentMethodSchema>;
 
 export default function AddPaymentMethodPage() {
   const router = useRouter();
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const proofFileRef = useRef<HTMLInputElement>(null);
 
@@ -56,27 +56,39 @@ export default function AddPaymentMethodPage() {
   } = useFinancialInstitutions();
   const { data: proofTypesData = [], isLoading: isProofTypesLoading } =
     useProofTypes();
+  
+  const step5Mutation = useOnboardingStep5();
 
   const form = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(paymentMethodSchema),
     defaultValues: {
-      country: "AE",
+      bankCountry: "AE",
       financialInstitution: "",
-      routingCode: "",
+      swiftCode: "",
       bankAccountNumber: "",
       confirmAccountNumber: "",
       proofType: "",
+      bankProofFile: undefined,
     },
   });
 
   const onSubmit = async (data: PaymentMethodFormValues) => {
     try {
-      console.log("Payment method data:", data);
-      console.log("Uploaded file:", uploadedFile);
-      toast.success("Payment method added successfully");
-      // TODO: Implement API call to save payment method
-      // Navigate to next step
-      // router.push("/vendor/verification");
+      // Map form data to API schema format
+      const payload = {
+        bankCountry: data.bankCountry,
+        financialInstitution: data.financialInstitution,
+        swiftCode: data.swiftCode || undefined,
+        bankAccountNumber: data.bankAccountNumber,
+        proofType: data.proofType,
+        bankProofFile: data.bankProofFile instanceof File ? data.bankProofFile : undefined,
+      };
+
+      await step5Mutation.mutateAsync(payload);
+      
+      toast.success("Bank account information saved successfully");
+      // Navigate to verification page
+      router.push("/vendor/verification");
     } catch (error) {
       const axiosError = error as AxiosError<{
         message?: string;
@@ -86,7 +98,7 @@ export default function AddPaymentMethodPage() {
         axiosError?.response?.data?.error ||
         axiosError?.response?.data?.message ||
         axiosError?.message ||
-        "Failed to add payment method. Please try again.";
+        "Failed to save bank account information. Please try again.";
       toast.error(errorMessage);
     }
   };
@@ -95,8 +107,7 @@ export default function AddPaymentMethodPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type.startsWith("image/") || file.type === "application/pdf") {
-        setUploadedFile(file);
-        form.setValue("proofDocument", file, { shouldValidate: true });
+        form.setValue("bankProofFile", file, { shouldValidate: true });
         if (file.type.startsWith("image/")) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -113,8 +124,7 @@ export default function AddPaymentMethodPage() {
   };
 
   const handleRemoveProof = () => {
-    form.setValue("proofDocument", undefined, { shouldValidate: true });
-    setUploadedFile(null);
+    form.setValue("bankProofFile", undefined, { shouldValidate: true });
     setProofPreview(null);
     if (proofFileRef.current) {
       proofFileRef.current.value = "";
@@ -151,7 +161,7 @@ export default function AddPaymentMethodPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="country"
+                  name="bankCountry"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
@@ -207,7 +217,7 @@ export default function AddPaymentMethodPage() {
                                   (institution) => (
                                     <option
                                       key={institution.id}
-                                      value={institution.id}
+                                      value={institution.name}
                                     >
                                       {institution.name}
                                     </option>
@@ -229,7 +239,7 @@ export default function AddPaymentMethodPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="routingCode"
+                  name="swiftCode"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
@@ -277,7 +287,7 @@ export default function AddPaymentMethodPage() {
                                 {proofTypesData.map((proofType) => (
                                   <option
                                     key={proofType.id}
-                                    value={proofType.id}
+                                    value={proofType.name}
                                   >
                                     {proofType.name}
                                   </option>
@@ -350,7 +360,7 @@ export default function AddPaymentMethodPage() {
                 <div>
                   <FormField
                     control={form.control}
-                    name="proofDocument"
+                    name="bankProofFile"
                     render={() => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
@@ -419,9 +429,17 @@ export default function AddPaymentMethodPage() {
               <Button
                 type="submit"
                 variant="secondary"
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                disabled={step5Mutation.isPending}
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                CONTINUE
+                {step5Mutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner size="sm" className="text-white" />
+                    SUBMITTING...
+                  </span>
+                ) : (
+                  "CONTINUE"
+                )}
               </Button>
             </div>
           </form>

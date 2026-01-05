@@ -81,7 +81,7 @@ export default function AccountPreferencesPage() {
 
       await step4Mutation.mutateAsync(apiPayload);
       toast.success("Account preferences saved successfully");
-      router.push("/vendor/add-payment-method");
+      router.push("/vendor/bank-account");
     } catch (error) {
       const axiosError = error as AxiosError<{
         message?: string;
