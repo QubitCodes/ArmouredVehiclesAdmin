@@ -4,6 +4,7 @@ import {
   Product,
   vendorProductService,
   GetProductsParams,
+  GetProductsResponse,
   CreateProductRequest,
   UpdateProductRequest,
 } from "@/services/vendor/product.service";
@@ -16,8 +17,13 @@ export function useVendorProducts(params: GetProductsParams = {}) {
     queryKey: ["vendor-products", params],
     queryFn: async () => {
       const response = await vendorProductService.getProducts(params);
-      // Response structure: { products: [...], total, page, limit }
-      return response.products || [];
+      // API returns array directly: [...]
+      // If response is an array, return it; otherwise check for products property
+      if (Array.isArray(response)) {
+        return response;
+      }
+      // Fallback for wrapped response structure
+      return (response as GetProductsResponse).products || [];
     },
   });
 }
@@ -59,6 +65,21 @@ export function useUpdateVendorProduct() {
       // Invalidate and refetch products list after successful update
       queryClient.invalidateQueries({ queryKey: ["vendor-products"] });
     },
+  });
+}
+
+/**
+ * React Query hook for fetching a single product by ID
+ */
+export function useVendorProduct(id: string | null) {
+  return useQuery<Product, AxiosError>({
+    queryKey: ["vendor-product", id],
+    queryFn: async () => {
+      if (!id) throw new Error("Product ID is required");
+      const response = await vendorProductService.getProductById(id);
+      return response.data || response;
+    },
+    enabled: !!id, // Only fetch when id is provided
   });
 }
 

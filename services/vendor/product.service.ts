@@ -80,11 +80,14 @@ export interface CreateProductRequest {
 export type UpdateProductRequest = Partial<CreateProductRequest>;
 
 export interface GetProductsResponse {
-  products: Product[];
-  total: number;
-  page: number;
-  limit: number;
+  products?: Product[];
+  total?: number;
+  page?: number;
+  limit?: number;
 }
+
+// API can return either an array directly or a wrapped response
+export type ProductsResponse = Product[] | GetProductsResponse;
 
 export interface GetProductsParams {
   page?: number;
@@ -94,10 +97,11 @@ export interface GetProductsParams {
 class VendorProductService {
   /**
    * Fetch list of vendor's products from /vendor/products
+   * API returns array directly: Product[]
    */
   async getProducts(params: GetProductsParams = {}) {
     try {
-      const response = await api.get<GetProductsResponse>("/vendor/products", {
+      const response = await api.get<Product[] | GetProductsResponse>("/vendor/products", {
         params,
       });
       return response.data;

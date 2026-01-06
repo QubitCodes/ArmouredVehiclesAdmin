@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import {
   Loader2,
   ChevronRight,
   ChevronLeft,
+  ArrowLeft,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,6 @@ import { Select } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateSelector } from "@/components/ui/date-selector";
 import {
-  useCreateVendorProduct,
   useUpdateVendorProduct,
   useVendorProduct,
 } from "@/hooks/vendor/product-management/use-products";
@@ -41,13 +41,10 @@ import {
   useCategoriesByParent,
 } from "@/hooks/admin/product-management/use-categories";
 import { useCountries } from "@/hooks/vendor/dashboard/use-countries";
-import { vendorAuthService } from "@/services/vendor/auth.service";
-import { getVendorIdFromToken } from "@/lib/jwt";
+import { Spinner } from "@/components/ui/spinner";
 import { WEIGHT_UNITS, DIMENSION_UNITS, DIMENSION_UNITS_WITH_MM } from "@/lib/units";
 import type {
-  CreateProductRequest,
   UpdateProductRequest,
-  Product,
 } from "@/services/vendor/product.service";
 
 const productSchema = z.object({
@@ -212,18 +209,22 @@ const SECTIONS = [
   },
 ];
 
-export default function NewProductPage() {
+export default function EditProductPage() {
+  const params = useParams();
   const router = useRouter();
-  const createProductMutation = useCreateVendorProduct();
+  const productId = params.id as string;
   const updateProductMutation = useUpdateVendorProduct();
   const [currentStep, setCurrentStep] = useState(1);
-  const [productId, setProductId] = useState<string | null>(null);
   const { data: mainCategories = [] } = useMainCategories();
   const { data: countries = [], isLoading: isLoadingCountries } =
     useCountries();
   
-  // Fetch product data when productId exists (for populating form when navigating back)
-  const { data: productData } = useVendorProduct(productId);
+  // Fetch existing product data to populate form
+  const { 
+    data: productData, 
+    isLoading: isLoadingProduct,
+    error: productError 
+  } = useVendorProduct(productId);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -279,9 +280,9 @@ export default function NewProductPage() {
   const pricingTerms = form.watch("pricingTerms") || [];
   const gallery = form.watch("gallery") || [];
 
-  // Populate form when product data is fetched (for navigating back)
+  // Populate form when product data is fetched
   useEffect(() => {
-    if (productData && productId) {
+    if (productData) {
       // Type assertion since API response may have more fields than Product type
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = productData as any;
@@ -360,7 +361,7 @@ export default function NewProductPage() {
         }
       });
     }
-  }, [productData, productId, form]);
+  }, [productData, form]);
 
   const addArrayItem = (
     fieldName:
@@ -483,6 +484,56 @@ export default function NewProductPage() {
     return cleanedData;
   };
 
+  // Show error toast when product query fails
+  useEffect(() => {
+    if (productError) {
+      console.error("Error fetching product:", productError);
+      const axiosError = productError as AxiosError<{
+        message?: string;
+        error?: string;
+      }>;
+      const errorMessage =
+        axiosError?.response?.data?.message ||
+        axiosError?.message ||
+        "Failed to fetch product";
+      toast.error(errorMessage);
+    }
+  }, [productError]);
+
+  // Show loading state
+  if (isLoadingProduct) {
+    return (
+      <div className="flex min-h-[calc(100vh-300px)] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="3xl" className="text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">
+            Loading product...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!productData) {
+    return (
+      <div className="flex w-full flex-col gap-4">
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="w-fit"
+        >
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Product not found.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const handleNext = async () => {
     const isValid = await validateCurrentStep();
     if (!isValid) return;
@@ -491,67 +542,22 @@ export default function NewProductPage() {
     const formData = form.getValues();
 
     try {
-      if (currentStep === 1) {
-        // Step 1: POST basic information
-        const basicInfoData = cleanDataForApi(formData, currentSection.fields);
-        
-        // Get vendor ID from token
-        const token = vendorAuthService.getToken();
-        const vendorId = getVendorIdFromToken(token);
-        
-        if (!vendorId) {
-          toast.error("Unable to get vendor ID. Please log in again.");
-          return;
-        }
+      // All steps: PATCH update
+      const updateData = cleanDataForApi(formData, currentSection.fields);
 
-        // Add vendorId to the request body
-        const requestData: CreateProductRequest = {
-          ...basicInfoData,
-          vendorId,
-        } as CreateProductRequest;
+      await updateProductMutation.mutateAsync({
+        id: productId,
+        data: updateData as UpdateProductRequest,
+      });
 
-        const response = await createProductMutation.mutateAsync(requestData);
+      toast.success("Product updated successfully!");
 
-        // Extract product ID from response (could be response.id or response.data.id)
-        const productResponse = response as
-          | Product
-          | { data?: Product; id?: string };
-        const newProductId =
-          (productResponse as Product).id ||
-          (productResponse as { data?: Product }).data?.id ||
-          (productResponse as { id?: string }).id;
-
-        if (newProductId) {
-          setProductId(String(newProductId));
-          toast.success("Product created successfully!");
-          setCurrentStep(2);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-          throw new Error("Product ID not found in response");
-        }
+      if (currentStep < SECTIONS.length) {
+        setCurrentStep(currentStep + 1);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        // Steps 2-5: PATCH update
-        if (!productId) {
-          toast.error("Product ID is missing. Please start from step 1.");
-          return;
-        }
-
-        const updateData = cleanDataForApi(formData, currentSection.fields);
-
-        await updateProductMutation.mutateAsync({
-          id: productId,
-          data: updateData as UpdateProductRequest,
-        });
-
-        toast.success("Product updated successfully!");
-
-        if (currentStep < SECTIONS.length) {
-          setCurrentStep(currentStep + 1);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-          // Last step completed, redirect to products list
-          router.push("/vendor/products");
-        }
+        // Last step completed, redirect to product detail page
+        router.push(`/vendor/products/${productId}`);
       }
     } catch (error) {
       console.error(error);
@@ -560,10 +566,7 @@ export default function NewProductPage() {
         error?: string;
       }>;
 
-      let errorMessage =
-        currentStep === 1
-          ? "Failed to create product. Please try again."
-          : "Failed to update product. Please try again.";
+      let errorMessage = "Failed to update product. Please try again.";
 
       if (axiosError?.response?.data?.message) {
         errorMessage = axiosError.response.data.message;
@@ -2282,10 +2285,22 @@ export default function NewProductPage() {
   };
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={`flex w-full flex-col`}>
       <div className="flex items-center gap-4 pb-6">
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="w-fit"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Add New Product</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Product</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Step {currentStep} of {SECTIONS.length}:{" "}
+            {SECTIONS[currentStep - 1].name}
+          </p>
         </div>
       </div>
 
@@ -2303,11 +2318,9 @@ export default function NewProductPage() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
                 onClick={() => {
-                  // Allow clicking on completed or current sections
-                  if (currentStep >= section.id) {
-                    setCurrentStep(section.id);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }
+                  // Allow navigation to any section in edit mode
+                  setCurrentStep(section.id);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               >
                 {section.name}
@@ -2342,7 +2355,7 @@ export default function NewProductPage() {
               e.stopPropagation();
             }
           }}
-          className="space-y-6"
+          className={`space-y-6 ${currentStep === 2 ? "pb-0 mb-0" : ""}`}
         >
           {SECTIONS.map((section) => (
             <div
@@ -2354,16 +2367,13 @@ export default function NewProductPage() {
           ))}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between gap-4 pb-6 pt-4">
+          <div className={`flex justify-between gap-4 pt-4 ${currentStep === 2 ? "mb-0" : ""}`}>
             <Button
               type="button"
               variant="secondary"
               className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
               onClick={() => router.back()}
-              disabled={
-                createProductMutation.isPending ||
-                updateProductMutation.isPending
-              }
+              disabled={updateProductMutation.isPending}
             >
               Cancel
             </Button>
@@ -2376,7 +2386,6 @@ export default function NewProductPage() {
                 onClick={handlePrevious}
                 disabled={
                   currentStep === 1 ||
-                  createProductMutation.isPending ||
                   updateProductMutation.isPending
                 }
               >
@@ -2390,16 +2399,12 @@ export default function NewProductPage() {
                   variant="default"
                   className="bg-secondary text-white hover:bg-secondary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
                   onClick={handleNext}
-                  disabled={
-                    createProductMutation.isPending ||
-                    updateProductMutation.isPending
-                  }
+                  disabled={updateProductMutation.isPending}
                 >
-                  {createProductMutation.isPending ||
-                  updateProductMutation.isPending ? (
+                  {updateProductMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {currentStep === 1 ? "Creating..." : "Updating..."}
+                      Updating...
                     </>
                   ) : (
                     <>

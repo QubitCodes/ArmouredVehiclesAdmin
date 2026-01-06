@@ -10,6 +10,7 @@ import { VendorProductActions } from "@/components/vendor/product-management/pro
 
 export default function VendorProductsPage() {
   // Use React Query to fetch vendor products
+  // The API returns { products: [...], total, page, limit }
   const {
     data: products = [],
     isLoading,
