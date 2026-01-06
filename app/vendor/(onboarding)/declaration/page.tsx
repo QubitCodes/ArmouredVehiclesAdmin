@@ -32,6 +32,7 @@ const declarationSchema = z.object({
     .array(z.string())
     .min(1, "Please select at least one nature of business"),
   controlledDualUseItems: z.string().optional(),
+  manufacturingSourceName: z.string().optional(),
   endUseMarket: z
     .array(z.string())
     .min(1, "Please select at least one end-use market"),
@@ -143,6 +144,7 @@ export default function DeclarationPage() {
     defaultValues: {
       natureOfBusiness: [],
       controlledDualUseItems: "",
+      manufacturingSourceName: "",
       endUseMarket: [],
       licenses: [],
       operatingCountries: [],
@@ -164,6 +166,7 @@ export default function DeclarationPage() {
       const payload = {
         natureOfBusiness: data.natureOfBusiness,
         controlledDualUseItems: data.controlledDualUseItems || undefined,
+        manufacturingSourceName: data.manufacturingSourceName || undefined,
         licenseTypes: data.licenses,
         endUseMarkets: data.endUseMarket,
         operatingCountries: data.operatingCountries,
@@ -385,7 +388,7 @@ export default function DeclarationPage() {
 
         {/* COMPLIANCE & ACTIVITY DECLARATION Heading */}
         <div>
-          <h2 className="text-2xl pb-3 font-bold text-black uppercase">
+          <h2 className="text-2xl pb-3 font-bold text-black uppercase font-heading">
             COMPLIANCE & ACTIVITY DECLARATION
           </h2>
         </div>
@@ -713,6 +716,29 @@ export default function DeclarationPage() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Name of Manufacturing Source */}
+                  <div className="space-y-4 pt-6">
+                    <FormField
+                      control={form.control}
+                      name="manufacturingSourceName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-bold text-black">
+                            Name of Manufacturing Source (Optional)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Blueweb Auto Industries LLC"
+                              className="bg-bg-medium border border-border h-11 focus:border-border focus:ring-1 focus:ring-border rounded-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

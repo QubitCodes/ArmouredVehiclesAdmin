@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronLeft,
   ArrowLeft,
+  Info,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { DateSelector } from "@/components/ui/date-selector";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useUpdateVendorProduct,
   useVendorProduct,
@@ -91,9 +92,16 @@ const productSchema = z.object({
   year: z.number().optional(),
   readyStockAvailable: z.boolean().optional(),
   pricingTerms: z.array(z.string()).optional(),
+  tier1Price: z.number().optional(),
+  tier2Price: z.number().optional(),
+  tier3Price: z.number().optional(),
+  selectedTier: z.string().optional(),
   productionLeadTime: z.number().optional(),
   manufacturingSource: z.string().optional(),
   manufacturingSourceName: z.string().optional(),
+  duration: z.number().optional(),
+  durationUnit: z.string().optional(),
+  terms: z.string().optional(),
   requiresExportLicense: z.boolean().optional(),
   hasWarranty: z.boolean().optional(),
   warrantyDuration: z.number().optional(),
@@ -196,6 +204,9 @@ const SECTIONS = [
     fields: [
       "manufacturingSource",
       "manufacturingSourceName",
+      "duration",
+      "durationUnit",
+      "terms",
       "requiresExportLicense",
       "hasWarranty",
       "warranty",
@@ -238,6 +249,7 @@ export default function EditProductPage() {
       packingDimensionUnit: "cm",
       packingWeightUnit: "kg",
       warrantyDurationUnit: "months",
+      durationUnit: "Months",
       readyStockAvailable: false,
       requiresExportLicense: false,
       hasWarranty: false,
@@ -256,6 +268,10 @@ export default function EditProductPage() {
       pricingTerms: [],
       gallery: [],
       signatureDate: undefined,
+      tier1Price: undefined,
+      tier2Price: undefined,
+      tier3Price: undefined,
+      selectedTier: undefined,
     },
   });
 
@@ -337,6 +353,9 @@ export default function EditProductPage() {
         productionLeadTime: data.productionLeadTime != null ? (typeof data.productionLeadTime === 'string' ? parseFloat(data.productionLeadTime) : Number(data.productionLeadTime)) : undefined,
         manufacturingSource: (data.manufacturingSource as string) || "",
         manufacturingSourceName: (data.manufacturingSourceName as string) || "",
+        duration: data.duration != null ? (typeof data.duration === 'string' ? parseFloat(data.duration) : Number(data.duration)) : undefined,
+        durationUnit: (data.durationUnit as string) || "Months",
+        terms: (data.terms as string) || "",
         requiresExportLicense: (data.requiresExportLicense as boolean) || false,
         hasWarranty: (data.hasWarranty as boolean) || false,
         warrantyDuration: data.warrantyDuration != null ? (typeof data.warrantyDuration === 'string' ? parseFloat(data.warrantyDuration) : Number(data.warrantyDuration)) : undefined,
@@ -888,13 +907,13 @@ export default function EditProductPage() {
                     </FormItem>
                   )}
                 />
-              </div>
+              </div> */}
 
               <FormField
                 control={form.control}
                 name="description"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="pt-6">
                     <FormLabel>Description</FormLabel>
                     <FormControl>
                       <textarea
@@ -906,7 +925,7 @@ export default function EditProductPage() {
                     <FormMessage />
                   </FormItem>
                 )}
-              /> */}
+              />
             </CardContent>
           </Card>
         );
@@ -1764,89 +1783,154 @@ export default function EditProductPage() {
               <CardTitle>Pricing & Availability</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="basePrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Base Unit Price (USD or AED) *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="125.00"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
-                              val === "" ? undefined : parseFloat(val)
-                            );
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div>
+                <Label className="mb-4 block">
+                  Base Unit Price (USD or AED):
+                </Label>
+                <div className="flex flex-col md:flex-row md:items-end gap-4">
+                  <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                    <FormField
+                      control={form.control}
+                      name="basePrice"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="125.00"
+                              value={field.value ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(
+                                  val === "" ? undefined : parseFloat(val)
+                                );
+                              }}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="currency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Currency</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value || "USD"}
-                          onChange={field.onChange}
-                          placeholder="Select Currency"
+                    <FormField
+                      control={form.control}
+                      name="currency"
+                      render={({ field }) => (
+                        <FormItem className="w-full sm:w-[120px]">
+                          <FormControl>
+                            <Select
+                              value={field.value || "USD"}
+                              onChange={field.onChange}
+                              placeholder="Select Currency"
+                            >
+                              <option value="USD">USD</option>
+                              <option value="AED">AED</option>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-4 md:gap-6 md:ml-4 flex-wrap">
+                    {["EXW", "FOB", "CIF"].map((term) => (
+                      <div key={term} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`pricingTerm-${term}`}
+                          checked={pricingTerms.includes(term)}
+                          onCheckedChange={(checked) => {
+                            const current = form.getValues("pricingTerms") || [];
+                            if (checked) {
+                              form.setValue("pricingTerms", [...current, term]);
+                            } else {
+                              form.setValue(
+                                "pricingTerms",
+                                current.filter((t) => t !== term)
+                              );
+                            }
+                          }}
+                        />
+                        <Label
+                          htmlFor={`pricingTerm-${term}`}
+                          className="cursor-pointer font-normal"
                         >
-                          <option value="USD">USD</option>
-                          <option value="AED">AED</option>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                          {term}
+                        </Label>
+                        <div className="h-5 w-5 rounded-full bg-[#16a34a] flex items-center justify-center">
+                          <Info className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="py-6">
-                <Label className="mb-2 block">
-                  Pricing Terms (EXW, FOB, CIF)
+                <Label className="mb-4 block">
+                  Tiered Pricing Options (if any):
                 </Label>
-                {pricingTerms.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("pricingTerms", index, e.target.value)
-                      }
-                      placeholder="EXW, FOB, or CIF"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("pricingTerms", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("pricingTerms")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Pricing Term
-                </Button>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {(() => {
+                    const selectedTier = form.watch("selectedTier");
+                    return [
+                      { range: "1-10 units", tier: "1", field: "tier1Price" },
+                      { range: "11-50 units", tier: "2", field: "tier2Price" },
+                      { range: "50+ units", tier: "3", field: "tier3Price" },
+                    ].map(({ range, tier, field }) => (
+                      <div key={tier} className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          id={`tier-${tier}`}
+                          name="selectedTier"
+                          value={tier}
+                          checked={selectedTier === tier}
+                          onChange={(e) => {
+                            form.setValue("selectedTier", e.target.value);
+                          }}
+                          className="h-4 w-4 border-input text-primary focus:ring-primary focus:ring-2 focus:ring-offset-2 cursor-pointer"
+                        />
+                        <Label
+                          htmlFor={`tier-${tier}`}
+                          className="cursor-pointer font-normal whitespace-nowrap"
+                        >
+                          {range}
+                        </Label>
+                        <FormField
+                          control={form.control}
+                          name={field as "tier1Price" | "tier2Price" | "tier3Price"}
+                          render={({ field: priceField }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="$0.00"
+                                  value={priceField.value ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    priceField.onChange(
+                                      val === "" ? undefined : parseFloat(val)
+                                    );
+                                  }}
+                                  onBlur={priceField.onBlur}
+                                  name={priceField.name}
+                                  ref={priceField.ref}
+                                  className="flex-1"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    ));
+                  })()}
+                </div>
               </div>
 
               <FormField
@@ -1876,39 +1960,40 @@ export default function EditProductPage() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="readyStockAvailable"
-                render={({ field }) => (
-                  <FormItem className="pt-6 pb-3">
-                    <FormLabel>Ready Stock Available?</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        value={
-                          field.value === true
-                            ? "yes"
-                            : field.value === false
-                            ? "no"
-                            : ""
-                        }
-                        onValueChange={(val) => field.onChange(val === "yes")}
-                        name="readyStockAvailable"
-                      >
-                        <RadioGroupItem value="yes" label="Yes" />
-                        <RadioGroupItem value="no" label="No" />
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="readyStockAvailable"
+                  render={({ field }) => (
+                    <FormItem className="pt-6 pb-3">
+                      <FormLabel>Ready Stock Available?</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          value={
+                            field.value === true
+                              ? "yes"
+                              : field.value === false
+                              ? "no"
+                              : ""
+                          }
+                          onValueChange={(val) => field.onChange(val === "yes")}
+                          name="readyStockAvailable"
+                          className="flex-row gap-6"
+                        >
+                          <RadioGroupItem value="yes" label="Yes" />
+                          <RadioGroupItem value="no" label="No" />
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="stock"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="pt-6">
                       <FormLabel>Stock quantity</FormLabel>
                       <FormControl>
                         <Input
@@ -1930,6 +2015,9 @@ export default function EditProductPage() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
 
                 {/* <FormField
                   control={form.control}
@@ -2022,7 +2110,7 @@ export default function EditProductPage() {
         return (
           <Card>
             <CardHeader>
-              <CardTitle>COMPLIANCE & DECLARATIONS</CardTitle>
+              <CardTitle className="font-heading">COMPLIANCE & DECLARATIONS</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 pb-6">
@@ -2034,7 +2122,7 @@ export default function EditProductPage() {
                       <FormLabel>
                         Is this product manufactured in-house or sourced?
                       </FormLabel>
-                      <FormControl>
+                      <FormControl className="bg-bg-medium">
                         <Select
                           value={field.value || ""}
                           onChange={field.onChange}
@@ -2049,26 +2137,24 @@ export default function EditProductPage() {
                   )}
                 />
 
-                {form.watch("manufacturingSource") === "Sourced" && (
-                  <FormField
-                    control={form.control}
-                    name="manufacturingSourceName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Name of Manufacturing Source (Optional)
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="e.g., Blueweb Auto Industries LLC"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                <FormField
+                  control={form.control}
+                  name="manufacturingSourceName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Name of Manufacturing Source (Optional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Blueweb Auto Industries LLC"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <FormField
@@ -2090,6 +2176,7 @@ export default function EditProductPage() {
                         }
                         onValueChange={(val) => field.onChange(val === "yes")}
                         name="requiresExportLicense"
+                        className="flex-row gap-6"
                       >
                         <RadioGroupItem value="yes" label="Yes" />
                         <RadioGroupItem value="no" label="No" />
@@ -2100,27 +2187,98 @@ export default function EditProductPage() {
                 )}
               />
 
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="hasWarranty"
+                  render={({ field }) => (
+                    <FormItem className="pt-6 pb-3">
+                      <FormLabel>Does this product carry warranty?</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          value={
+                            field.value === true
+                              ? "yes"
+                              : field.value === false
+                              ? "no"
+                              : ""
+                          }
+                          onValueChange={(val) => field.onChange(val === "yes")}
+                          name="hasWarranty"
+                          className="flex-row gap-6"
+                        >
+                          <RadioGroupItem value="yes" label="Yes" />
+                          <RadioGroupItem value="no" label="No" />
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid gap-4 grid-cols-2 pt-6">
+                  <FormField
+                    control={form.control}
+                    name="duration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duration</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="12"
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(
+                                val === "" ? undefined : parseInt(val)
+                              );
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="durationUnit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl className="bg-bg-medium">
+                          <Select
+                            value={field.value || "Months"}
+                            onChange={field.onChange}
+                            placeholder="Unit"
+                          >
+                            <option value="Months">Months</option>
+                            <option value="Years">Years</option>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
               <FormField
                 control={form.control}
-                name="hasWarranty"
+                name="terms"
                 render={({ field }) => (
-                  <FormItem className="pt-6 pb-3">
-                    <FormLabel>Does this product carry warranty?</FormLabel>
+                  <FormItem>
+                    <FormLabel>Terms</FormLabel>
                     <FormControl>
-                      <RadioGroup
-                        value={
-                          field.value === true
-                            ? "yes"
-                            : field.value === false
-                            ? "no"
-                            : ""
-                        }
-                        onValueChange={(val) => field.onChange(val === "yes")}
-                        name="hasWarranty"
-                      >
-                        <RadioGroupItem value="yes" label="Yes" />
-                        <RadioGroupItem value="no" label="No" />
-                      </RadioGroup>
+                      <textarea
+                        className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
+                        placeholder="Terms"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2239,42 +2397,6 @@ export default function EditProductPage() {
                   </FormItem>
                 )}
               />
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="supplierSignature"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Supplier Digital Signature / Name:</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Supplier Digital Signature / Name"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="signatureDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date</FormLabel>
-                      <FormControl>
-                        <DateSelector
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
             </CardContent>
           </Card>
         );
@@ -2417,7 +2539,7 @@ export default function EditProductPage() {
                 <Button
                   type="button"
                   variant="default"
-                  className="bg-primary text-white hover:bg-primary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
+                  className="bg-secondary text-white hover:bg-secondary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
                   onClick={handleNext}
                   disabled={updateProductMutation.isPending}
                 >
