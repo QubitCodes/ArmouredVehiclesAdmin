@@ -108,3 +108,29 @@ export function useDeleteVendorProduct() {
   });
 }
 
+/**
+ * React Query hook for uploading product assets
+ */
+export function useUploadProductAssets() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    unknown,
+    AxiosError,
+    { id: string; formData: FormData }
+  >({
+    mutationFn: async ({ id, formData }) => {
+      const response = await vendorProductService.uploadProductAssets(
+        id,
+        formData
+      );
+      return response.data || response;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate and refetch product data after successful upload
+      queryClient.invalidateQueries({ queryKey: ["vendor-product", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-products"] });
+    },
+  });
+}
+

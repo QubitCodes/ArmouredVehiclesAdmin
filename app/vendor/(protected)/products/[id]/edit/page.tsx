@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -36,6 +37,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   useUpdateVendorProduct,
   useVendorProduct,
+  useUploadProductAssets,
 } from "@/hooks/vendor/product-management/use-products";
 import {
   useMainCategories,
@@ -43,10 +45,12 @@ import {
 } from "@/hooks/admin/product-management/use-categories";
 import { useCountries } from "@/hooks/vendor/dashboard/use-countries";
 import { Spinner } from "@/components/ui/spinner";
-import { WEIGHT_UNITS, DIMENSION_UNITS, DIMENSION_UNITS_WITH_MM } from "@/lib/units";
-import type {
-  UpdateProductRequest,
-} from "@/services/vendor/product.service";
+import {
+  WEIGHT_UNITS,
+  DIMENSION_UNITS,
+  DIMENSION_UNITS_WITH_MM,
+} from "@/lib/units";
+import type { UpdateProductRequest } from "@/services/vendor/product.service";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -118,9 +122,36 @@ const productSchema = z.object({
   image: z
     .string()
     .url("Please enter a valid URL")
+    .min(1, "Cover image is required"),
+  gallery: z
+    .array(z.string().url().or(z.literal("")))
+    .min(1, "Gallery images are required")
+    .refine((arr) => arr.filter((item) => item !== "").length >= 5, {
+      message: "Minimum 5 gallery images are required",
+    })
+    .refine((arr) => arr.filter((item) => item !== "").length <= 10, {
+      message: "Maximum 10 gallery images allowed",
+    }),
+  cadFile: z
+    .string()
+    .url("Please enter a valid URL")
     .optional()
     .or(z.literal("")),
-  gallery: z.array(z.string().url()).optional(),
+  certificateReport: z
+    .string()
+    .url("Please enter a valid URL")
+    .optional()
+    .or(z.literal("")),
+  msdsSheet: z
+    .string()
+    .url("Please enter a valid URL")
+    .optional()
+    .or(z.literal("")),
+  installationManual: z
+    .string()
+    .url("Please enter a valid URL")
+    .optional()
+    .or(z.literal("")),
   signatureDate: z
     .object({
       day: z.number().optional(),
@@ -196,7 +227,14 @@ const SECTIONS = [
   {
     id: 4,
     name: "Uploads & Media",
-    fields: ["image", "gallery"],
+    fields: [
+      "image",
+      "gallery",
+      "cadFile",
+      "certificateReport",
+      "msdsSheet",
+      "installationManual",
+    ],
   },
   {
     id: 5,
@@ -225,16 +263,25 @@ export default function EditProductPage() {
   const router = useRouter();
   const productId = params.id as string;
   const updateProductMutation = useUpdateVendorProduct();
+  const uploadAssetsMutation = useUploadProductAssets();
   const [currentStep, setCurrentStep] = useState(1);
   const { data: mainCategories = [] } = useMainCategories();
   const { data: countries = [], isLoading: isLoadingCountries } =
     useCountries();
   
+  // Store File objects separately from form values (for uploads)
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<(File | null)[]>([]);
+  const [cadFile, setCadFile] = useState<File | null>(null);
+  const [certificateReportFile, setCertificateReportFile] = useState<File | null>(null);
+  const [msdsSheetFile, setMsdsSheetFile] = useState<File | null>(null);
+  const [installationManualFile, setInstallationManualFile] = useState<File | null>(null);
+  
   // Fetch existing product data to populate form
   const { 
     data: productData, 
     isLoading: isLoadingProduct,
-    error: productError 
+    error: productError,
   } = useVendorProduct(productId);
 
   const form = useForm<ProductFormValues>({
@@ -266,7 +313,11 @@ export default function EditProductPage() {
       colors: [],
       vehicleFitment: [],
       pricingTerms: [],
-      gallery: [],
+      gallery: Array(5).fill(""),
+      cadFile: "",
+      certificateReport: "",
+      msdsSheet: "",
+      installationManual: "",
       signatureDate: undefined,
       tier1Price: undefined,
       tier2Price: undefined,
@@ -314,17 +365,35 @@ export default function EditProductPage() {
         certifications: (data.certifications as string) || "",
         countryOfOrigin: (data.countryOfOrigin as string) || "",
         controlledItemType: (data.controlledItemType as string) || "",
-        dimensionLength: data.dimensionLength != null ? (typeof data.dimensionLength === 'string' ? parseFloat(data.dimensionLength) : Number(data.dimensionLength)) : undefined,
-        dimensionWidth: data.dimensionWidth != null ? (typeof data.dimensionWidth === 'string' ? parseFloat(data.dimensionWidth) : Number(data.dimensionWidth)) : undefined,
-        dimensionHeight: data.dimensionHeight != null ? (typeof data.dimensionHeight === 'string' ? parseFloat(data.dimensionHeight) : Number(data.dimensionHeight)) : undefined,
+        dimensionLength:
+          data.dimensionLength != null
+            ? typeof data.dimensionLength === "string"
+              ? parseFloat(data.dimensionLength)
+              : Number(data.dimensionLength)
+            : undefined,
+        dimensionWidth:
+          data.dimensionWidth != null
+            ? typeof data.dimensionWidth === "string"
+              ? parseFloat(data.dimensionWidth)
+              : Number(data.dimensionWidth)
+            : undefined,
+        dimensionHeight:
+          data.dimensionHeight != null
+            ? typeof data.dimensionHeight === "string"
+              ? parseFloat(data.dimensionHeight)
+              : Number(data.dimensionHeight)
+            : undefined,
         dimensionUnit: (data.dimensionUnit as string) || "mm",
-        materials: Array.isArray(data.materials) && data.materials.length > 0 
+        materials:
+          Array.isArray(data.materials) && data.materials.length > 0
           ? (data.materials as string[]) 
           : [""],
-        features: Array.isArray(data.features) && data.features.length > 0 
+        features:
+          Array.isArray(data.features) && data.features.length > 0
           ? (data.features as string[]) 
           : [""],
-        performance: Array.isArray(data.performance) && data.performance.length > 0 
+        performance:
+          Array.isArray(data.performance) && data.performance.length > 0
           ? (data.performance as string[]) 
           : [""],
         technicalDescription: (data.technicalDescription as string) || "",
@@ -332,33 +401,93 @@ export default function EditProductPage() {
         sizes: (data.sizes as string[]) || [],
         thickness: (data.thickness as string[]) || [],
         colors: (data.colors as string[]) || [],
-        weightValue: data.weightValue != null ? (typeof data.weightValue === 'string' ? parseFloat(data.weightValue) : Number(data.weightValue)) : undefined,
+        weightValue:
+          data.weightValue != null
+            ? typeof data.weightValue === "string"
+              ? parseFloat(data.weightValue)
+              : Number(data.weightValue)
+            : undefined,
         weightUnit: (data.weightUnit as string) || "kg",
-        packingLength: data.packingLength != null ? (typeof data.packingLength === 'string' ? parseFloat(data.packingLength) : Number(data.packingLength)) : undefined,
-        packingWidth: data.packingWidth != null ? (typeof data.packingWidth === 'string' ? parseFloat(data.packingWidth) : Number(data.packingWidth)) : undefined,
-        packingHeight: data.packingHeight != null ? (typeof data.packingHeight === 'string' ? parseFloat(data.packingHeight) : Number(data.packingHeight)) : undefined,
+        packingLength:
+          data.packingLength != null
+            ? typeof data.packingLength === "string"
+              ? parseFloat(data.packingLength)
+              : Number(data.packingLength)
+            : undefined,
+        packingWidth:
+          data.packingWidth != null
+            ? typeof data.packingWidth === "string"
+              ? parseFloat(data.packingWidth)
+              : Number(data.packingWidth)
+            : undefined,
+        packingHeight:
+          data.packingHeight != null
+            ? typeof data.packingHeight === "string"
+              ? parseFloat(data.packingHeight)
+              : Number(data.packingHeight)
+            : undefined,
         packingDimensionUnit: (data.packingDimensionUnit as string) || "cm",
-        packingWeight: data.packingWeight != null ? (typeof data.packingWeight === 'string' ? parseFloat(data.packingWeight) : Number(data.packingWeight)) : undefined,
+        packingWeight:
+          data.packingWeight != null
+            ? typeof data.packingWeight === "string"
+              ? parseFloat(data.packingWeight)
+              : Number(data.packingWeight)
+            : undefined,
         packingWeightUnit: (data.packingWeightUnit as string) || "kg",
-        basePrice: data.basePrice != null ? (typeof data.basePrice === 'string' ? parseFloat(data.basePrice) : Number(data.basePrice)) : 0,
+        basePrice:
+          data.basePrice != null
+            ? typeof data.basePrice === "string"
+              ? parseFloat(data.basePrice)
+              : Number(data.basePrice)
+            : 0,
         currency: (data.currency as string) || "USD",
-        stock: data.stock != null ? (typeof data.stock === 'string' ? parseFloat(data.stock) : Number(data.stock)) : undefined,
-        minOrderQuantity: data.minOrderQuantity != null ? (typeof data.minOrderQuantity === 'string' ? parseFloat(data.minOrderQuantity) : Number(data.minOrderQuantity)) : undefined,
+        stock:
+          data.stock != null
+            ? typeof data.stock === "string"
+              ? parseFloat(data.stock)
+              : Number(data.stock)
+            : undefined,
+        minOrderQuantity:
+          data.minOrderQuantity != null
+            ? typeof data.minOrderQuantity === "string"
+              ? parseFloat(data.minOrderQuantity)
+              : Number(data.minOrderQuantity)
+            : undefined,
         condition: (data.condition as string) || "new",
         make: (data.make as string) || "",
         model: (data.model as string) || "",
-        year: data.year != null ? (typeof data.year === 'string' ? parseFloat(data.year) : Number(data.year)) : undefined,
+        year:
+          data.year != null
+            ? typeof data.year === "string"
+              ? parseFloat(data.year)
+              : Number(data.year)
+            : undefined,
         readyStockAvailable: (data.readyStockAvailable as boolean) || false,
         pricingTerms: (data.pricingTerms as string[]) || [],
-        productionLeadTime: data.productionLeadTime != null ? (typeof data.productionLeadTime === 'string' ? parseFloat(data.productionLeadTime) : Number(data.productionLeadTime)) : undefined,
+        productionLeadTime:
+          data.productionLeadTime != null
+            ? typeof data.productionLeadTime === "string"
+              ? parseFloat(data.productionLeadTime)
+              : Number(data.productionLeadTime)
+            : undefined,
         manufacturingSource: (data.manufacturingSource as string) || "",
         manufacturingSourceName: (data.manufacturingSourceName as string) || "",
-        duration: data.duration != null ? (typeof data.duration === 'string' ? parseFloat(data.duration) : Number(data.duration)) : undefined,
+        duration:
+          data.duration != null
+            ? typeof data.duration === "string"
+              ? parseFloat(data.duration)
+              : Number(data.duration)
+            : undefined,
         durationUnit: (data.durationUnit as string) || "Months",
         terms: (data.terms as string) || "",
         requiresExportLicense: (data.requiresExportLicense as boolean) || false,
         hasWarranty: (data.hasWarranty as boolean) || false,
-        warrantyDuration: data.warrantyDuration != null ? (typeof data.warrantyDuration === 'string' ? parseFloat(data.warrantyDuration) : Number(data.warrantyDuration)) : undefined,
+        warrantyDuration:
+          data.warrantyDuration != null
+            ? typeof data.warrantyDuration === "string"
+              ? parseFloat(data.warrantyDuration)
+              : Number(data.warrantyDuration)
+            : undefined,
         warrantyDurationUnit: (data.warrantyDurationUnit as string) || "months",
         warrantyTerms: (data.warrantyTerms as string) || "",
         complianceConfirmed: (data.complianceConfirmed as boolean) || false,
@@ -370,7 +499,20 @@ export default function EditProductPage() {
         actionType: (data.actionType as string) || "buy_now",
         isFeatured: (data.isFeatured as boolean) || false,
         image: (data.imageUrl as string) || "",
-        gallery: (data.gallery as string[]) || [],
+        gallery: (() => {
+          const existingGallery = (data.gallery as string[]) || [];
+          // Ensure at least 5 slots, pad with empty strings if needed
+          return existingGallery.length >= 5
+            ? existingGallery
+            : [
+                ...existingGallery,
+                ...Array(5 - existingGallery.length).fill(""),
+              ];
+        })(),
+        cadFile: (data.cadFile as string) || "",
+        certificateReport: (data.certificateReport as string) || "",
+        msdsSheet: (data.msdsSheet as string) || "",
+        installationManual: (data.installationManual as string) || "",
       };
 
       // Set form values
@@ -379,6 +521,10 @@ export default function EditProductPage() {
           form.setValue(key as keyof ProductFormValues, value as never);
         }
       });
+      
+      // Initialize galleryFiles array after form values are set
+      const galleryValue = form.getValues("gallery") || [];
+      setGalleryFiles(Array(galleryValue.length).fill(null));
     }
   }, [productData, form]);
 
@@ -398,6 +544,10 @@ export default function EditProductPage() {
   ) => {
     const current = form.getValues(fieldName) || [];
     form.setValue(fieldName, [...current, ""]);
+    // Also add to galleryFiles if it's gallery
+    if (fieldName === "gallery") {
+      setGalleryFiles([...galleryFiles, null]);
+    }
   };
 
   const removeArrayItem = (
@@ -420,6 +570,10 @@ export default function EditProductPage() {
       fieldName,
       current.filter((_, i: number) => i !== index)
     );
+    // Also remove from galleryFiles if it's gallery
+    if (fieldName === "gallery") {
+      setGalleryFiles(galleryFiles.filter((_, i) => i !== index));
+    }
   };
 
   const updateArrayItem = (
@@ -446,6 +600,37 @@ export default function EditProductPage() {
 
   const validateCurrentStep = async () => {
     const currentSection = SECTIONS[currentStep - 1];
+    
+    // Step 4: Validate file uploads
+    if (currentStep === 4) {
+      // Validate cover image
+      if (!imageFile) {
+        form.setError("image", {
+          type: "manual",
+          message: "Cover image is required",
+        });
+        toast.error("Cover image is required");
+        return false;
+      }
+      
+      // Validate gallery images (minimum 5)
+      const filledGalleryFiles = galleryFiles.filter((file) => file !== null);
+      if (filledGalleryFiles.length < 5) {
+        form.setError("gallery", {
+          type: "manual",
+          message: `Minimum 5 gallery images are required. You have ${filledGalleryFiles.length}.`,
+        });
+        toast.error(`Minimum 5 gallery images are required. You have ${filledGalleryFiles.length}.`);
+        return false;
+      }
+      
+      // Clear any previous errors if validation passes
+      form.clearErrors("image");
+      form.clearErrors("gallery");
+      return true;
+    }
+    
+    // Other steps: Validate form fields
     const fieldsToValidate = currentSection.fields.filter((field) => {
       // Validate all required fields per step
       if (currentStep === 1) {
@@ -561,15 +746,54 @@ export default function EditProductPage() {
     const formData = form.getValues();
 
     try {
-      // All steps: PATCH update
-      const updateData = cleanDataForApi(formData, currentSection.fields);
+      // Step 4: Upload files to assets endpoint
+      if (currentStep === 4) {
+        const uploadFormData = new FormData();
+        
+        // Add image file if selected
+        if (imageFile) {
+          uploadFormData.append("image", imageFile);
+        }
+        
+        // Add gallery files
+        galleryFiles.forEach((file) => {
+          if (file) {
+            uploadFormData.append("gallery", file);
+          }
+        });
+        
+        // Add optional document files
+        if (cadFile) {
+          uploadFormData.append("cadFile", cadFile);
+        }
+        if (certificateReportFile) {
+          uploadFormData.append("certificateReport", certificateReportFile);
+        }
+        if (msdsSheetFile) {
+          uploadFormData.append("msdsSheet", msdsSheetFile);
+        }
+        if (installationManualFile) {
+          uploadFormData.append("installationManual", installationManualFile);
+        }
+        
+        // Upload files to assets endpoint
+        await uploadAssetsMutation.mutateAsync({
+          id: productId,
+          formData: uploadFormData,
+        });
+        
+        toast.success("Assets uploaded successfully!");
+      } else {
+        // Other steps: PATCH update
+        const updateData = cleanDataForApi(formData, currentSection.fields);
 
-      await updateProductMutation.mutateAsync({
-        id: productId,
-        data: updateData as UpdateProductRequest,
-      });
+        await updateProductMutation.mutateAsync({
+          id: productId,
+          data: updateData as UpdateProductRequest,
+        });
 
-      toast.success("Product updated successfully!");
+        toast.success("Product updated successfully!");
+      }
 
       if (currentStep < SECTIONS.length) {
         setCurrentStep(currentStep + 1);
@@ -936,12 +1160,16 @@ export default function EditProductPage() {
             {/* Technical Specifications Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="font-heading">TECHNICAL SPECIFICATIONS:</CardTitle>
+                <CardTitle className="font-heading">
+                  TECHNICAL SPECIFICATIONS:
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Dimensions Section */}
                 <div>
-                  <FormLabel className="mb-2 block">Dimensions (L × W × H)</FormLabel>
+                  <FormLabel className="mb-2 block">
+                    Dimensions (L × W × H)
+                  </FormLabel>
                   <div className="grid gap-2 grid-cols-4">
                     <FormField
                       control={form.control}
@@ -1086,7 +1314,11 @@ export default function EditProductPage() {
                             <Input
                               value={item}
                               onChange={(e) =>
-                                updateArrayItem("materials", index, e.target.value)
+                                updateArrayItem(
+                                  "materials",
+                                  index,
+                                  e.target.value
+                                )
                               }
                               placeholder="Hardened Steel"
                               className="bg-bg-medium"
@@ -1095,7 +1327,9 @@ export default function EditProductPage() {
                               type="button"
                               variant="outline"
                               size="icon"
-                              onClick={() => removeArrayItem("materials", index)}
+                              onClick={() =>
+                                removeArrayItem("materials", index)
+                              }
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -1144,7 +1378,11 @@ export default function EditProductPage() {
                             <Input
                               value={item}
                               onChange={(e) =>
-                                updateArrayItem("features", index, e.target.value)
+                                updateArrayItem(
+                                  "features",
+                                  index,
+                                  e.target.value
+                                )
                               }
                               placeholder="Blast Resistant"
                               className="bg-bg-medium"
@@ -1202,7 +1440,11 @@ export default function EditProductPage() {
                             <Input
                               value={item}
                               onChange={(e) =>
-                                updateArrayItem("performance", index, e.target.value)
+                                updateArrayItem(
+                                  "performance",
+                                  index,
+                                  e.target.value
+                                )
                               }
                               placeholder="Stops 7.62x51mm NATO"
                               className="bg-bg-medium"
@@ -1211,7 +1453,9 @@ export default function EditProductPage() {
                               type="button"
                               variant="outline"
                               size="icon"
-                              onClick={() => removeArrayItem("performance", index)}
+                              onClick={() =>
+                                removeArrayItem("performance", index)
+                              }
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -1260,7 +1504,9 @@ export default function EditProductPage() {
             {/* Available Variants Section */}
             <Card className="py-6">
               <CardHeader className="pb-4">
-                <CardTitle className="font-heading">AVAILABLE VARIANTS:</CardTitle>
+                <CardTitle className="font-heading">
+                  AVAILABLE VARIANTS:
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6 pb-0">
                 {/* Top Row: Four Dropdowns */}
@@ -1292,7 +1538,11 @@ export default function EditProductPage() {
                             <Input
                               value={item}
                               onChange={(e) =>
-                                updateArrayItem("driveTypes", index, e.target.value)
+                                updateArrayItem(
+                                  "driveTypes",
+                                  index,
+                                  e.target.value
+                                )
                               }
                               placeholder="Left / Right-hand drive,"
                               className="bg-bg-medium"
@@ -1301,7 +1551,9 @@ export default function EditProductPage() {
                               type="button"
                               variant="outline"
                               size="icon"
-                              onClick={() => removeArrayItem("driveTypes", index)}
+                              onClick={() =>
+                                removeArrayItem("driveTypes", index)
+                              }
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -1408,7 +1660,11 @@ export default function EditProductPage() {
                             <Input
                               value={item}
                               onChange={(e) =>
-                                updateArrayItem("thickness", index, e.target.value)
+                                updateArrayItem(
+                                  "thickness",
+                                  index,
+                                  e.target.value
+                                )
                               }
                               placeholder="25mm"
                               className="bg-bg-medium"
@@ -1417,7 +1673,9 @@ export default function EditProductPage() {
                               type="button"
                               variant="outline"
                               size="icon"
-                              onClick={() => removeArrayItem("thickness", index)}
+                              onClick={() =>
+                                removeArrayItem("thickness", index)
+                              }
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -1503,24 +1761,36 @@ export default function EditProductPage() {
                   {/* Left Column */}
                   <div className="space-y-4">
                     <div>
-                      <FormLabel className="mb-2 block">Weight (per unit)</FormLabel>
+                      <FormLabel className="mb-2 block">
+                        Weight (per unit)
+                      </FormLabel>
                       <div className="grid gap-2 grid-cols-2">
                         <FormField
                           control={form.control}
                           name="weightValue"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="sr-only">Weight Value</FormLabel>
+                              <FormLabel className="sr-only">
+                                Weight Value
+                              </FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
                                   step="0.1"
                                   placeholder="Eg. 1.2"
-                                  value={field.value != null ? String(field.value) : ""}
+                                  value={
+                                    field.value != null
+                                      ? String(field.value)
+                                      : ""
+                                  }
                                   onChange={(e) => {
                                     const val = e.target.value;
                                     field.onChange(
-                                      val === "" ? undefined : (isNaN(parseFloat(val)) ? undefined : parseFloat(val))
+                                      val === ""
+                                        ? undefined
+                                        : isNaN(parseFloat(val))
+                                        ? undefined
+                                        : parseFloat(val)
                                     );
                                   }}
                                   onBlur={field.onBlur}
@@ -1562,24 +1832,36 @@ export default function EditProductPage() {
                     </div>
 
                     <div>
-                      <FormLabel className="mb-2 block">Packing Weight (gross)</FormLabel>
+                      <FormLabel className="mb-2 block">
+                        Packing Weight (gross)
+                      </FormLabel>
                       <div className="grid gap-2 grid-cols-2">
                         <FormField
                           control={form.control}
                           name="packingWeight"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="sr-only">Packing Weight Value</FormLabel>
+                              <FormLabel className="sr-only">
+                                Packing Weight Value
+                              </FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
                                   step="0.1"
                                   placeholder="Eg. 1.2"
-                                  value={field.value != null ? String(field.value) : ""}
+                                  value={
+                                    field.value != null
+                                      ? String(field.value)
+                                      : ""
+                                  }
                                   onChange={(e) => {
                                     const val = e.target.value;
                                     field.onChange(
-                                      val === "" ? undefined : (isNaN(parseFloat(val)) ? undefined : parseFloat(val))
+                                      val === ""
+                                        ? undefined
+                                        : isNaN(parseFloat(val))
+                                        ? undefined
+                                        : parseFloat(val)
                                     );
                                   }}
                                   onBlur={field.onBlur}
@@ -1752,11 +2034,17 @@ export default function EditProductPage() {
                             <Input
                               type="number"
                               placeholder="Eg. 50 units"
-                              value={field.value != null ? String(field.value) : ""}
+                              value={
+                                field.value != null ? String(field.value) : ""
+                              }
                               onChange={(e) => {
                                 const val = e.target.value;
                                 field.onChange(
-                                  val === "" ? undefined : (isNaN(parseInt(val)) ? undefined : parseInt(val))
+                                  val === ""
+                                    ? undefined
+                                    : isNaN(parseInt(val))
+                                    ? undefined
+                                    : parseInt(val)
                                 );
                               }}
                               onBlur={field.onBlur}
@@ -1779,9 +2067,6 @@ export default function EditProductPage() {
       case 3:
         return (
           <Card>
-            <CardHeader>
-              <CardTitle>Pricing & Availability</CardTitle>
-            </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label className="mb-4 block">
@@ -1844,7 +2129,8 @@ export default function EditProductPage() {
                           id={`pricingTerm-${term}`}
                           checked={pricingTerms.includes(term)}
                           onCheckedChange={(checked) => {
-                            const current = form.getValues("pricingTerms") || [];
+                            const current =
+                              form.getValues("pricingTerms") || [];
                             if (checked) {
                               form.setValue("pricingTerms", [...current, term]);
                             } else {
@@ -1902,7 +2188,9 @@ export default function EditProductPage() {
                         </Label>
                         <FormField
                           control={form.control}
-                          name={field as "tier1Price" | "tier2Price" | "tier3Price"}
+                          name={
+                            field as "tier1Price" | "tier2Price" | "tier3Price"
+                          }
                           render={({ field: priceField }) => (
                             <FormItem className="flex-1">
                               <FormControl>
@@ -2017,8 +2305,7 @@ export default function EditProductPage() {
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-              </div>
+              <div className="grid gap-4 md:grid-cols-2"></div>
             </CardContent>
           </Card>
         );
@@ -2026,59 +2313,417 @@ export default function EditProductPage() {
       case 4:
         return (
           <Card>
-            <CardHeader>
-              <CardTitle>Uploads & Media</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Left Panel: Product Photos */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-base font-semibold font-heading mb-2">
+                      PRODUCT PHOTOS
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Upload Requirements: (Min 5 – Max 10 images)
+                    </p>
+
+                    {/* Cover Image */}
               <FormField
                 control={form.control}
                 name="image"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Product Image URL (Cover Photo)</FormLabel>
+                          <FormLabel className="sr-only">Cover Image</FormLabel>
                     <FormControl>
-                      <Input
-                        type="url"
-                        placeholder="https://cdn.armoredmart.com/products/main.jpg"
-                        {...field}
-                      />
+                            <div className="relative">
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                id="cover-image-input"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setImageFile(file);
+                                    const localUrl = URL.createObjectURL(file);
+                                    field.onChange(localUrl);
+                                    // Clear error when file is selected
+                                    form.clearErrors("image");
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor="cover-image-input"
+                                className="block cursor-pointer"
+                              >
+                                <div className="relative w-full aspect-4/3 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors">
+                                  {field.value ? (
+                                    <div className="relative w-full h-full rounded-lg overflow-hidden">
+                                      <Image
+                                        src={field.value}
+                                        alt="Cover image"
+                                        fill
+                                        className="object-cover"
+                                        onError={() => {
+                                          // If URL is invalid, show placeholder
+                                        }}
+                                      />
+                                      <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                                        Cover
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <Image
+                                        src="/images/Frame.png"
+                                        alt="Upload placeholder"
+                                        width={80}
+                                        height={80}
+                                        className="mb-2"
+                                      />
+                                      <p className="text-sm text-gray-600 text-center px-4">
+                                        Choose a File
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        JPEG, PNG formats
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                              </label>
+                            </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div>
-                <Label className="mb-2 block">Gallery Images (URLs)</Label>
+                    {/* Gallery Images */}
+                    <FormField
+                      control={form.control}
+                      name="gallery"
+                      render={() => (
+                        <FormItem>
+                          <FormLabel className="mb-2 block text-sm">
+                            Gallery Images
+                          </FormLabel>
+                          <FormControl>
+                            <div className="grid grid-cols-3 gap-3">
                 {gallery.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      type="url"
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("gallery", index, e.target.value)
-                      }
-                      placeholder="https://cdn.armoredmart.com/products/detail-1.jpg"
-                    />
+                          <div key={index} className="relative">
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              id={`gallery-image-${index}`}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  // Update galleryFiles array
+                                  const newGalleryFiles = [...galleryFiles];
+                                  newGalleryFiles[index] = file;
+                                  setGalleryFiles(newGalleryFiles);
+                                  // Create preview URL
+                                  const localUrl = URL.createObjectURL(file);
+                                  updateArrayItem("gallery", index, localUrl);
+                                  // Clear error when file is selected (if we have enough files)
+                                  const filledCount = newGalleryFiles.filter((f) => f !== null).length;
+                                  if (filledCount >= 5) {
+                                    form.clearErrors("gallery");
+                                  }
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`gallery-image-${index}`}
+                              className="block cursor-pointer"
+                            >
+                              <div className="relative w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors">
+                                {item ? (
+                                  <div className="relative w-full h-full rounded-lg overflow-hidden">
+                                    <Image
+                                      src={item}
+                                      alt={`Gallery ${index + 1}`}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <Image
+                                    src="/images/Frame.png"
+                                    alt="Upload placeholder"
+                                    width={40}
+                                    height={40}
+                                  />
+                                )}
+                              </div>
+                            </label>
+                            {gallery.filter((item) => item !== "").length >
+                              5 && (
                     <Button
                       type="button"
-                      variant="outline"
+                                variant="ghost"
                       size="icon"
-                      onClick={() => removeArrayItem("gallery", index)}
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white"
+                                onClick={() =>
+                                  removeArrayItem("gallery", index)
+                                }
                     >
-                      <X className="h-4 w-4" />
+                                <X className="h-3 w-3" />
                     </Button>
+                            )}
                   </div>
                 ))}
-                <Button
+                        {gallery.length < 10 && (
+                          <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={() => addArrayItem("gallery")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Gallery Image
-                </Button>
+                            className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors"
+                          >
+                            <Plus className="h-8 w-8 text-gray-400" />
+                          </button>
+                        )}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Right Panel: Document Uploads */}
+                <div className="space-y-4">
+                  <Label className="mb-4 block text-base font-semibold">
+                    Document Uploads
+                  </Label>
+
+                  {/* CAD File */}
+                  <FormField
+                    control={form.control}
+                    name="cadFile"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">
+                          Technical Drawing / CAD File (if any):
+                        </FormLabel>
+                        <FormControl>
+                          <div>
+                            <input
+                              type="file"
+                              accept=".pdf,image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              id="cad-file-input"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setCadFile(file);
+                                  const localUrl = URL.createObjectURL(file);
+                                  field.onChange(localUrl);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor="cad-file-input"
+                              className="block cursor-pointer"
+                            >
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                <Image
+                                  src="/images/Frame.png"
+                                  alt="Upload placeholder"
+                                  width={50}
+                                  height={50}
+                                  className="mb-2"
+                                />
+                                <p className="text-sm text-gray-600 text-center">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  JPEG, PNG, PDF formats
+                                </p>
+                                {field.value && (
+                                  <p className="text-xs text-green-600 mt-2">
+                                    File selected
+                                  </p>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Certificate Report */}
+                  <FormField
+                    control={form.control}
+                    name="certificateReport"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">
+                          Certificate / Lab Test Report (if any):
+                        </FormLabel>
+                        <FormControl>
+                          <div>
+                            <input
+                              type="file"
+                              accept=".pdf,image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              id="certificate-report-input"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setCertificateReportFile(file);
+                                  const localUrl = URL.createObjectURL(file);
+                                  field.onChange(localUrl);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor="certificate-report-input"
+                              className="block cursor-pointer"
+                            >
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                <Image
+                                  src="/images/Frame.png"
+                                  alt="Upload placeholder"
+                                  width={50}
+                                  height={50}
+                                  className="mb-2"
+                                />
+                                <p className="text-sm text-gray-600 text-center">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  JPEG, PNG, PDF formats
+                                </p>
+                                {field.value && (
+                                  <p className="text-xs text-green-600 mt-2">
+                                    File selected
+                                  </p>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* MSDS Sheet */}
+                  <FormField
+                    control={form.control}
+                    name="msdsSheet"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">
+                          MSDS / DG Handling Sheet (if applicable):
+                        </FormLabel>
+                        <FormControl>
+                          <div>
+                            <input
+                              type="file"
+                              accept=".pdf,image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              id="msds-sheet-input"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setMsdsSheetFile(file);
+                                  const localUrl = URL.createObjectURL(file);
+                                  field.onChange(localUrl);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor="msds-sheet-input"
+                              className="block cursor-pointer"
+                            >
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                <Image
+                                  src="/images/Frame.png"
+                                  alt="Upload placeholder"
+                                  width={50}
+                                  height={50}
+                                  className="mb-2"
+                                />
+                                <p className="text-sm text-gray-600 text-center">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  JPEG, PNG, PDF formats
+                                </p>
+                                {field.value && (
+                                  <p className="text-xs text-green-600 mt-2">
+                                    File selected
+                                  </p>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Installation Manual */}
+                  <FormField
+                    control={form.control}
+                    name="installationManual"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">
+                          Optional Installation Manual or Datasheet:
+                        </FormLabel>
+                        <FormControl>
+                          <div>
+                            <input
+                              type="file"
+                              accept=".pdf,image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              id="installation-manual-input"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setInstallationManualFile(file);
+                                  const localUrl = URL.createObjectURL(file);
+                                  field.onChange(localUrl);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor="installation-manual-input"
+                              className="block cursor-pointer"
+                            >
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                <Image
+                                  src="/images/Frame.png"
+                                  alt="Upload placeholder"
+                                  width={50}
+                                  height={50}
+                                  className="mb-2"
+                                />
+                                <p className="text-sm text-gray-600 text-center">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  JPEG, PNG, PDF formats
+                                </p>
+                                {field.value && (
+                                  <p className="text-xs text-green-600 mt-2">
+                                    File selected
+                                  </p>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -2088,7 +2733,9 @@ export default function EditProductPage() {
         return (
           <Card>
             <CardHeader>
-              <CardTitle className="font-heading">COMPLIANCE & DECLARATIONS</CardTitle>
+              <CardTitle className="font-heading">
+                COMPLIANCE & DECLARATIONS
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 pb-6">
@@ -2467,7 +3114,11 @@ export default function EditProductPage() {
           ))}
 
           {/* Navigation Buttons */}
-          <div className={`flex justify-between gap-4 pt-4 ${currentStep === 2 ? "mb-0" : ""}`}>
+          <div
+            className={`flex justify-between gap-4 pt-4 ${
+              currentStep === 2 ? "mb-0" : ""
+            }`}
+          >
             <Button
               type="button"
               variant="secondary"
@@ -2484,10 +3135,7 @@ export default function EditProductPage() {
                 variant="secondary"
                 className="bg-primary text-white hover:bg-primary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
                 onClick={handlePrevious}
-                disabled={
-                  currentStep === 1 ||
-                  updateProductMutation.isPending
-                }
+                disabled={currentStep === 1 || updateProductMutation.isPending}
               >
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Previous

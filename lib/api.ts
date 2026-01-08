@@ -18,7 +18,11 @@ function getAuthService(url?: string) {
   if (!url) return authService; // Default to admin
   
   // Check if the URL is for vendor endpoints
-  const isVendorEndpoint = url.includes("/vendor/") || url.startsWith("/vendor");
+  const isVendorEndpoint = 
+    url.includes("/vendor/") || 
+    url.startsWith("/vendor") ||
+    url.match(/^\/products\/\d+\/assets$/); // /products/{id}/assets endpoint for vendors
+  
   return isVendorEndpoint ? vendorAuthService : authService;
 }
 

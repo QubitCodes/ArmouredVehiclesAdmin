@@ -162,6 +162,23 @@ class VendorProductService {
       throw error;
     }
   }
+
+  /**
+   * Upload product assets (images and documents)
+   */
+  async uploadProductAssets(id: string, formData: FormData) {
+    try {
+      const response = await api.post(`/products/${id}/assets`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error uploading product assets:", error);
+      throw error;
+    }
+  }
 }
 
 export const vendorProductService = new VendorProductService();
