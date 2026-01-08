@@ -16,6 +16,8 @@ import {
   ChevronLeft,
   ArrowLeft,
   Info,
+  FileText,
+  CheckCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +47,7 @@ import {
 } from "@/hooks/admin/product-management/use-categories";
 import { useCountries } from "@/hooks/vendor/dashboard/use-countries";
 import { Spinner } from "@/components/ui/spinner";
+import { PDFPreview } from "@/components/ui/pdf-preview";
 import {
   WEIGHT_UNITS,
   DIMENSION_UNITS,
@@ -53,19 +56,15 @@ import {
 import type { UpdateProductRequest } from "@/services/vendor/product.service";
 
 const productSchema = z.object({
-  name: z.string().min(1, "Product name is required"),
-  sku: z.string().min(1, "Product Code / SKU is required"),
-  mainCategoryId: z
-    .union([z.number().int().positive(), z.undefined()])
-    .refine((val) => val !== undefined, {
-      message: "Main Category is required",
-    }),
+  name: z.string().optional(),
+  sku: z.string().optional(),
+  mainCategoryId: z.number().int().positive().optional(),
   categoryId: z.number().int().positive().optional(),
   subCategoryId: z.number().int().positive().optional(),
-  vehicleCompatibility: z.string().min(1, "Vehicle Compatibility is required"),
-  certifications: z.string().min(1, "Certifications / Standards is required"),
-  countryOfOrigin: z.string().min(1, "Country of Origin is required"),
-  controlledItemType: z.string().min(1, "Controlled Item Type is required"),
+  vehicleCompatibility: z.string().optional(),
+  certifications: z.string().optional(),
+  countryOfOrigin: z.string().optional(),
+  controlledItemType: z.string().optional(),
   dimensionLength: z.number().optional(),
   dimensionWidth: z.number().optional(),
   dimensionHeight: z.number().optional(),
@@ -86,7 +85,7 @@ const productSchema = z.object({
   packingDimensionUnit: z.string().optional(),
   packingWeight: z.number().optional(),
   packingWeightUnit: z.string().optional(),
-  basePrice: z.number().min(0, "Base price must be greater than or equal to 0"),
+  basePrice: z.number().optional(),
   currency: z.string().optional(),
   stock: z.number().optional(),
   minOrderQuantity: z.number().optional(),
@@ -97,41 +96,31 @@ const productSchema = z.object({
   readyStockAvailable: z.boolean().optional(),
   pricingTerms: z.array(z.string()).optional(),
   tier1Price: z.number().optional(),
+  tier1MinQuantity: z.number().optional(),
+  tier1MaxQuantity: z.number().optional(),
   tier2Price: z.number().optional(),
+  tier2MinQuantity: z.number().optional(),
+  tier2MaxQuantity: z.number().optional(),
   tier3Price: z.number().optional(),
+  tier3MinQuantity: z.number().optional(),
+  tier3MaxQuantity: z.number().optional(),
   selectedTier: z.string().optional(),
   productionLeadTime: z.number().optional(),
   manufacturingSource: z.string().optional(),
   manufacturingSourceName: z.string().optional(),
-  duration: z.number().optional(),
-  durationUnit: z.string().optional(),
-  terms: z.string().optional(),
   requiresExportLicense: z.boolean().optional(),
   hasWarranty: z.boolean().optional(),
   warrantyDuration: z.number().optional(),
   warrantyDurationUnit: z.string().optional(),
   warrantyTerms: z.string().optional(),
   complianceConfirmed: z.boolean().optional(),
-  supplierSignature: z.string().optional(),
   vehicleFitment: z.array(z.string()).optional(),
   specifications: z.array(z.string()).optional(),
   description: z.string().optional(),
-  warranty: z.string().optional(),
   actionType: z.string().optional(),
   isFeatured: z.boolean().optional(),
-  image: z
-    .string()
-    .url("Please enter a valid URL")
-    .min(1, "Cover image is required"),
-  gallery: z
-    .array(z.string().url().or(z.literal("")))
-    .min(1, "Gallery images are required")
-    .refine((arr) => arr.filter((item) => item !== "").length >= 5, {
-      message: "Minimum 5 gallery images are required",
-    })
-    .refine((arr) => arr.filter((item) => item !== "").length <= 10, {
-      message: "Maximum 10 gallery images allowed",
-    }),
+  image: z.string().optional(),
+  gallery: z.array(z.string()).optional(),
   cadFile: z
     .string()
     .url("Please enter a valid URL")
@@ -152,13 +141,6 @@ const productSchema = z.object({
     .url("Please enter a valid URL")
     .optional()
     .or(z.literal("")),
-  signatureDate: z
-    .object({
-      day: z.number().optional(),
-      month: z.number().optional(),
-      year: z.number().optional(),
-    })
-    .optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -222,6 +204,15 @@ const SECTIONS = [
       "readyStockAvailable",
       "stock",
       "condition",
+      "tier1Price",
+      "tier1MinQuantity",
+      "tier1MaxQuantity",
+      "tier2Price",
+      "tier2MinQuantity",
+      "tier2MaxQuantity",
+      "tier3Price",
+      "tier3MinQuantity",
+      "tier3MaxQuantity",
     ],
   },
   {
@@ -242,18 +233,12 @@ const SECTIONS = [
     fields: [
       "manufacturingSource",
       "manufacturingSourceName",
-      "duration",
-      "durationUnit",
-      "terms",
       "requiresExportLicense",
       "hasWarranty",
-      "warranty",
       "warrantyDuration",
       "warrantyDurationUnit",
       "warrantyTerms",
       "complianceConfirmed",
-      "supplierSignature",
-      "signatureDate",
     ],
   },
 ];
@@ -276,7 +261,43 @@ export default function EditProductPage() {
   const [certificateReportFile, setCertificateReportFile] = useState<File | null>(null);
   const [msdsSheetFile, setMsdsSheetFile] = useState<File | null>(null);
   const [installationManualFile, setInstallationManualFile] = useState<File | null>(null);
-  
+
+  // Track initial file URLs for change detection
+  const [initialImageUrl, setInitialImageUrl] = useState<string>("");
+  const [initialGalleryUrls, setInitialGalleryUrls] = useState<string[]>([]);
+  const [initialCadFileUrl, setInitialCadFileUrl] = useState<string>("");
+  const [initialCertificateReportUrl, setInitialCertificateReportUrl] = useState<string>("");
+  const [initialMsdsSheetUrl, setInitialMsdsSheetUrl] = useState<string>("");
+  const [initialInstallationManualUrl, setInitialInstallationManualUrl] = useState<string>("");
+
+  // Helper function to get full image URL
+  const getImageUrl = (url: string | null | undefined): string => {
+    if (!url) return "";
+    // If URL is already absolute or a blob URL, return as is
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:")) {
+      return url;
+    }
+    // Otherwise, prepend the API base URL
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    return `${baseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+  };
+
+  // Helper function to extract filename from URL or path
+  const getFileName = (url: string | null | undefined): string => {
+    if (!url) return "";
+    try {
+      // Extract filename from URL path
+      const urlPath = url.split('?')[0]; // Remove query params
+      const parts = urlPath.split('/');
+      const filename = parts[parts.length - 1];
+      // Decode URI component and limit length
+      const decoded = decodeURIComponent(filename);
+      return decoded.length > 30 ? decoded.substring(0, 27) + '...' : decoded;
+    } catch {
+      return "Uploaded file";
+    }
+  };
+
   // Fetch existing product data to populate form
   const { 
     data: productData, 
@@ -296,7 +317,6 @@ export default function EditProductPage() {
       packingDimensionUnit: "cm",
       packingWeightUnit: "kg",
       warrantyDurationUnit: "months",
-      durationUnit: "Months",
       readyStockAvailable: false,
       requiresExportLicense: false,
       hasWarranty: false,
@@ -318,10 +338,15 @@ export default function EditProductPage() {
       certificateReport: "",
       msdsSheet: "",
       installationManual: "",
-      signatureDate: undefined,
       tier1Price: undefined,
+      tier1MinQuantity: 1,
+      tier1MaxQuantity: 10,
       tier2Price: undefined,
+      tier2MinQuantity: 11,
+      tier2MaxQuantity: 50,
       tier3Price: undefined,
+      tier3MinQuantity: 51,
+      tier3MaxQuantity: undefined,
       selectedTier: undefined,
     },
   });
@@ -343,7 +368,6 @@ export default function EditProductPage() {
   const sizes = form.watch("sizes") || [];
   const thickness = form.watch("thickness") || [];
   const colors = form.watch("colors") || [];
-  const vehicleFitment = form.watch("vehicleFitment") || [];
   const pricingTerms = form.watch("pricingTerms") || [];
   const gallery = form.watch("gallery") || [];
 
@@ -353,7 +377,10 @@ export default function EditProductPage() {
       // Type assertion since API response may have more fields than Product type
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = productData as any;
-      
+
+      console.log("Product data loaded:", data);
+      console.log("Image URL from API:", data.imageUrl);
+
       // Map product data to form values
       const formValues: Partial<ProductFormValues> = {
         name: (data.name as string) || "",
@@ -472,33 +499,33 @@ export default function EditProductPage() {
             : undefined,
         manufacturingSource: (data.manufacturingSource as string) || "",
         manufacturingSourceName: (data.manufacturingSourceName as string) || "",
-        duration:
-          data.duration != null
+        requiresExportLicense: (data.requiresExportLicense as boolean) || false,
+        hasWarranty: (data.hasWarranty as boolean) || false,
+        warrantyDuration: (() => {
+          // Map duration to warrantyDuration, or use warrantyDuration if available
+          const durationValue = data.duration != null
             ? typeof data.duration === "string"
               ? parseFloat(data.duration)
               : Number(data.duration)
-            : undefined,
-        durationUnit: (data.durationUnit as string) || "Months",
-        terms: (data.terms as string) || "",
-        requiresExportLicense: (data.requiresExportLicense as boolean) || false,
-        hasWarranty: (data.hasWarranty as boolean) || false,
-        warrantyDuration:
-          data.warrantyDuration != null
+            : null;
+          const warrantyDurationValue = data.warrantyDuration != null
             ? typeof data.warrantyDuration === "string"
               ? parseFloat(data.warrantyDuration)
               : Number(data.warrantyDuration)
-            : undefined,
-        warrantyDurationUnit: (data.warrantyDurationUnit as string) || "months",
-        warrantyTerms: (data.warrantyTerms as string) || "",
+            : null;
+          return warrantyDurationValue ?? durationValue ?? undefined;
+        })(),
+        warrantyDurationUnit: (data.warrantyDurationUnit as string) || 
+          (data.durationUnit as string) || "months",
+        warrantyTerms: (data.warrantyTerms as string) || 
+          (data.terms as string) || "",
         complianceConfirmed: (data.complianceConfirmed as boolean) || false,
-        supplierSignature: (data.supplierSignature as string) || "",
         vehicleFitment: (data.vehicleFitment as string[]) || [],
         specifications: (data.specifications as string[]) || [],
         description: (data.description as string) || "",
-        warranty: (data.warranty as string) || "",
         actionType: (data.actionType as string) || "buy_now",
         isFeatured: (data.isFeatured as boolean) || false,
-        image: (data.imageUrl as string) || "",
+        image: (data.image as string) || "",
         gallery: (() => {
           const existingGallery = (data.gallery as string[]) || [];
           // Ensure at least 5 slots, pad with empty strings if needed
@@ -513,6 +540,27 @@ export default function EditProductPage() {
         certificateReport: (data.certificateReport as string) || "",
         msdsSheet: (data.msdsSheet as string) || "",
         installationManual: (data.installationManual as string) || "",
+        tier1Price: data.tier1Price != null
+          ? typeof data.tier1Price === "string"
+            ? parseFloat(data.tier1Price)
+            : Number(data.tier1Price)
+          : undefined,
+        tier1MinQuantity: 1,
+        tier1MaxQuantity: 10,
+        tier2Price: data.tier2Price != null
+          ? typeof data.tier2Price === "string"
+            ? parseFloat(data.tier2Price)
+            : Number(data.tier2Price)
+          : undefined,
+        tier2MinQuantity: 11,
+        tier2MaxQuantity: 50,
+        tier3Price: data.tier3Price != null
+          ? typeof data.tier3Price === "string"
+            ? parseFloat(data.tier3Price)
+            : Number(data.tier3Price)
+          : undefined,
+        tier3MinQuantity: 51,
+        tier3MaxQuantity: undefined,
       };
 
       // Set form values
@@ -521,10 +569,21 @@ export default function EditProductPage() {
           form.setValue(key as keyof ProductFormValues, value as never);
         }
       });
-      
+
+      console.log("Form image value set to:", formValues.image);
+      console.log("Form image after set:", form.getValues("image"));
+
       // Initialize galleryFiles array after form values are set
       const galleryValue = form.getValues("gallery") || [];
       setGalleryFiles(Array(galleryValue.length).fill(null));
+
+      // Capture initial file URLs for change detection
+      setInitialImageUrl(formValues.image || "");
+      setInitialGalleryUrls(formValues.gallery || []);
+      setInitialCadFileUrl(formValues.cadFile || "");
+      setInitialCertificateReportUrl(formValues.certificateReport || "");
+      setInitialMsdsSheetUrl(formValues.msdsSheet || "");
+      setInitialInstallationManualUrl(formValues.installationManual || "");
     }
   }, [productData, form]);
 
@@ -598,60 +657,61 @@ export default function EditProductPage() {
     form.setValue(fieldName, updated);
   };
 
+  // Helper function to detect if any files have changed
+  const hasFileChanges = (): boolean => {
+    // Check if new files were uploaded
+    if (imageFile) return true;
+    if (galleryFiles.some(f => f !== null)) return true;
+    if (cadFile || certificateReportFile || msdsSheetFile || installationManualFile) return true;
+    
+    // Check if existing files were removed or changed
+    const currentImage = form.getValues("image");
+    const currentGallery = form.getValues("gallery") || [];
+    const currentCadFile = form.getValues("cadFile");
+    const currentCertificate = form.getValues("certificateReport");
+    const currentMsds = form.getValues("msdsSheet");
+    const currentManual = form.getValues("installationManual");
+    
+    if (currentImage !== initialImageUrl) return true;
+    if (JSON.stringify(currentGallery) !== JSON.stringify(initialGalleryUrls)) return true;
+    if (currentCadFile !== initialCadFileUrl) return true;
+    if (currentCertificate !== initialCertificateReportUrl) return true;
+    if (currentMsds !== initialMsdsSheetUrl) return true;
+    if (currentManual !== initialInstallationManualUrl) return true;
+    
+    return false;
+  };
+
   const validateCurrentStep = async () => {
     const currentSection = SECTIONS[currentStep - 1];
     
-    // Step 4: Validate file uploads
+    // Step 4: Validate file uploads (optional in edit mode)
     if (currentStep === 4) {
-      // Validate cover image
-      if (!imageFile) {
-        form.setError("image", {
-          type: "manual",
-          message: "Cover image is required",
-        });
-        toast.error("Cover image is required");
-        return false;
+      // In edit mode, validation is optional - check if there are existing images
+      const existingCoverImage = form.getValues("image");
+      const existingGallery = form.getValues("gallery") || [];
+      const existingGalleryCount = existingGallery.filter((img) => img && img !== "").length;
+
+      // Skip validation if existing images are present (edit mode)
+      // Only validate if user is trying to upload new images but hasn't met requirements
+      const hasExistingImages = existingCoverImage || existingGalleryCount > 0;
+
+      if (hasExistingImages) {
+        // Has existing images, no need to validate - allow user to proceed
+        form.clearErrors("image");
+        form.clearErrors("gallery");
+        return true;
       }
-      
-      // Validate gallery images (minimum 5)
-      const filledGalleryFiles = galleryFiles.filter((file) => file !== null);
-      if (filledGalleryFiles.length < 5) {
-        form.setError("gallery", {
-          type: "manual",
-          message: `Minimum 5 gallery images are required. You have ${filledGalleryFiles.length}.`,
-        });
-        toast.error(`Minimum 5 gallery images are required. You have ${filledGalleryFiles.length}.`);
-        return false;
-      }
-      
-      // Clear any previous errors if validation passes
+
+      // No existing images and no new uploads - this is optional in edit mode
       form.clearErrors("image");
       form.clearErrors("gallery");
       return true;
     }
     
-    // Other steps: Validate form fields
-    const fieldsToValidate = currentSection.fields.filter((field) => {
-      // Validate all required fields per step
-      if (currentStep === 1) {
-        // Required fields in step 1
-        return [
-          "name",
-          "sku",
-          "mainCategoryId",
-          "vehicleCompatibility",
-          "certifications",
-          "countryOfOrigin",
-          "controlledItemType",
-        ].includes(field);
-      }
-      return true;
-    });
-
-    const isValid = await form.trigger(
-      fieldsToValidate as (keyof ProductFormValues)[]
-    );
-    return isValid;
+    // Other steps: Validate form fields (optional in edit mode)
+    // In edit mode, all fields are optional - no validation required
+    return true;
   };
 
   const cleanDataForApi = (
@@ -663,25 +723,45 @@ export default function EditProductPage() {
     fields.forEach((field) => {
       const value = data[field as keyof ProductFormValues];
 
-      if (field === "signatureDate") {
-        // Handle signatureDate object specially
-        if (value && typeof value === "object") {
-          const dateValue = value as {
-            day?: number;
-            month?: number;
-            year?: number;
-          };
-          if (dateValue.day || dateValue.month || dateValue.year) {
-            cleanedData[field] = value;
-          }
-        }
-      } else if (Array.isArray(value)) {
+      if (Array.isArray(value)) {
         const filtered = value.filter((item) => item !== "");
         if (filtered.length > 0) {
           cleanedData[field] = filtered;
         }
-      } else if (value !== "" && value !== undefined && value !== null) {
+      } else if (typeof value === "boolean") {
+        // Always include boolean values (even if false)
         cleanedData[field] = value;
+      } else {
+        // For Declarations section fields, convert empty strings to null
+        const declarationsStringFields = [
+          "manufacturingSource",
+          "manufacturingSourceName",
+          "warrantyTerms",
+        ];
+        const declarationsNumberFields = [
+          "warrantyDuration",
+        ];
+        const declarationsStringUnitFields = [
+          "warrantyDurationUnit",
+        ];
+        
+        if (declarationsStringFields.includes(field)) {
+          // Convert empty strings to null for string fields
+          cleanedData[field] = value === "" || value === null || value === undefined ? null : value;
+        } else if (declarationsNumberFields.includes(field)) {
+          // Always include number fields (even if 0 or null)
+          if (value === null || value === undefined) {
+            cleanedData[field] = null;
+          } else {
+            cleanedData[field] = value;
+          }
+        } else if (declarationsStringUnitFields.includes(field)) {
+          // Convert empty strings to null for unit fields
+          cleanedData[field] = value === "" || value === null || value === undefined ? null : value;
+        } else if (value !== "" && value !== null && value !== undefined) {
+          // Include non-empty values for other fields
+          cleanedData[field] = value;
+        }
       }
     });
 
@@ -786,6 +866,8 @@ export default function EditProductPage() {
       } else {
         // Other steps: PATCH update
         const updateData = cleanDataForApi(formData, currentSection.fields);
+
+        console.log(updateData);
 
         await updateProductMutation.mutateAsync({
           id: productId,
@@ -2161,63 +2243,42 @@ export default function EditProductPage() {
                   Tiered Pricing Options (if any):
                 </Label>
                 <div className="grid gap-4 md:grid-cols-3">
-                  {(() => {
-                    const selectedTier = form.watch("selectedTier");
-                    return [
-                      { range: "1-10 units", tier: "1", field: "tier1Price" },
-                      { range: "11-50 units", tier: "2", field: "tier2Price" },
-                      { range: "50+ units", tier: "3", field: "tier3Price" },
-                    ].map(({ range, tier, field }) => (
-                      <div key={tier} className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          id={`tier-${tier}`}
-                          name="selectedTier"
-                          value={tier}
-                          checked={selectedTier === tier}
-                          onChange={(e) => {
-                            form.setValue("selectedTier", e.target.value);
-                          }}
-                          className="h-4 w-4 border-input text-primary focus:ring-primary focus:ring-2 focus:ring-offset-2 cursor-pointer"
-                        />
-                        <Label
-                          htmlFor={`tier-${tier}`}
-                          className="cursor-pointer font-normal whitespace-nowrap"
-                        >
-                          {range}
-                        </Label>
-                        <FormField
-                          control={form.control}
-                          name={
-                            field as "tier1Price" | "tier2Price" | "tier3Price"
-                          }
-                          render={({ field: priceField }) => (
-                            <FormItem className="flex-1">
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="$0.00"
-                                  value={priceField.value ?? ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    priceField.onChange(
-                                      val === "" ? undefined : parseFloat(val)
-                                    );
-                                  }}
-                                  onBlur={priceField.onBlur}
-                                  name={priceField.name}
-                                  ref={priceField.ref}
-                                  className="flex-1"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    ));
-                  })()}
+                  {[
+                    { range: "1-10 units", field: "tier1Price" as const },
+                    { range: "11-50 units", field: "tier2Price" as const },
+                    { range: "50+ units", field: "tier3Price" as const },
+                  ].map(({ range, field }) => (
+                    <FormField
+                      key={field}
+                      control={form.control}
+                      name={field}
+                      render={({ field: priceField }) => (
+                        <FormItem>
+                          <FormLabel className="font-normal">
+                            {range}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="$0.00"
+                              value={priceField.value ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                priceField.onChange(
+                                  val === "" ? undefined : parseFloat(val)
+                                );
+                              }}
+                              onBlur={priceField.onBlur}
+                              name={priceField.name}
+                              ref={priceField.ref}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -2355,15 +2416,15 @@ export default function EditProductPage() {
                                 className="block cursor-pointer"
                               >
                                 <div className="relative w-full aspect-4/3 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors">
-                                  {field.value ? (
+                                  {field.value && field.value !== "" ? (
                                     <div className="relative w-full h-full rounded-lg overflow-hidden">
                                       <Image
-                                        src={field.value}
+                                        src={getImageUrl(field.value)}
                                         alt="Cover image"
                                         fill
                                         className="object-cover"
-                                        onError={() => {
-                                          // If URL is invalid, show placeholder
+                                        onError={(e) => {
+                                          console.error("Image load error:", field.value);
                                         }}
                                       />
                                       <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
@@ -2440,7 +2501,7 @@ export default function EditProductPage() {
                                 {item ? (
                                   <div className="relative w-full h-full rounded-lg overflow-hidden">
                                     <Image
-                                      src={item}
+                                      src={getImageUrl(item)}
                                       alt={`Gallery ${index + 1}`}
                                       fill
                                       className="object-cover"
@@ -2456,19 +2517,25 @@ export default function EditProductPage() {
                                 )}
                               </div>
                             </label>
-                            {gallery.filter((item) => item !== "").length >
-                              5 && (
-                    <Button
-                      type="button"
+                            {item && item !== "" && (
+                              <Button
+                                type="button"
                                 variant="ghost"
-                      size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white"
-                                onClick={() =>
-                                  removeArrayItem("gallery", index)
-                                }
-                    >
+                                size="icon"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white z-10"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  // Clear the gallery file
+                                  const newGalleryFiles = [...galleryFiles];
+                                  newGalleryFiles[index] = null;
+                                  setGalleryFiles(newGalleryFiles);
+                                  // Update form value
+                                  updateArrayItem("gallery", index, "");
+                                }}
+                              >
                                 <X className="h-3 w-3" />
-                    </Button>
+                              </Button>
                             )}
                   </div>
                 ))}
@@ -2525,24 +2592,39 @@ export default function EditProductPage() {
                               htmlFor="cad-file-input"
                               className="block cursor-pointer"
                             >
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
-                                <Image
-                                  src="/images/Frame.png"
-                                  alt="Upload placeholder"
-                                  width={50}
-                                  height={50}
-                                  className="mb-2"
-                                />
-                                <p className="text-sm text-gray-600 text-center">
-                                  Choose a File
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  JPEG, PNG, PDF formats
-                                </p>
-                                {field.value && (
-                                  <p className="text-xs text-green-600 mt-2">
-                                    File selected
-                                  </p>
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                {field.value && field.value !== "" ? (
+                                  <div className="relative h-[120px]">
+                                    <PDFPreview
+                                      file={cadFile || field.value}
+                                      className="w-full h-full"
+                                    />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                      <p className="text-xs text-white font-medium truncate">
+                                        {cadFile?.name || getFileName(field.value)}
+                                      </p>
+                                      <p className="text-xs text-green-400 flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Uploaded - Click to replace
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="p-4 flex flex-col items-center justify-center min-h-[120px]">
+                                    <Image
+                                      src="/images/Frame.png"
+                                      alt="Upload placeholder"
+                                      width={50}
+                                      height={50}
+                                      className="mb-2"
+                                    />
+                                    <p className="text-sm text-gray-600 text-center">
+                                      Choose a File
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      JPEG, PNG, PDF formats
+                                    </p>
+                                  </div>
                                 )}
                               </div>
                             </label>
@@ -2582,24 +2664,39 @@ export default function EditProductPage() {
                               htmlFor="certificate-report-input"
                               className="block cursor-pointer"
                             >
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
-                                <Image
-                                  src="/images/Frame.png"
-                                  alt="Upload placeholder"
-                                  width={50}
-                                  height={50}
-                                  className="mb-2"
-                                />
-                                <p className="text-sm text-gray-600 text-center">
-                                  Choose a File
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  JPEG, PNG, PDF formats
-                                </p>
-                                {field.value && (
-                                  <p className="text-xs text-green-600 mt-2">
-                                    File selected
-                                  </p>
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                {field.value && field.value !== "" ? (
+                                  <div className="relative h-[120px]">
+                                    <PDFPreview
+                                      file={certificateReportFile || field.value}
+                                      className="w-full h-full"
+                                    />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                      <p className="text-xs text-white font-medium truncate">
+                                        {certificateReportFile?.name || getFileName(field.value)}
+                                      </p>
+                                      <p className="text-xs text-green-400 flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Uploaded - Click to replace
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="p-4 flex flex-col items-center justify-center min-h-[120px]">
+                                    <Image
+                                      src="/images/Frame.png"
+                                      alt="Upload placeholder"
+                                      width={50}
+                                      height={50}
+                                      className="mb-2"
+                                    />
+                                    <p className="text-sm text-gray-600 text-center">
+                                      Choose a File
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      JPEG, PNG, PDF formats
+                                    </p>
+                                  </div>
                                 )}
                               </div>
                             </label>
@@ -2639,24 +2736,39 @@ export default function EditProductPage() {
                               htmlFor="msds-sheet-input"
                               className="block cursor-pointer"
                             >
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
-                                <Image
-                                  src="/images/Frame.png"
-                                  alt="Upload placeholder"
-                                  width={50}
-                                  height={50}
-                                  className="mb-2"
-                                />
-                                <p className="text-sm text-gray-600 text-center">
-                                  Choose a File
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  JPEG, PNG, PDF formats
-                                </p>
-                                {field.value && (
-                                  <p className="text-xs text-green-600 mt-2">
-                                    File selected
-                                  </p>
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                {field.value && field.value !== "" ? (
+                                  <div className="relative h-[120px]">
+                                    <PDFPreview
+                                      file={msdsSheetFile || field.value}
+                                      className="w-full h-full"
+                                    />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                      <p className="text-xs text-white font-medium truncate">
+                                        {msdsSheetFile?.name || getFileName(field.value)}
+                                      </p>
+                                      <p className="text-xs text-green-400 flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Uploaded - Click to replace
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="p-4 flex flex-col items-center justify-center min-h-[120px]">
+                                    <Image
+                                      src="/images/Frame.png"
+                                      alt="Upload placeholder"
+                                      width={50}
+                                      height={50}
+                                      className="mb-2"
+                                    />
+                                    <p className="text-sm text-gray-600 text-center">
+                                      Choose a File
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      JPEG, PNG, PDF formats
+                                    </p>
+                                  </div>
                                 )}
                               </div>
                             </label>
@@ -2696,24 +2808,39 @@ export default function EditProductPage() {
                               htmlFor="installation-manual-input"
                               className="block cursor-pointer"
                             >
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
-                                <Image
-                                  src="/images/Frame.png"
-                                  alt="Upload placeholder"
-                                  width={50}
-                                  height={50}
-                                  className="mb-2"
-                                />
-                                <p className="text-sm text-gray-600 text-center">
-                                  Choose a File
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  JPEG, PNG, PDF formats
-                                </p>
-                                {field.value && (
-                                  <p className="text-xs text-green-600 mt-2">
-                                    File selected
-                                  </p>
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors min-h-[120px]">
+                                {field.value && field.value !== "" ? (
+                                  <div className="relative h-[120px]">
+                                    <PDFPreview
+                                      file={installationManualFile || field.value}
+                                      className="w-full h-full"
+                                    />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                      <p className="text-xs text-white font-medium truncate">
+                                        {installationManualFile?.name || getFileName(field.value)}
+                                      </p>
+                                      <p className="text-xs text-green-400 flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Uploaded - Click to replace
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="p-4 flex flex-col items-center justify-center min-h-[120px]">
+                                    <Image
+                                      src="/images/Frame.png"
+                                      alt="Upload placeholder"
+                                      width={50}
+                                      height={50}
+                                      className="mb-2"
+                                    />
+                                    <p className="text-sm text-gray-600 text-center">
+                                      Choose a File
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      JPEG, PNG, PDF formats
+                                    </p>
+                                  </div>
                                 )}
                               </div>
                             </label>
@@ -2844,7 +2971,7 @@ export default function EditProductPage() {
                 <div className="grid gap-4 grid-cols-2 pt-6">
                   <FormField
                     control={form.control}
-                    name="duration"
+                    name="warrantyDuration"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Duration</FormLabel>
@@ -2871,7 +2998,7 @@ export default function EditProductPage() {
 
                   <FormField
                     control={form.control}
-                    name="durationUnit"
+                    name="warrantyDurationUnit"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit</FormLabel>
@@ -2894,7 +3021,7 @@ export default function EditProductPage() {
 
               <FormField
                 control={form.control}
-                name="terms"
+                name="warrantyTerms"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Terms</FormLabel>
@@ -2910,94 +3037,6 @@ export default function EditProductPage() {
                 )}
               />
 
-              {form.watch("hasWarranty") && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="warranty"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Warranty</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="e.g., 5 years against armor failure, 1 year hardware"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <FormField
-                      control={form.control}
-                      name="warrantyDuration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duration</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="12"
-                              value={field.value ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                field.onChange(
-                                  val === "" ? undefined : parseInt(val)
-                                );
-                              }}
-                              onBlur={field.onBlur}
-                              name={field.name}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="warrantyDurationUnit"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unit</FormLabel>
-                          <FormControl>
-                            <Select
-                              value={field.value || "Months"}
-                              onChange={field.onChange}
-                              placeholder="Unit"
-                            >
-                              <option value="Months">Months</option>
-                              <option value="Years">Years</option>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="warrantyTerms"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Terms</FormLabel>
-                        <FormControl>
-                          <textarea
-                            className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border"
-                            placeholder="Terms"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
 
               <FormField
                 control={form.control}
