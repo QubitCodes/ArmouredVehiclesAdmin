@@ -14,6 +14,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Info,
+  CheckCircle,
+  FileText,
+  ArrowLeft,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +48,11 @@ import { useCountries } from "@/hooks/vendor/dashboard/use-countries";
 import { vendorAuthService } from "@/services/vendor/auth.service";
 import { getVendorIdFromToken } from "@/lib/jwt";
 import { WEIGHT_UNITS, DIMENSION_UNITS, DIMENSION_UNITS_WITH_MM } from "@/lib/units";
+import { PDFPreview } from "@/components/ui/pdf-preview";
+import Image from "next/image";
+import {
+  useUploadProductAssets,
+} from "@/hooks/vendor/product-management/use-products";
 import type {
   CreateProductRequest,
   UpdateProductRequest,
@@ -120,10 +128,13 @@ const productSchema = z.object({
   isFeatured: z.boolean().optional(),
   image: z
     .string()
-    .url("Please enter a valid URL")
-    .optional()
+    .min(1, "Cover image is required")
     .or(z.literal("")),
-  gallery: z.array(z.string().url()).optional(),
+  gallery: z
+    .array(z.string().min(1, "Gallery image is required"))
+    .min(5, "At least 5 gallery images are required")
+    .max(10, "Maximum 10 gallery images allowed")
+    .optional(),
   signatureDate: z
     .object({
       day: z.number().optional(),
@@ -131,6 +142,10 @@ const productSchema = z.object({
       year: z.number().optional(),
     })
     .optional(),
+  cadFileUrl: z.string().optional(),
+  certificateReportUrl: z.string().optional(),
+  msdsSheetUrl: z.string().optional(),
+  installationManualUrl: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -199,7 +214,14 @@ const SECTIONS = [
   {
     id: 4,
     name: "Uploads & Media",
-    fields: ["image", "gallery"],
+    fields: [
+      "image", 
+      "gallery", 
+      "cadFileUrl", 
+      "certificateReportUrl", 
+      "msdsSheetUrl", 
+      "installationManualUrl"
+    ],
   },
   {
     id: 5,
@@ -232,6 +254,49 @@ export default function NewProductPage() {
   const { data: mainCategories = [] } = useMainCategories();
   const { data: countries = [], isLoading: isLoadingCountries } =
     useCountries();
+  const uploadAssetsMutation = useUploadProductAssets();
+
+  // Store File objects separately from form values (for uploads)
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<(File | null)[]>([
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const [cadFile, setCadFile] = useState<File | null>(null);
+  const [certificateReportFile, setCertificateReportFile] = useState<File | null>(null);
+  const [msdsSheetFile, setMsdsSheetFile] = useState<File | null>(null);
+  const [installationManualFile, setInstallationManualFile] = useState<File | null>(null);
+
+  // Helper function to get full image URL
+  const getImageUrl = (url: string | null | undefined): string => {
+    if (!url) return "";
+    // If URL is already absolute or a blob URL, return as is
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:")) {
+      return url;
+    }
+    // Otherwise, prepend the API base URL
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    return `${baseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+  };
+
+  // Helper function to extract filename from URL or path
+  const getFileName = (url: string | null | undefined): string => {
+    if (!url) return "";
+    try {
+      // Extract filename from URL path
+      const urlPath = url.split('?')[0]; // Remove query params
+      const parts = urlPath.split('/');
+      const filename = parts[parts.length - 1];
+      // Decode URI component and limit length
+      const decoded = decodeURIComponent(filename);
+      return decoded.length > 30 ? decoded.substring(0, 27) + '...' : decoded;
+    } catch {
+      return "Uploaded file";
+    }
+  };
   
   // Fetch product data when productId exists (for populating form when navigating back)
   const { data: productData } = useVendorProduct(productId);
@@ -265,7 +330,7 @@ export default function NewProductPage() {
       colors: [],
       vehicleFitment: [],
       pricingTerms: [],
-      gallery: [],
+      gallery: ["", "", "", "", ""],
       signatureDate: undefined,
       tier1Price: undefined,
       tier2Price: undefined,
@@ -366,7 +431,13 @@ export default function NewProductPage() {
         actionType: (data.actionType as string) || "buy_now",
         isFeatured: (data.isFeatured as boolean) || false,
         image: (data.imageUrl as string) || "",
-        gallery: (data.gallery as string[]) || [],
+        gallery: Array.isArray(data.gallery) && data.gallery.length > 0
+          ? (data.gallery as string[])
+          : ["", "", "", "", ""],
+        cadFileUrl: (data.cadFileUrl as string) || "",
+        certificateReportUrl: (data.certificateReportUrl as string) || "",
+        msdsSheetUrl: (data.msdsSheetUrl as string) || "",
+        installationManualUrl: (data.installationManualUrl as string) || "",
       };
 
       // Set form values
@@ -394,6 +465,10 @@ export default function NewProductPage() {
   ) => {
     const current = form.getValues(fieldName) || [];
     form.setValue(fieldName, [...current, ""]);
+    // Also add to galleryFiles if it's gallery
+    if (fieldName === "gallery") {
+      setGalleryFiles([...galleryFiles, null]);
+    }
   };
 
   const removeArrayItem = (
@@ -416,6 +491,10 @@ export default function NewProductPage() {
       fieldName,
       current.filter((_, i: number) => i !== index)
     );
+        // Also remove from galleryFiles if it's gallery
+    if (fieldName === "gallery") {
+      setGalleryFiles(galleryFiles.filter((_, i) => i !== index));
+    }
   };
 
   const updateArrayItem = (
@@ -545,8 +624,71 @@ export default function NewProductPage() {
         } else {
           throw new Error("Product ID not found in response");
         }
+      } else if (currentStep === 4) {
+        if (!productId) {
+          toast.error("Product ID is missing. Please start from step 1.");
+          return;
+        }
+        
+        // If files are selected, upload them
+        const hasFilesToUpload = 
+          imageFile !== null || 
+          galleryFiles.some(f => f !== null) ||
+          cadFile !== null ||
+          certificateReportFile !== null ||
+          msdsSheetFile !== null ||
+          installationManualFile !== null;
+
+        if (hasFilesToUpload) {
+          const uploadFormData = new FormData();
+          
+          // Add image file if selected
+          if (imageFile) {
+            uploadFormData.append("image", imageFile);
+          }
+          
+          // Add gallery files
+          galleryFiles.forEach((file) => {
+            if (file) {
+              uploadFormData.append("gallery", file);
+            }
+          });
+          
+          // Add optional document files
+          if (cadFile) {
+            uploadFormData.append("cadFileUrl", cadFile);
+          }
+          if (certificateReportFile) {
+            uploadFormData.append("certificateReportUrl", certificateReportFile);
+          }
+          if (msdsSheetFile) {
+            uploadFormData.append("msdsSheetUrl", msdsSheetFile);
+          }
+          if (installationManualFile) {
+            uploadFormData.append("installationManualUrl", installationManualFile);
+          }
+          
+          // Upload files to assets endpoint
+          await uploadAssetsMutation.mutateAsync({
+            id: productId,
+            formData: uploadFormData,
+          });
+          
+          toast.success("Assets uploaded successfully!");
+        } else {
+          // If no files but URLs were entered (unlikely with new UI but possible if backend supports it)
+          // or just skipping step (not recommended for main image)
+          
+          // Check if main image is still required via form validation
+          // For now just proceed
+        }
+
+        if (currentStep < SECTIONS.length) {
+          setCurrentStep(currentStep + 1);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
       } else {
-        // Steps 2-5: PATCH update
+        // Steps 2, 3, 5: PATCH update
         if (!productId) {
           toast.error("Product ID is missing. Please start from step 1.");
           return;
@@ -2041,60 +2183,483 @@ export default function NewProductPage() {
 
       case 4:
         return (
-          <Card>
-            <CardHeader>
-              <CardTitle>Uploads & Media</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="image"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Product Image URL (Cover Photo)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="url"
-                        placeholder="https://cdn.armoredmart.com/products/main.jpg"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
-              <div>
-                <Label className="mb-2 block">Gallery Images (URLs)</Label>
-                {gallery.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      type="url"
-                      value={item}
-                      onChange={(e) =>
-                        updateArrayItem("gallery", index, e.target.value)
-                      }
-                      placeholder="https://cdn.armoredmart.com/products/detail-1.jpg"
+          <Card className="border-none shadow-none bg-transparent">
+            <CardContent className="p-0 space-y-4">
+              <div className="flex gap-6 flex-col lg:flex-row">
+                {/* LEFT COLUMN: PHOTOS */}
+                <div className="flex-1 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-bold uppercase tracking-tight mb-1">
+                      PRODUCT PHOTOS
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Upload Requirements: (Min 5 - Max 10 images)
+                    </p>
+                    
+                    {/* Cover Image */}
+                    <FormField
+                      control={form.control}
+                      name="image"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="sr-only">Cover Image</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                id="cover-image-input"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setImageFile(file);
+                                    const localUrl = URL.createObjectURL(file);
+                                    field.onChange(localUrl);
+                                    // Clear error when file is selected
+                                    form.clearErrors("image");
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor="cover-image-input"
+                                className="block cursor-pointer"
+                              >
+                                <div className="relative w-full aspect-4/3 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors">
+                                  {field.value && field.value !== "" ? (
+                                    <div className="relative w-full h-full rounded-lg overflow-hidden">
+                                      <Image
+                                        src={getImageUrl(field.value)}
+                                        alt="Cover image"
+                                        fill
+                                        className="object-cover"
+                                        onError={(e) => {
+                                          console.error("Image load error:", field.value);
+                                        }}
+                                      />
+                                      <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                                        Cover
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <Image
+                                        src="/images/Frame.png"
+                                        alt="Upload placeholder"
+                                        width={80}
+                                        height={80}
+                                        className="mb-2"
+                                      />
+                                      <p className="text-sm text-gray-600 text-center px-4">
+                                        Choose a File
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        JPEG, PNG formats
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                              </label>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("gallery", index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayItem("gallery")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Gallery Image
-                </Button>
+
+                  {/* Gallery Images */}
+                  <FormField
+                    control={form.control}
+                    name="gallery"
+                    render={() => (
+                      <FormItem>
+                        <FormLabel className="mb-2 block text-sm">
+                          Gallery Images
+                        </FormLabel>
+                        <FormControl>
+                          <div className="grid grid-cols-3 gap-3">
+                            {gallery.map((item, index) => (
+                              <div key={index} className="relative">
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/jpg"
+                                  className="hidden"
+                                  id={`gallery-image-input-${index}`}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const newFiles = [...galleryFiles];
+                                      newFiles[index] = file;
+                                      setGalleryFiles(newFiles);
+                                      
+                                      const localUrl = URL.createObjectURL(file);
+                                      updateArrayItem("gallery", index, localUrl);
+                                    }
+                                  }}
+                                />
+                                <label
+                                htmlFor={`gallery-image-input-${index}`}
+                                className="block w-full h-full cursor-pointer"
+                              >
+                                <div className="w-full h-full border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors overflow-hidden relative">
+                                  {item && item !== "" ? (
+                                    <>
+                                      <Image
+                                        src={getImageUrl(item)}
+                                          alt={`Gallery ${index + 1}`}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      </>
+                                    ) : (
+                                      <Image
+                                        src="/images/Frame.png"
+                                        alt="Upload placeholder"
+                                        width={40}
+                                        height={40}
+                                      />
+                                    )}
+                                  </div>
+                                </label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white z-10"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeArrayItem("gallery", index);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                            
+                            {gallery.length < 10 && (
+                              <button
+                                type="button"
+                                onClick={() => addArrayItem("gallery")}
+                                className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-bg-medium hover:bg-gray-100 transition-colors"
+                              >
+                                <Plus className="h-8 w-8 text-gray-400" />
+                              </button>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* RIGHT COLUMN: DOCUMENTATION */}
+                <div className="flex-1 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-bold mb-4">Document Uploads</h3>
+                    
+                    <div className="space-y-6">
+                      {/* CAD File */}
+                      <FormField
+                        control={form.control}
+                        name="cadFileUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">
+                              Technical Drawing / CAD File (if any):
+                            </FormLabel>
+                            <FormControl>
+                              <div>
+                                <input
+                                  type="file"
+                                  accept=".pdf,image/jpeg,image/png,image/jpg"
+                                  className="hidden"
+                                  id="cad-file-input"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setCadFile(file);
+                                      const localUrl = URL.createObjectURL(file);
+                                      field.onChange(localUrl);
+                                    }
+                                  }}
+                                />
+                                <label
+                                  htmlFor="cad-file-input"
+                                  className="block cursor-pointer"
+                                >
+                                  <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors h-[120px]">
+                                    {field.value && field.value !== "" ? (
+                                      <div className="relative h-full">
+                                        <PDFPreview
+                                          file={cadFile || getImageUrl(field.value)}
+                                          className="w-full h-full"
+                                        />
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                          <p className="text-xs text-white font-medium truncate">
+                                            {cadFile?.name || getFileName(field.value)}
+                                          </p>
+                                          <p className="text-xs text-green-400 flex items-center gap-1">
+                                            <CheckCircle className="h-3 w-3" />
+                                            Uploaded - Click to replace
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex h-full items-center gap-4 px-6">
+                                        <Image
+                                          src="/images/Frame.png"
+                                          alt="Upload placeholder"
+                                          width={60}
+                                          height={60}
+                                          className="shrink-0"
+                                        />
+                                        <div>
+                                          <p className="text-sm font-medium text-gray-900">
+                                            Click to upload
+                                          </p>
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            PDF, JPEG, PNG
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </label>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Certificate Report */}
+                      <FormField
+                        control={form.control}
+                        name="certificateReportUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">
+                              Certificate / Lab Test Report (if any):
+                            </FormLabel>
+                            <FormControl>
+                              <div>
+                                <input
+                                  type="file"
+                                  accept=".pdf,image/jpeg,image/png,image/jpg"
+                                  className="hidden"
+                                  id="certificate-file-input"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setCertificateReportFile(file);
+                                      const localUrl = URL.createObjectURL(file);
+                                      field.onChange(localUrl);
+                                    }
+                                  }}
+                                />
+                                <label
+                                  htmlFor="certificate-file-input"
+                                  className="block cursor-pointer"
+                                >
+                                  <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors h-[120px]">
+                                    {field.value && field.value !== "" ? (
+                                      <div className="relative h-full">
+                                        <PDFPreview
+                                          file={certificateReportFile || getImageUrl(field.value)}
+                                          className="w-full h-full"
+                                        />
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                          <p className="text-xs text-white font-medium truncate">
+                                            {certificateReportFile?.name || getFileName(field.value)}
+                                          </p>
+                                          <p className="text-xs text-green-400 flex items-center gap-1">
+                                            <CheckCircle className="h-3 w-3" />
+                                            Uploaded - Click to replace
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex h-full items-center gap-4 px-6">
+                                        <Image
+                                          src="/images/Frame.png"
+                                          alt="Upload placeholder"
+                                          width={60}
+                                          height={60}
+                                          className="shrink-0"
+                                        />
+                                        <div>
+                                          <p className="text-sm font-medium text-gray-900">
+                                            Click to upload
+                                          </p>
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            PDF, JPEG, PNG
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </label>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* MSDS Sheet */}
+                      <FormField
+                        control={form.control}
+                        name="msdsSheetUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">
+                              MSDS / DG Handling Sheet (if applicable):
+                            </FormLabel>
+                            <FormControl>
+                              <div>
+                                <input
+                                  type="file"
+                                  accept=".pdf,image/jpeg,image/png,image/jpg"
+                                  className="hidden"
+                                  id="msds-file-input"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setMsdsSheetFile(file);
+                                      const localUrl = URL.createObjectURL(file);
+                                      field.onChange(localUrl);
+                                    }
+                                  }}
+                                />
+                                <label
+                                  htmlFor="msds-file-input"
+                                  className="block cursor-pointer"
+                                >
+                                  <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors h-[120px]">
+                                    {field.value && field.value !== "" ? (
+                                      <div className="relative h-full">
+                                        <PDFPreview
+                                          file={msdsSheetFile || getImageUrl(field.value)}
+                                          className="w-full h-full"
+                                        />
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                          <p className="text-xs text-white font-medium truncate">
+                                            {msdsSheetFile?.name || getFileName(field.value)}
+                                          </p>
+                                          <p className="text-xs text-green-400 flex items-center gap-1">
+                                            <CheckCircle className="h-3 w-3" />
+                                            Uploaded - Click to replace
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex h-full items-center gap-4 px-6">
+                                        <Image
+                                          src="/images/Frame.png"
+                                          alt="Upload placeholder"
+                                          width={60}
+                                          height={60}
+                                          className="shrink-0"
+                                        />
+                                        <div>
+                                          <p className="text-sm font-medium text-gray-900">
+                                            Click to upload
+                                          </p>
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            PDF, JPEG, PNG
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </label>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Installation Manual */}
+                      <FormField
+                        control={form.control}
+                        name="installationManualUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">
+                              Optional Installation Manual or Datasheet:
+                            </FormLabel>
+                            <FormControl>
+                              <div>
+                                <input
+                                  type="file"
+                                  accept=".pdf,image/jpeg,image/png,image/jpg"
+                                  className="hidden"
+                                  id="manual-file-input"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setInstallationManualFile(file);
+                                      const localUrl = URL.createObjectURL(file);
+                                      field.onChange(localUrl);
+                                    }
+                                  }}
+                                />
+                                <label
+                                  htmlFor="manual-file-input"
+                                  className="block cursor-pointer"
+                                >
+                                  <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-bg-medium hover:bg-gray-100 transition-colors h-[120px]">
+                                    {field.value && field.value !== "" ? (
+                                      <div className="relative h-full">
+                                        <PDFPreview
+                                          file={installationManualFile || getImageUrl(field.value)}
+                                          className="w-full h-full"
+                                        />
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                          <p className="text-xs text-white font-medium truncate">
+                                            {installationManualFile?.name || getFileName(field.value)}
+                                          </p>
+                                          <p className="text-xs text-green-400 flex items-center gap-1">
+                                            <CheckCircle className="h-3 w-3" />
+                                            Uploaded - Click to replace
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex h-full items-center gap-4 px-6">
+                                        <Image
+                                          src="/images/Frame.png"
+                                          alt="Upload placeholder"
+                                          width={60}
+                                          height={60}
+                                          className="shrink-0"
+                                        />
+                                        <div>
+                                          <p className="text-sm font-medium text-gray-900">
+                                            Click to upload
+                                          </p>
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            PDF, JPEG, PNG
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </label>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -2472,73 +3037,90 @@ export default function NewProductPage() {
             </div>
           ))}
 
-          {/* Navigation Buttons */}
-          <div className={`flex justify-between gap-4 pt-4 ${currentStep === 2 ? "mb-0" : ""}`}>
-            <Button
-              type="button"
-              variant="secondary"
-              className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
-              onClick={() => router.back()}
-              disabled={createProductMutation.isPending}
-            >
-              Cancel
-            </Button>
-
-            <div className="flex gap-4">
+            {/* Navigation Buttons */}
+            <div className={`flex justify-between gap-4 pt-4 ${currentStep === 2 ? "mb-0" : ""}`}>
               <Button
                 type="button"
                 variant="secondary"
-                className="bg-primary text-white hover:bg-primary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
-                onClick={handlePrevious}
-                disabled={
-                  currentStep === 1 ||
-                  createProductMutation.isPending
-                }
+                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
+                onClick={() => router.back()}
+                disabled={createProductMutation.isPending || updateProductMutation.isPending || uploadAssetsMutation.isPending}
               >
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous
+                Cancel
               </Button>
 
-              {currentStep < SECTIONS.length ? (
+              <div className="flex gap-4">
                 <Button
                   type="button"
-                  variant="default"
-                  className="bg-secondary text-white hover:bg-secondary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
-                  onClick={handleNext}
-                  disabled={createProductMutation.isPending}
+                  variant="secondary"
+                  className="bg-primary text-white hover:bg-primary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
+                  onClick={handlePrevious}
+                  disabled={
+                    currentStep === 1 ||
+                    createProductMutation.isPending || 
+                    updateProductMutation.isPending || 
+                    uploadAssetsMutation.isPending
+                  }
                 >
-                  {createProductMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      Next
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
                 </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="default"
-                  className="bg-secondary text-white hover:bg-secondary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
-                  onClick={handleNext}
-                  disabled={createProductMutation.isPending}
-                >
-                  {createProductMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "SUBMIT PRODUCT"
-                  )}
-                </Button>
-              )}
+
+                {currentStep < SECTIONS.length ? (
+                  <Button
+                    type="button"
+                    variant="default"
+                    className="bg-secondary text-white hover:bg-secondary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[200px] h-[48px]"
+                    onClick={handleNext}
+                    disabled={createProductMutation.isPending || updateProductMutation.isPending || uploadAssetsMutation.isPending}
+                  >
+                    {createProductMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : updateProductMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Updating...
+                      </>
+                    ) : uploadAssetsMutation.isPending ? (
+                       <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        Next
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="default"
+                    className="bg-secondary text-white hover:bg-secondary/90 font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                    onClick={handleNext}
+                    disabled={createProductMutation.isPending || updateProductMutation.isPending || uploadAssetsMutation.isPending}
+                  >
+                    {createProductMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : updateProductMutation.isPending ? (
+                       <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      "SUBMIT PRODUCT"
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
         </form>
       </Form>
     </div>

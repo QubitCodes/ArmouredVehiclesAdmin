@@ -75,6 +75,10 @@ export interface CreateProductRequest {
   isFeatured?: boolean;
   image?: string;
   gallery?: string[];
+  cadFileUrl?: string;
+  certificateReportUrl?: string;
+  msdsSheetUrl?: string;
+  installationManualUrl?: string;
 }
 
 export type UpdateProductRequest = Partial<CreateProductRequest>;

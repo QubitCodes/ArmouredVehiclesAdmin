@@ -121,22 +121,22 @@ const productSchema = z.object({
   isFeatured: z.boolean().optional(),
   image: z.string().optional(),
   gallery: z.array(z.string()).optional(),
-  cadFile: z
+  cadFileUrl: z
     .string()
     .url("Please enter a valid URL")
     .optional()
     .or(z.literal("")),
-  certificateReport: z
+  certificateReportUrl: z
     .string()
     .url("Please enter a valid URL")
     .optional()
     .or(z.literal("")),
-  msdsSheet: z
+  msdsSheetUrl: z
     .string()
     .url("Please enter a valid URL")
     .optional()
     .or(z.literal("")),
-  installationManual: z
+  installationManualUrl: z
     .string()
     .url("Please enter a valid URL")
     .optional()
@@ -221,10 +221,10 @@ const SECTIONS = [
     fields: [
       "image",
       "gallery",
-      "cadFile",
-      "certificateReport",
-      "msdsSheet",
-      "installationManual",
+      "cadFileUrl",
+      "certificateReportUrl",
+      "msdsSheetUrl",
+      "installationManualUrl",
     ],
   },
   {
@@ -333,11 +333,11 @@ export default function EditProductPage() {
       colors: [],
       vehicleFitment: [],
       pricingTerms: [],
-      gallery: Array(5).fill(""),
-      cadFile: "",
-      certificateReport: "",
-      msdsSheet: "",
-      installationManual: "",
+      gallery: [],
+      cadFileUrl: "",
+      certificateReportUrl: "",
+      msdsSheetUrl: "",
+      installationManualUrl: "",
       tier1Price: undefined,
       tier1MinQuantity: 1,
       tier1MaxQuantity: 10,
@@ -526,20 +526,11 @@ export default function EditProductPage() {
         actionType: (data.actionType as string) || "buy_now",
         isFeatured: (data.isFeatured as boolean) || false,
         image: (data.image as string) || "",
-        gallery: (() => {
-          const existingGallery = (data.gallery as string[]) || [];
-          // Ensure at least 5 slots, pad with empty strings if needed
-          return existingGallery.length >= 5
-            ? existingGallery
-            : [
-                ...existingGallery,
-                ...Array(5 - existingGallery.length).fill(""),
-              ];
-        })(),
-        cadFile: (data.cadFile as string) || "",
-        certificateReport: (data.certificateReport as string) || "",
-        msdsSheet: (data.msdsSheet as string) || "",
-        installationManual: (data.installationManual as string) || "",
+        gallery: (data.gallery as string[]) || [],
+        cadFileUrl: (data.cadFileUrl as string) || "",
+        certificateReportUrl: (data.certificateReportUrl as string) || "",
+        msdsSheetUrl: (data.msdsSheetUrl as string) || "",
+        installationManualUrl: (data.installationManualUrl as string) || "",
         tier1Price: data.tier1Price != null
           ? typeof data.tier1Price === "string"
             ? parseFloat(data.tier1Price)
@@ -580,10 +571,10 @@ export default function EditProductPage() {
       // Capture initial file URLs for change detection
       setInitialImageUrl(formValues.image || "");
       setInitialGalleryUrls(formValues.gallery || []);
-      setInitialCadFileUrl(formValues.cadFile || "");
-      setInitialCertificateReportUrl(formValues.certificateReport || "");
-      setInitialMsdsSheetUrl(formValues.msdsSheet || "");
-      setInitialInstallationManualUrl(formValues.installationManual || "");
+      setInitialCadFileUrl(formValues.cadFileUrl || "");
+      setInitialCertificateReportUrl(formValues.certificateReportUrl || "");
+      setInitialMsdsSheetUrl(formValues.msdsSheetUrl || "");
+      setInitialInstallationManualUrl(formValues.installationManualUrl || "");
     }
   }, [productData, form]);
 
@@ -667,10 +658,10 @@ export default function EditProductPage() {
     // Check if existing files were removed or changed
     const currentImage = form.getValues("image");
     const currentGallery = form.getValues("gallery") || [];
-    const currentCadFile = form.getValues("cadFile");
-    const currentCertificate = form.getValues("certificateReport");
-    const currentMsds = form.getValues("msdsSheet");
-    const currentManual = form.getValues("installationManual");
+    const currentCadFile = form.getValues("cadFileUrl");
+    const currentCertificate = form.getValues("certificateReportUrl");
+    const currentMsds = form.getValues("msdsSheetUrl");
+    const currentManual = form.getValues("installationManualUrl");
     
     if (currentImage !== initialImageUrl) return true;
     if (JSON.stringify(currentGallery) !== JSON.stringify(initialGalleryUrls)) return true;
@@ -844,16 +835,16 @@ export default function EditProductPage() {
         
         // Add optional document files
         if (cadFile) {
-          uploadFormData.append("cadFile", cadFile);
+          uploadFormData.append("cadFileUrl", cadFile);
         }
         if (certificateReportFile) {
-          uploadFormData.append("certificateReport", certificateReportFile);
+          uploadFormData.append("certificateReportUrl", certificateReportFile);
         }
         if (msdsSheetFile) {
-          uploadFormData.append("msdsSheet", msdsSheetFile);
+          uploadFormData.append("msdsSheetUrl", msdsSheetFile);
         }
         if (installationManualFile) {
-          uploadFormData.append("installationManual", installationManualFile);
+          uploadFormData.append("installationManualUrl", installationManualFile);
         }
         
         // Upload files to assets endpoint
@@ -2517,8 +2508,7 @@ export default function EditProductPage() {
                                 )}
                               </div>
                             </label>
-                            {item && item !== "" && (
-                              <Button
+                            <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
@@ -2526,17 +2516,11 @@ export default function EditProductPage() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  // Clear the gallery file
-                                  const newGalleryFiles = [...galleryFiles];
-                                  newGalleryFiles[index] = null;
-                                  setGalleryFiles(newGalleryFiles);
-                                  // Update form value
-                                  updateArrayItem("gallery", index, "");
+                                  removeArrayItem("gallery", index);
                                 }}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
-                            )}
                   </div>
                 ))}
                         {gallery.length < 10 && (
@@ -2566,7 +2550,7 @@ export default function EditProductPage() {
                   {/* CAD File */}
                   <FormField
                     control={form.control}
-                    name="cadFile"
+                    name="cadFileUrl"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">
@@ -2596,7 +2580,7 @@ export default function EditProductPage() {
                                 {field.value && field.value !== "" ? (
                                   <div className="relative h-[120px]">
                                     <PDFPreview
-                                      file={cadFile || field.value}
+                                      file={cadFile || getImageUrl(field.value)}
                                       className="w-full h-full"
                                     />
                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
@@ -2638,7 +2622,7 @@ export default function EditProductPage() {
                   {/* Certificate Report */}
                   <FormField
                     control={form.control}
-                    name="certificateReport"
+                    name="certificateReportUrl"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">
@@ -2668,7 +2652,7 @@ export default function EditProductPage() {
                                 {field.value && field.value !== "" ? (
                                   <div className="relative h-[120px]">
                                     <PDFPreview
-                                      file={certificateReportFile || field.value}
+                                      file={certificateReportFile || getImageUrl(field.value)}
                                       className="w-full h-full"
                                     />
                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
@@ -2710,7 +2694,7 @@ export default function EditProductPage() {
                   {/* MSDS Sheet */}
                   <FormField
                     control={form.control}
-                    name="msdsSheet"
+                    name="msdsSheetUrl"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">
@@ -2740,7 +2724,7 @@ export default function EditProductPage() {
                                 {field.value && field.value !== "" ? (
                                   <div className="relative h-[120px]">
                                     <PDFPreview
-                                      file={msdsSheetFile || field.value}
+                                      file={msdsSheetFile || getImageUrl(field.value)}
                                       className="w-full h-full"
                                     />
                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
@@ -2782,7 +2766,7 @@ export default function EditProductPage() {
                   {/* Installation Manual */}
                   <FormField
                     control={form.control}
-                    name="installationManual"
+                    name="installationManualUrl"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">
@@ -2812,7 +2796,7 @@ export default function EditProductPage() {
                                 {field.value && field.value !== "" ? (
                                   <div className="relative h-[120px]">
                                     <PDFPreview
-                                      file={installationManualFile || field.value}
+                                      file={installationManualFile || getImageUrl(field.value)}
                                       className="w-full h-full"
                                     />
                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
