@@ -2018,28 +2018,6 @@ export default function EditProductPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-
-                {/* <FormField
-                  control={form.control}
-                  name="condition"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Condition</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value || "new"}
-                          onChange={field.onChange}
-                          placeholder="Select Condition"
-                        >
-                          <option value="new">New</option>
-                          <option value="used">Used</option>
-                          <option value="refurbished">Refurbished</option>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                /> */}
               </div>
             </CardContent>
           </Card>
