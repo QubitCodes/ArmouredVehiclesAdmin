@@ -49,6 +49,8 @@ type AccountPreferencesFormValues = z.infer<typeof accountPreferencesSchema>;
 const currencyOptions = [
   { value: "AED", label: "AED" },
   { value: "USD", label: "USD" },
+  { value: "EUR", label: "EUR" },
+  { value: "other", label: "Other" },
 ];
 
 export default function AccountPreferencesPage() {
