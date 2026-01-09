@@ -137,21 +137,21 @@ export function VendorTable({ vendors }: VendorTableProps) {
   return (
     <div className="w-full">
       <div className="w-full overflow-hidden mb-1">
-        <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(180px,1.5fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3 bg-transparent">
+        <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(150px,1fr)_minmax(200px,1.5fr)_minmax(150px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3 bg-transparent">
           <div className="min-w-[150px] text-sm font-semibold text-black">
             Company Name
           </div>
-          <div className="min-w-[180px] text-sm font-semibold text-black">
+          <div className="min-w-[150px] text-sm font-semibold text-black">
+            Username
+          </div>
+          <div className="min-w-[200px] text-sm font-semibold text-black">
             Email
           </div>
-          <div className="min-w-[120px] text-sm font-semibold text-black">
-            Status
-          </div>
-          <div className="min-w-[120px] text-sm font-semibold text-black">
+          <div className="min-w-[150px] text-sm font-semibold text-black">
             Onboarding Status
           </div>
-          <div className="min-w-[120px] hidden text-sm font-semibold text-black md:block">
-            Email Verified
+          <div className="min-w-[120px] text-sm font-semibold text-black">
+            Action
           </div>
         </div>
       </div>
@@ -163,22 +163,23 @@ export function VendorTable({ vendors }: VendorTableProps) {
             onClick={() => handleVendorClick(vendor.id)}
             className="w-full overflow-hidden bg-bg-light transition-all hover:shadow-sm cursor-pointer"
           >
-            <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(180px,1.5fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
+            <div className="grid items-center grid-cols-[minmax(150px,1fr)_minmax(150px,1fr)_minmax(200px,1.5fr)_minmax(150px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">
                 {vendor.userProfile?.companyName || vendor.name}
+              </div>
+              <div className="text-sm text-foreground">
+                {vendor.username || "—"}
               </div>
               <div className="text-foreground">
                 {vendor.userProfile?.companyEmail || vendor.email}
               </div>
               <div>
                 <span
-                  className={`text-sm font-medium ${
-                    vendor.isActive
-                      ? "text-green-600 dark:text-green-500"
-                      : "text-orange-600 dark:text-orange-500"
-                  }`}
+                  className={`text-sm font-medium capitalize ${getOnboardingStatusColor(
+                    vendor.userProfile?.onboardingStatus
+                  )}`}
                 >
-                  {vendor.isActive ? "Active" : "Inactive"}
+                  {getOnboardingStatusDisplay(vendor.userProfile?.onboardingStatus)}
                 </span>
               </div>
               <div onClick={(e) => e.stopPropagation()}>
@@ -188,13 +189,11 @@ export function VendorTable({ vendors }: VendorTableProps) {
                     className="flex items-center gap-1 outline-none"
                   >
                     <span
-                      className={`text-sm font-medium capitalize ${getOnboardingStatusColor(
-                        vendor.userProfile?.onboardingStatus
-                      )} ${updatingId === vendor.id ? "opacity-50" : ""}`}
+                      className={`text-sm font-medium ${
+                        updatingId === vendor.id ? "opacity-50" : ""
+                      }`}
                     >
-                      {updatingId === vendor.id
-                        ? "Updating..."
-                        : getOnboardingStatusDisplay(vendor.userProfile?.onboardingStatus)}
+                      {updatingId === vendor.id ? "Updating..." : "Actions"}
                     </span>
                     {updatingId !== vendor.id && (
                       <ChevronDown className="h-3 w-3 text-muted-foreground" />
@@ -215,11 +214,16 @@ export function VendorTable({ vendors }: VendorTableProps) {
                       <XCircle className="h-4 w-4 text-red-600" />
                       Reject
                     </DropdownMenuItem>
+                    {/* Placeholder for future suspend action */}
+                    {/* <DropdownMenuItem
+                      onClick={() => handleSuspend(vendor.id)}
+                      className="flex items-center gap-2 hover:bg-orange-50 dark:hover:bg-orange-950/20"
+                    >
+                      <Ban className="h-4 w-4 text-orange-600" />
+                      Suspend
+                    </DropdownMenuItem> */}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-              <div className="hidden text-sm text-foreground md:block">
-                {vendor.emailVerified ? "Verified" : "Unverified"}
               </div>
             </div>
           </div>

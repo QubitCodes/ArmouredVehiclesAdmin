@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Store, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, LogOut } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { vendorAuthService } from "@/services/vendor/auth.service";
@@ -34,11 +34,6 @@ const navigation = [
     href: "/vendor/orders",
     icon: ShoppingCart,
   },
-  {
-    name: "Store",
-    href: "/vendor/store",
-    icon: Store,
-  },
 ];
 
 export function VendorSidebar() {
@@ -57,53 +52,62 @@ export function VendorSidebar() {
 
   return (
     <>
-      <div className="flex h-full w-64 flex-col border-r border-border bg-card">
-        <div className="flex h-16 items-center border-b border-border px-6">
-          <h2 className="text-lg font-semibold text-foreground">Vendor Portal</h2>
-        </div>
-        <nav className="flex-1 space-y-1 p-4">
+      <div className="flex h-full w-64 flex-col bg-primary">
+        <nav className="flex-1 space-y-1 p-4 pt-10">
           {navigation.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            // For Dashboard, only match exact path. For others, match exact or sub-routes
+            const isActive = item.href === "/vendor"
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(item.href + "/");
+            
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-muted text-foreground"
+                    : "text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
                 )}
               >
                 <Icon className="h-5 w-5" />
-                {item.name}
+                <span>{item.name}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="border-t border-border p-4">
+        
+        {/* Logout Button */}
+        <div className="border-t border-primary/20 p-4">
           <button
             onClick={handleLogoutClick}
-            className="flex w-full items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors bg-white/10 hover:bg-muted hover:text-foreground"
           >
             <LogOut className="h-5 w-5" />
-            Logout
+            <span>Logout</span>
           </button>
         </div>
       </div>
 
+      {/* Logout Confirmation Dialog */}
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
             <AlertDialogDescription>
-              You will be logged out of your vendor account. You can log back in anytime.
+              Are you sure you want to logout? You will need to login again to access the vendor portal.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout}>Logout</AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleLogout}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Logout
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

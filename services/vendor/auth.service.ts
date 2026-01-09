@@ -75,20 +75,26 @@ class VendorAuthService {
     }
 
     try {
-      // TODO: Replace with your actual refresh token endpoint
+      // Use vendor-specific refresh endpoint
+      // Try sending refresh token in body first (most common pattern)
+      // Some APIs might expect it in Authorization header instead
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+        `${process.env.NEXT_PUBLIC_API_URL}/vendor/auth/refresh`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            // Alternative: Some APIs expect refresh token in Authorization header
+            // Uncomment if your API requires it:
+            // "Authorization": `Bearer ${refreshToken}`,
           },
           body: JSON.stringify({ refreshToken }),
         }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to refresh token");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to refresh token");
       }
 
       const data = await response.json();

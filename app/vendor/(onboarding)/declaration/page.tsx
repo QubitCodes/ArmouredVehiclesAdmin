@@ -32,6 +32,7 @@ const declarationSchema = z.object({
     .array(z.string())
     .min(1, "Please select at least one nature of business"),
   controlledDualUseItems: z.string().optional(),
+  manufacturingSourceName: z.string().optional(),
   endUseMarket: z
     .array(z.string())
     .min(1, "Please select at least one end-use market"),
@@ -143,6 +144,7 @@ export default function DeclarationPage() {
     defaultValues: {
       natureOfBusiness: [],
       controlledDualUseItems: "",
+      manufacturingSourceName: "",
       endUseMarket: [],
       licenses: [],
       operatingCountries: [],
@@ -164,6 +166,7 @@ export default function DeclarationPage() {
       const payload = {
         natureOfBusiness: data.natureOfBusiness,
         controlledDualUseItems: data.controlledDualUseItems || undefined,
+        manufacturingSourceName: data.manufacturingSourceName || undefined,
         licenseTypes: data.licenses,
         endUseMarkets: data.endUseMarket,
         operatingCountries: data.operatingCountries,
@@ -224,11 +227,11 @@ export default function DeclarationPage() {
     );
   };
 
-  const handleRemoveCountry = (countryValue: string) => {
+  const handleRemoveCountry = (countryName: string) => {
     const current = form.getValues("operatingCountries");
     form.setValue(
       "operatingCountries",
-      current.filter((c) => c !== countryValue)
+      current.filter((c) => c !== countryName)
     );
   };
 
@@ -237,18 +240,18 @@ export default function DeclarationPage() {
   );
 
   const handleCountryCheckboxChange = (
-    countryValue: string,
+    countryName: string,
     checked: boolean
   ) => {
     const current = form.getValues("operatingCountries");
     if (checked) {
-      if (!current.includes(countryValue)) {
-        form.setValue("operatingCountries", [...current, countryValue]);
+      if (!current.includes(countryName)) {
+        form.setValue("operatingCountries", [...current, countryName]);
       }
     } else {
       form.setValue(
         "operatingCountries",
-        current.filter((c) => c !== countryValue)
+        current.filter((c) => c !== countryName)
       );
     }
   };
@@ -385,7 +388,7 @@ export default function DeclarationPage() {
 
         {/* COMPLIANCE & ACTIVITY DECLARATION Heading */}
         <div>
-          <h2 className="text-2xl pb-3 font-bold text-black uppercase">
+          <h2 className="text-2xl pb-3 font-bold text-black uppercase font-heading">
             COMPLIANCE & ACTIVITY DECLARATION
           </h2>
         </div>
@@ -713,6 +716,29 @@ export default function DeclarationPage() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Name of Manufacturing Source */}
+                  <div className="space-y-4 pt-6">
+                    <FormField
+                      control={form.control}
+                      name="manufacturingSourceName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-bold text-black">
+                            Name of Manufacturing Source (Optional)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Blueweb Auto Industries LLC"
+                              className="bg-bg-medium border border-border h-11 focus:border-border focus:ring-1 focus:ring-border rounded-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -738,14 +764,14 @@ export default function DeclarationPage() {
                           {/* Selected Tags */}
                           {selectedCountries.length > 0 ? (
                             <>
-                              {selectedCountries.map((countryValue) => {
+                              {selectedCountries.map((countryName) => {
                                 const country = countryOptions.find(
-                                  (c: Country) => c.value === countryValue
+                                  (c: Country) => c.label === countryName
                                 );
                                 if (!country) return null;
                                 return (
                                   <div
-                                    key={countryValue}
+                                    key={countryName}
                                     className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5 rounded"
                                     onClick={(e) => e.stopPropagation()}
                                   >
@@ -757,7 +783,7 @@ export default function DeclarationPage() {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleRemoveCountry(countryValue);
+                                        handleRemoveCountry(countryName);
                                       }}
                                       className="hover:opacity-70 transition-opacity p-0.5 shrink-0"
                                     >
@@ -827,7 +853,7 @@ export default function DeclarationPage() {
                                     : countryOptions
                                   ).map((country: Country) => {
                                     const isSelected = selectedCountries.includes(
-                                      country.value
+                                      country.label
                                     );
                                     return (
                                       <label
@@ -839,7 +865,7 @@ export default function DeclarationPage() {
                                           checked={isSelected}
                                           onCheckedChange={(checked) => {
                                             handleCountryCheckboxChange(
-                                              country.value,
+                                              country.label,
                                               checked as boolean
                                             );
                                           }}
