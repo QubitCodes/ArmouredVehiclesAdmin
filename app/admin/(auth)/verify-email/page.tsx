@@ -76,8 +76,10 @@ function VerifyEmailContent() {
     }
 
     try {
-
-
+      const response = await verifyMutation.mutateAsync({
+        identifier,
+        code: otpCode,
+      });
       toast.success(
         response.message || "Verified successfully"
       );
