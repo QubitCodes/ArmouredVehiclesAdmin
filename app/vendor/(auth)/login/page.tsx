@@ -45,7 +45,7 @@ export default function VendorLoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       const response = await loginMutation.mutateAsync({
-        email: data.email,
+        identifier: data.email,
       });
 
       toast.success(

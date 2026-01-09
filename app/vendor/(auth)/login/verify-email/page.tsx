@@ -117,7 +117,7 @@ function VerifyEmailContent() {
   const handleResend = async () => {
     try {
       const response = await resendMutation.mutateAsync({
-        email,
+        identifier: email,
       });
 
       toast.success(

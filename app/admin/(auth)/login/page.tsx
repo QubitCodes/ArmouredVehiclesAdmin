@@ -22,20 +22,21 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 const loginSchema = z.object({
-  email: z
+  identifier: z
     .string()
-    .min(1, "Email is required")
-    .email("Please enter a valid email address"),
+    .min(1, "Email or Phone number is required"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
+import { QuickLoginBox } from "@/components/debug/QuickLoginBox";
 
 export default function LoginPage() {
   const router = useRouter();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      identifier: "",
     },
   });
 
@@ -44,15 +45,15 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       const response = await loginMutation.mutateAsync({
-        email: data.email,
+        identifier: data.identifier,
       });
 
       toast.success(
-        response.message || "OTP sent successfully! Please check your email."
+        response.message || "OTP sent successfully! Please check your email/phone."
       );
 
-      // Navigate to OTP verification page with email parameter
-      router.push(`/admin/verify-email?email=${encodeURIComponent(data.email)}`);
+      // Navigate to OTP verification page with identifier parameter
+      router.push(`/admin/verify-email?email=${encodeURIComponent(data.identifier)}`);
     } catch (error) {
       console.log(error);
       
@@ -108,13 +109,13 @@ export default function LoginPage() {
 
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="identifier"
                   render={({ field }) => (
                     <FormItem className="space-y-1.5">
                       <FormControl>
                         <Input
-                          type="email"
-                          placeholder="Email Address"
+                          type="text"
+                          placeholder="Email or Phone"
                           className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
                           {...field}
                         />
@@ -147,6 +148,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       </div>
+      <QuickLoginBox />
     </div>
   );
 }

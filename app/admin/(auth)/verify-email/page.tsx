@@ -15,7 +15,8 @@ import { Loader2 } from "lucide-react";
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "verify@gmail.com";
+  // Support both 'identifier' and 'email' (legacy) params
+  const identifier = searchParams.get("email") || searchParams.get("identifier") || "user";
   const redirect = searchParams.get("redirect") || "/admin";
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
@@ -75,14 +76,10 @@ function VerifyEmailContent() {
     }
 
     try {
-      console.log("otpCode", otpCode, "email", email);
-      const response = await verifyMutation.mutateAsync({
-        email,
-        code: otpCode,
-      });
+
 
       toast.success(
-        response.message || "Email verified successfully"
+        response.message || "Verified successfully"
       );
 
       // Redirect to intended destination or dashboard after successful verification
@@ -114,11 +111,11 @@ function VerifyEmailContent() {
   const handleResend = async () => {
     try {
       const response = await resendMutation.mutateAsync({
-        email,
+        identifier,
       });
 
       toast.success(
-        response.message || "OTP resent successfully! Please check your email."
+        response.message || "OTP resent successfully! Please check your email/phone."
       );
 
       // Clear OTP inputs
@@ -150,27 +147,27 @@ function VerifyEmailContent() {
           {/* Heading Section */}
           <div className="text-center space-y-4">
             <h1 className="text-xl sm:text-2xl font-bold text-black uppercase tracking-wide wrap-break-word">
-              VERIFY YOUR EMAIL ADDRESS
+              VERIFY YOUR IDENTITY
             </h1>
 
-            {/* Email text */}
+            {/* Identifier text */}
             <div className="space-y-1.5">
               <p className="text-sm sm:text-base text-black/80">
-                We&apos;ve emailed a security code to
+                We&apos;ve sent a security code to
               </p>
               <p className="text-sm sm:text-base font-semibold text-black break-all">
-                {email}
+                {identifier}
               </p>
             </div>
 
-            {/* Spam folder text and wrong email link */}
+            {/* Spam folder text and wrong identifier link */}
             <p className="text-xs sm:text-sm text-black/70">
-              If you can&apos;t find it, check your spam folder.{" "}
+              If you can&apos;t find it, check your spam/messages.{" "}
               <Link
                 href="/admin/login"
                 className="text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium"
               >
-                Wrong email?
+                Wrong details?
               </Link>
             </p>
           </div>

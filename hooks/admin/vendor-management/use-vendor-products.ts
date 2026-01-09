@@ -14,8 +14,8 @@ export function useVendorProducts(userId: string, params: GetProductsParams = {}
     queryKey: ["vendor-products", userId, params],
     queryFn: async () => {
       const response = await productService.getVendorProducts(userId, params);
-      // Response structure: { products: [...], total, page, limit }
-      return response.products || [];
+      // Response structure: { status: true, data: [...], misc: {...} }
+      return response.data || [];
     },
     enabled: !!userId,
   });

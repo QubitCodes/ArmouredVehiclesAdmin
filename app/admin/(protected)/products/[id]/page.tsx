@@ -49,6 +49,11 @@ const formatFieldValue = (value: unknown, fieldName: string): string => {
   }
 
   if (typeof value === "object" && value !== null) {
+      // Handle Category objects (main_category, category, sub_category)
+    if ("name" in value && typeof (value as { name: string }).name === "string") {
+        return (value as { name: string }).name;
+    }
+
     // Handle date objects
     if (fieldName === "signatureDate" && "day" in value && "month" in value && "year" in value) {
       const dateObj = value as { day?: number; month?: number; year?: number };
@@ -167,6 +172,7 @@ export default function ProductDetailPage() {
   const searchParams = useSearchParams();
   const productId = params.id as string;
   const fromVendor = searchParams.get('from') === 'vendor';
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -177,6 +183,8 @@ export default function ProductDetailPage() {
   } = useProduct(productId, !isDeleting);
 
   const deleteProductMutation = useDeleteProduct();
+
+  const [activeTab, setActiveTab] = useState(SECTIONS[0].id);
 
   // Handle 404 errors - redirect to listing page if product doesn't exist
   useEffect(() => {
@@ -237,12 +245,14 @@ export default function ProductDetailPage() {
         <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {formatFieldName(fieldName)}
         </label>
-        <p className="text-foreground mt-2">
+        <p className="text-foreground mt-2 break-words">
           {formattedValue}
         </p>
       </div>
     );
   };
+
+  const currentSection = SECTIONS.find(s => s.id === activeTab) || SECTIONS[0];
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -284,88 +294,121 @@ export default function ProductDetailPage() {
         )}
       </div>
 
-      {/* Product Image */}
-      {((productData.image as string) || (productData.imageUrl as string)) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              Product Image
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <img
-              src={(productData.image as string) || (productData.imageUrl as string)}
-              alt={product.name}
-              className="w-full max-w-md object-cover"
-            />
-          </CardContent>
-        </Card>
-      )}
+      {/* Tabs Navigation */}
+      <div className="flex space-x-1 border-b border-border w-full overflow-x-auto">
+        {SECTIONS.map((section) => {
+          const Icon = section.icon;
+          const isActive = activeTab === section.id;
+          return (
+            <button
+              key={section.id}
+              onClick={() => setActiveTab(section.id)}
+              className={`
+                flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2
+                ${isActive 
+                  ? "border-primary text-primary" 
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}
+              `}
+            >
+              <Icon className="h-4 w-4" />
+              {section.name}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* Render all sections */}
-      {SECTIONS.map((section) => {
-        const Icon = section.icon;
-        return (
-          <Card key={section.id}>
+      <div className="flex gap-6 flex-col lg:flex-row">
+        {/* Main Content Area (Tabs) */}
+        <div className="flex-1">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Icon className="h-5 w-5" />
-                {section.name}
+                <currentSection.icon className="h-5 w-5" />
+                {currentSection.name}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {section.fields.map((fieldName) => renderField(fieldName))}
-              </div>
+              {activeTab === 4 ? (
+                // Uploads & Media Special Handling
+                <div className="space-y-6">
+                  {((productData.image as string) || (productData.imageUrl as string)) && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">Cover Image</h3>
+                      <img
+                        src={(productData.image as string) || (productData.imageUrl as string)}
+                        alt={product.name}
+                        className="w-full max-w-md rounded-md border object-cover"
+                      />
+                    </div>
+                  )}
+                   {/* Add Gallery handling here if needed */}
+                   {(!productData.image && !productData.imageUrl) && (
+                     <p className="text-muted-foreground italic">No media uploaded.</p>
+                   )}
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2">
+                   {currentSection.fields.map((fieldName) => renderField(fieldName))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        );
-      })}
+        </div>
 
-      {/* Timeline Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Created At
-            </label>
-            <p className="text-foreground mt-2">
-              {new Date(product.createdAt).toLocaleString("en-GB", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-          </div>
-          {product.updatedAt && (
-            <div>
-              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Last Updated
-              </label>
-              <p className="text-foreground mt-2">
-                {new Date(product.updatedAt).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Sidebar Info (Timeline / Meta) */}
+        <div className="w-full lg:w-80 space-y-6">
+           <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Calendar className="h-4 w-4" />
+                Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Created At
+                </label>
+                <p className="text-sm text-foreground mt-1">
+                  {(() => {
+                    const dateVal = product.created_at || product.createdAt;
+                    if (!dateVal) return "—";
+                    const d = new Date(dateVal);
+                    return isNaN(d.getTime()) 
+                      ? "Invalid Date" 
+                      : d.toLocaleString("en-GB", {
+                          day: "2-digit", month: "short", year: "numeric",
+                          hour: "2-digit", minute: "2-digit"
+                        });
+                  })()}
+                </p>
+              </div>
+              {(product.updated_at || product.updatedAt) && (
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Last Updated
+                  </label>
+                  <p className="text-sm text-foreground mt-1">
+                    {(() => {
+                      const dateVal = product.updated_at || product.updatedAt;
+                      if (!dateVal) return "—";
+                      const d = new Date(dateVal);
+                      return isNaN(d.getTime()) 
+                        ? "Invalid Date" 
+                        : d.toLocaleString("en-GB", {
+                            day: "2-digit", month: "short", year: "numeric",
+                            hour: "2-digit", minute: "2-digit"
+                          });
+                    })()}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      {/* Delete Confirmation Dialog */}
+       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

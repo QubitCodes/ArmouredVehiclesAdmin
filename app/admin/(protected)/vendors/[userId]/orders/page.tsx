@@ -47,7 +47,7 @@ export default function VendorOrdersPage() {
           No orders found for this vendor.
         </div>
       ) : (
-        <OrderTable orders={orders} />
+        <OrderTable orders={orders} basePath={`/admin/vendors/${vendorId}/orders`} />
       )}
     </div>
   );

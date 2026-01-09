@@ -44,7 +44,8 @@ export interface OrderItem {
 }
 
 export interface GetOrdersResponse {
-  orders: Order[];
+  success: boolean;
+  data: Order[];
   total: number;
   page: number;
   limit: number;
@@ -77,7 +78,7 @@ class OrderService {
    */
   async getOrderById(orderId: string) {
     try {
-      const response = await api.get<Order>(`/admin/orders/${orderId}`);
+      const response = await api.get<{ success: boolean; data: Order }>(`/admin/orders/${orderId}`);
       return response.data;
     } catch (error) {
       console.error("Error fetching order:", error);

@@ -5,9 +5,10 @@ import { Order } from "@/services/admin/order.service";
 
 interface OrderTableProps {
   orders: Order[];
+  basePath?: string;
 }
 
-export function OrderTable({ orders }: OrderTableProps) {
+export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTableProps) {
   const router = useRouter();
   if (orders.length === 0) {
     return (
@@ -46,7 +47,7 @@ export function OrderTable({ orders }: OrderTableProps) {
         {orders.map((order) => (
           <div
             key={order.id}
-            onClick={() => router.push(`/admin/orders/${order.id}`)}
+            onClick={() => router.push(`${basePath}/${order.id}`)}
             className="w-full overflow-hidden bg-bg-light transition-all hover:shadow-sm cursor-pointer"
           >
             <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(150px,1fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-4 px-4 py-3">

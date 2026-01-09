@@ -13,7 +13,7 @@ export function useOrder(orderId: string, enabled: boolean = true) {
     queryKey: ["order", orderId],
     queryFn: async () => {
       const response = await orderService.getOrderById(orderId);
-      return response;
+      return response.data || response;
     },
     enabled: !!orderId && enabled,
     retry: false, // Don't retry on error to prevent unnecessary requests

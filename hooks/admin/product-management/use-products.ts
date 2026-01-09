@@ -17,7 +17,7 @@ export function useProducts(params: GetProductsParams = {}) {
     queryFn: async () => {
       const response = await productService.getProducts(params);
       // Response structure: { products: [...], total, page, limit }
-      return response.products || [];
+      return response.data || [];
     },
   });
 }

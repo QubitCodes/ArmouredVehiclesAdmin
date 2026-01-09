@@ -9,8 +9,10 @@ export interface Product {
   status?: string;
   category?: string;
   mainCategory?: string;
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
   imageUrl?: string | null;
   stock?: number;
   sku?: string;
@@ -79,16 +81,23 @@ export interface CreateProductRequest {
 export type UpdateProductRequest = Partial<CreateProductRequest>;
 
 export interface GetProductsResponse {
-  products: Product[];
-  total: number;
-  page: number;
-  limit: number;
+  status: boolean;
+  data: Product[];
+  message?: string;
+  code?: number;
+  misc?: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
 }
 
 export interface GetProductsParams {
   page?: number;
   limit?: number;
   vendorId?: string;
+  vendor_id?: string; // Add support for backend param style
 }
 
 class ProductService {
@@ -112,7 +121,7 @@ class ProductService {
    */
   async getProductById(id: string) {
     try {
-      const response = await api.get(`/admin/products/${id}`);
+      const response = await api.get<{ success: boolean; data: Product }>(`/admin/products/${id}`);
       return response.data;
     } catch (error) {
       console.error("Error fetching product:", error);
@@ -173,14 +182,14 @@ class ProductService {
   }
 
   /**
-   * Fetch vendor products from /admin/products/vendors
+   * Fetch vendor products using filtering on main endpoint
    */
   async getVendorProducts(vendorId: string, params: GetProductsParams = {}) {
     try {
-      const response = await api.get<GetProductsResponse>("/admin/products/vendors", {
+      const response = await api.get<GetProductsResponse>("/admin/products", {
         params: {
           ...params,
-          vendorId,
+          vendor_id: vendorId, // Backend expects vendor_id
         },
       });
       return response.data;

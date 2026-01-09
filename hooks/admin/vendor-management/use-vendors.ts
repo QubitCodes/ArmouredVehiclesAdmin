@@ -15,7 +15,7 @@ export function useVendors(params: GetVendorsParams = {}) {
     queryFn: async () => {
       const response = await vendorService.getVendors(params);
       // Response structure: { sellers: [...], total, page, limit }
-      return response.sellers || [];
+      return response.data || [];
     },
   });
 }

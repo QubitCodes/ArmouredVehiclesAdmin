@@ -104,10 +104,11 @@ export interface Vendor {
 }
 
 export interface GetVendorsResponse {
-  sellers: Vendor[];
+  success: boolean;
+  data: Vendor[];
   total: number;
   page: number;
-  limit: number;
+  totalPages: number;
 }
 
 export interface GetVendorsParams {
@@ -121,10 +122,13 @@ class VendorService {
    */
   async getVendors(params: GetVendorsParams = {}) {
     try {
-      const response = await api.get<GetVendorsResponse>("/admin/sellers", {
+      const response = await api.get<GetVendorsResponse>("/admin/vendors", {
         params,
       });
-      return response.data;
+      return response.data; // This returns the whole object { success, data: [], ... } or just data?
+      // Backend returns: { success: true, data: vendors.rows, total, page, totalPages }
+      // If api.get unwraps axios, response.data is the body.
+      // So return response.data should be the object above.
     } catch (error) {
       console.error("Error fetching vendors:", error);
       throw error;
@@ -136,8 +140,8 @@ class VendorService {
    */
   async getVendorByUserId(id: string) {
     try {
-      const response = await api.get<Vendor>(`/admin/sellers/${id}`);
-      return response.data;
+      const response = await api.get<{ success: boolean; data: Vendor }>(`/admin/vendors/${id}`);
+      return response.data.data;
     } catch (error) {
       console.error("Error fetching vendor:", error);
       throw error;
@@ -171,6 +175,36 @@ class VendorService {
       return response.data;
     } catch (error) {
       console.error("Error rejecting vendor:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch orders for a specific vendor
+   */
+  async getVendorOrders(vendorId: string, params: GetVendorsParams & { vendorId?: string } = {}) {
+    try {
+      // Exclude vendorId from query params as it is in the path
+      const { vendorId: _, ...queryParams } = params;
+      const response = await api.get<{ success: boolean; data: any[]; total: number }>(`/admin/vendors/${vendorId}/orders`, {
+        params: queryParams,
+      });
+      return response.data; // Expected { success: true, data: [], total... }
+    } catch (error) {
+      console.error("Error fetching vendor orders:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch single order for a specific vendor
+   */
+  async getVendorOrder(vendorId: string, orderId: string) {
+    try {
+      const response = await api.get<{ success: boolean; data: any }>(`/admin/vendors/${vendorId}/orders/${orderId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching vendor order:", error);
       throw error;
     }
   }

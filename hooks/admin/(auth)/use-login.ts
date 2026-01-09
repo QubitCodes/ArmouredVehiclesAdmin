@@ -1,15 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import api from "@/lib/api";
+import api, { ApiResponse } from "@/lib/api";
 
 export interface LoginStartRequest {
-  email: string;
+  identifier: string;
 }
 
-export interface LoginStartResponse {
-  message?: string;
-  success?: boolean;
-}
+export interface LoginStartResponse extends ApiResponse<{
+  expiresIn: number;
+  debugOtp?: string;
+}> {}
 
 /**
  * React Query hook for login API (OTP login start)
@@ -19,7 +19,7 @@ export function useLoginStart() {
     mutationFn: async (data: LoginStartRequest) => {
       const response = await api.post<LoginStartResponse>(
         "/auth/otp/login/start",
-        data
+        { identifier: data.identifier }
       );
       return response.data;
     },

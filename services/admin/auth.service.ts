@@ -14,6 +14,15 @@ const cookieOptions = {
   path: "/", // Available across the entire site
 };
 
+interface TokenResponse {
+  status: boolean;
+  message: string;
+  data: {
+    accessToken: string;
+    refreshToken?: string;
+  };
+}
+
 class AuthService {
   /**
    * Get the stored access token
@@ -76,8 +85,10 @@ class AuthService {
 
     try {
       // TODO: Replace with your actual refresh token endpoint
+      // Ensure we use the full API URL including /v1 if configured in environment, otherwise append it
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+        `${baseUrl}/auth/refresh`,
         {
           method: "POST",
           headers: {
@@ -91,11 +102,11 @@ class AuthService {
         throw new Error("Failed to refresh token");
       }
 
-      const data = await response.json();
+      const responseBody: TokenResponse = await response.json();
+      const data = responseBody.data;
       
-      // Assuming the API returns { accessToken, refreshToken } or similar
-      // Adjust based on your API response structure
-      if (data.accessToken) {
+      // Assuming the API returns { status: true, data: { accessToken, refreshToken } }
+      if (data && data.accessToken) {
         this.setAccessToken(data.accessToken);
         
         // Update refresh token if provided

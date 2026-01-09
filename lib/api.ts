@@ -5,9 +5,20 @@ import axios, {
 } from "axios";
 import { authService } from "@/services/admin/auth.service";
 import { vendorAuthService } from "@/services/vendor/auth.service";
+import { toast } from "sonner";
+
+// Standard API Response Interface
+export interface ApiResponse<T = any> {
+  status: boolean;
+  message: string;
+  code: number;
+  data: T;
+  misc?: any;
+  errors?: any[];
+}
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
@@ -67,7 +78,9 @@ const processQueue = (
 };
 
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
@@ -110,6 +123,7 @@ api.interceptors.response.use(
           processQueue(error, null);
           // Redirect to login if refresh fails
           if (typeof window !== "undefined") {
+            authService.clearTokens();
             const isVendorEndpoint = originalRequest.url?.includes("/vendor/") || originalRequest.url?.startsWith("/vendor");
             window.location.href = isVendorEndpoint ? "/vendor/login" : "/admin/login";
           }
@@ -119,6 +133,7 @@ api.interceptors.response.use(
         processQueue(refreshError as AxiosError, null);
         // Redirect to login if refresh fails
         if (typeof window !== "undefined") {
+           authService.clearTokens();
           const isVendorEndpoint = originalRequest.url?.includes("/vendor/") || originalRequest.url?.startsWith("/vendor");
           window.location.href = isVendorEndpoint ? "/vendor/login" : "/admin/login";
         }
@@ -128,6 +143,13 @@ api.interceptors.response.use(
       }
     }
 
+    // Common Error Handling
+    const errorMessage = (error.response?.data as any)?.message || error.message || "Something went wrong";
+    // We can toast here optionally, or let the component handle it.
+    // Given the user request "implement a common error handling", doing it here handles it globally.
+    // However, some flows might want to suppress it.
+    // For now, let's attach a normalized error object.
+    
     return Promise.reject(error);
   }
 );

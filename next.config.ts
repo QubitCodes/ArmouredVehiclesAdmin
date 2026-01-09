@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  env: {
+    SA_LOGIN: process.env.SA_LOGIN,
+  },
 };
 
 export default nextConfig;

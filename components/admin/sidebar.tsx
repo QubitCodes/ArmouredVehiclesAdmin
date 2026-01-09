@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut } from "lucide-react";
+import { jwtDecode } from "jwt-decode";
 
 import { cn } from "@/lib/utils";
 import { authService } from "@/services/admin/auth.service";
@@ -18,38 +19,57 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const navigation = [
-  {
-    name: "Dashboard",
-    href: "/admin",
-    icon: LayoutDashboard,
-  },
-  {
-    name: "Admins",
-    href: "/admin/admin-management",
-    icon: Users,
-  },
-  {
-    name: "Products",
-    href: "/admin/products",
-    icon: Package,
-  },
-  {
-    name: "Orders",
-    href: "/admin/orders",
-    icon: ShoppingCart,
-  },
-  {
-    name: "Vendors",
-    href: "/admin/vendors",
-    icon: Store,
-  },
-];
+// Navigation moved inside component for state access
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Simple check from local storage as per user request
+    const storedType = localStorage.getItem("user_type");
+    if (storedType) {
+        // console.log("Sidebar: user_type from storage:", storedType);
+        setUserRole(storedType.toLowerCase());
+    }
+  }, []);
+
+  const navigationItems = [
+    {
+        name: "Dashboard",
+        href: "/admin",
+        icon: LayoutDashboard,
+        visibility: true,
+    },
+    {
+        name: "Admins",
+        href: "/admin/admin-management",
+        icon: Users,
+        visibility: (userRole === "vendor") ? false : true,
+    },
+    {
+        name: "Products",
+        href: "/admin/products",
+        icon: Package,
+        visibility: true,
+    },
+    {
+        name: "Orders",
+        href: "/admin/orders",
+        icon: ShoppingCart,
+        visibility: true,
+    },
+    {
+        name: "Vendors",
+        href: "/admin/vendors",
+        icon: Store,
+        visibility: (userRole === "vendor") ? false : true,
+    },
+  ];
+
+  const filteredNavigation = navigationItems.filter(item => item.visibility);
 
   const handleLogoutClick = () => {
     setShowLogoutDialog(true);
@@ -57,13 +77,15 @@ export function Sidebar() {
 
   const handleLogoutConfirm = () => {
     authService.clearTokens();
+    // Clear user_type from storage on logout
+    localStorage.removeItem("user_type");
     router.push("/admin/login");
   };
 
   return (
     <div className="flex h-full w-64 flex-col bg-primary">
       <nav className="flex-1 space-y-1 p-4 pt-10">
-        {navigation.map((item) => {
+        {filteredNavigation.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           

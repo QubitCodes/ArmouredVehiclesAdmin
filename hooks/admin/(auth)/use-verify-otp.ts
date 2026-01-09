@@ -1,20 +1,28 @@
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
-import api from "@/lib/api";
+import api, { ApiResponse } from "@/lib/api";
 import { authService } from "@/services/admin/auth.service";
 
 export interface VerifyOtpRequest {
-  email: string;
+  identifier: string;
   code: string;
 }
 
-export interface VerifyOtpResponse {
-  message?: string;
-  success?: boolean;
-  accessToken?: string;
-  refreshToken?: string;
+export interface VerifyOtpPayload {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    userType: string;
+  };
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 }
+
+export interface VerifyOtpResponse extends ApiResponse<VerifyOtpPayload> {}
 
 /**
  * React Query hook for OTP verification
@@ -24,16 +32,18 @@ export function useVerifyOtp() {
     mutationFn: async (data: VerifyOtpRequest) => {
       const response = await api.post<VerifyOtpResponse>(
         "/auth/otp/login/verify",
-        data
+        { identifier: data.identifier, code: data.code }
       );
       
-      // Store tokens if provided in response
-      if (response.data.accessToken && response.data.refreshToken) {
         authService.setTokens(
-          response.data.accessToken,
-          response.data.refreshToken
+          response.data.data.accessToken,
+          response.data.data.refreshToken
         );
-      }
+
+        if (response.data.data.user?.userType) {
+            localStorage.setItem("user_type", response.data.data.user.userType);
+        }
+
       
       return response.data;
     },
