@@ -244,6 +244,10 @@ export default function ProductForm({ productId }: ProductFormProps) {
   
   const { data: mainCategories = [] } = useMainCategories();
 
+  // File states
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+
   // If productId is provided, fetch product data
   const {
     data: product,
@@ -530,10 +534,36 @@ export default function ProductForm({ productId }: ProductFormProps) {
       const allFields = SECTIONS.flatMap(s => s.fields);
       const cleanedData = cleanDataForApi(formData, allFields);
 
+      // Create FormData
+      const fd = new FormData();
+      
+      // Append all data fields
+      Object.keys(cleanedData).forEach(key => {
+          const value = cleanedData[key];
+          if (value === undefined || value === null) return;
+
+          // Arrays and Objects (except File) should be stringified
+          if (Array.isArray(value) || (typeof value === 'object' && !(value instanceof File))) {
+              fd.append(key, JSON.stringify(value));
+          } else {
+              fd.append(key, String(value));
+          }
+      });
+
+      // Append Files
+      if (coverImageFile) {
+          fd.append('files', coverImageFile);
+      }
+      
+      // Append Gallery Files
+      galleryFiles.forEach(file => {
+          fd.append('files', file);
+      });
+
       if (!currentProductId) {
         // CREATE
         const response = await createProductMutation.mutateAsync(
-          cleanedData as unknown as CreateProductRequest
+          fd as unknown as CreateProductRequest
         );
 
         const productResponse = response as
@@ -547,8 +577,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         if (newProductId) {
           setCurrentProductId(String(newProductId));
           toast.success("Product created successfully!");
-          // Redirect to edit page of the new product or stay here?
-          // For now, let's update the URL without reload or just stay in "Edit Mode"
+          // Redirect to edit page of the new product
           router.replace(`/admin/products/${newProductId}/edit`);
         } else {
           throw new Error("Product ID not found in response");
@@ -557,7 +586,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         // UPDATE
         await updateProductMutation.mutateAsync({
           id: currentProductId,
-          data: cleanedData as UpdateProductRequest,
+          data: fd as unknown as UpdateProductRequest,
         });
         toast.success("Product updated successfully!");
         if (activeTab < SECTIONS.length) {
@@ -638,7 +667,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
                           placeholder="Select Main Category"
                           disabled={isLoadingCategories}
                         >
-                          <option value="">Select Main Category</option>
                           {mainCategories.map((category) => (
                             <option key={category.id} value={category.id}>
                               {category.name}
@@ -670,7 +698,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
                           placeholder="Select Category"
                           disabled={!mainCategoryId || isLoadingSubCategories}
                         >
-                          <option value="">Select Category</option>
                           {categories.map((category) => (
                             <option key={category.id} value={category.id}>
                               {category.name}
@@ -701,7 +728,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
                           placeholder="Select Subcategory"
                           disabled={!categoryId || isLoadingSubCategories}
                         >
-                          <option value="">Select Subcategory</option>
                           {subCategories.map((subCategory) => (
                             <option key={subCategory.id} value={subCategory.id}>
                               {subCategory.name}
@@ -782,8 +808,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       <FormItem>
                         <FormLabel>Country of Origin</FormLabel>
                         <FormControl>
-                           <Select value={field.value || ""} onChange={field.onChange}>
-                             <option value="">Select Country</option>
+                           <Select value={field.value || ""} onChange={field.onChange} placeholder="Select Country">
                              <option value="USA">USA</option>
                              <option value="UAE">UAE</option>
                            </Select>
@@ -1064,16 +1089,83 @@ export default function ProductForm({ productId }: ProductFormProps) {
              <Card>
                 <CardHeader><CardTitle>Uploads & Media</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                     <FormField control={form.control} name="image" render={({field}) => <FormItem><FormLabel>Cover Image URL</FormLabel><Input {...field} /><FormMessage/></FormItem>} />
+                     <FormField control={form.control} name="image" render={({field}) => (
+                         <FormItem>
+                             <FormLabel>Cover Image</FormLabel>
+                             <FormControl>
+                                 <div className="space-y-2">
+                                    <Input 
+                                        type="file" 
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                setCoverImageFile(file);
+                                                // Create a preview URL locally if needed, but for now just setting file state
+                                                // We can also set the form field to something to satisfy validation if required (though it's optional in schema)
+                                            }
+                                        }} 
+                                    />
+                                    {field.value && typeof field.value === 'string' && (
+                                        <div className="relative w-32 h-32 mt-2">
+                                            <img src={field.value} alt="Preview" className="w-full h-full object-cover rounded-md" />
+                                            <p className="text-xs text-muted-foreground">Current URL</p>
+                                        </div>
+                                    )}
+                                    {coverImageFile && (
+                                        <div className="text-sm text-green-600">Selected: {coverImageFile.name}</div>
+                                    )}
+                                 </div>
+                             </FormControl>
+                             <FormMessage/>
+                         </FormItem>
+                     )} />
+                     
                      <div>
                         <Label>Gallery Images</Label>
-                        {gallery.map((item, index) => (
-                           <div key={index} className="flex gap-2 mb-2">
-                              <Input value={item} onChange={e => updateArrayItem('gallery', index, e.target.value)} />
-                              <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem('gallery', index)}><X className="h-4 w-4"/></Button>
-                           </div>
-                        ))}
-                        <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('gallery')}><Plus className="mr-2 h-4 w-4"/> Add Image</Button>
+                        <div className="mt-2 space-y-4">
+                            <Input 
+                                type="file" 
+                                multiple
+                                accept="image/*"
+                                onChange={(e) => {
+                                    if (e.target.files) {
+                                        setGalleryFiles(Array.from(e.target.files));
+                                    }
+                                }}
+                            />
+                            {galleryFiles.length > 0 && (
+                                <div className="text-sm">
+                                    <p className="font-semibold">{galleryFiles.length} files selected:</p>
+                                    <ul className="list-disc pl-5">
+                                        {galleryFiles.map((f, i) => <li key={i}>{f.name}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            
+                            {/* Display existing gallery URLs if any */}
+                            {gallery.length > 0 && (
+                                <div className="mt-4">
+                                    <p className="text-sm font-semibold mb-2">Current Gallery:</p>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {gallery.map((item, index) => (
+                                           <div key={index} className="relative w-20 h-20 border rounded">
+                                              <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover" />
+                                              <Button 
+                                                type="button" 
+                                                variant="destructive" 
+                                                size="icon" 
+                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                                                onClick={() => removeArrayItem('gallery', index)}
+                                              >
+                                                  <X className="h-3 w-3"/>
+                                              </Button>
+                                           </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                      </div>
                 </CardContent>
              </Card>

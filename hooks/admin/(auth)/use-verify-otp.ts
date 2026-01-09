@@ -40,8 +40,8 @@ export function useVerifyOtp() {
           response.data.data.refreshToken
         );
 
-        if (response.data.data.user?.userType) {
-            localStorage.setItem("user_type", response.data.data.user.userType);
+        if (response.data.data.user) {
+            authService.setUserDetails(response.data.data.user);
         }
 
       

@@ -132,9 +132,9 @@ class ProductService {
   /**
    * Create a new product
    */
-  async createProduct(data: CreateProductRequest) {
+  async createProduct(data: CreateProductRequest | FormData) {
     try {
-      const response = await api.post("/vendor/products", data);
+      const response = await api.post("/products", data);
       return response.data;
     } catch (error) {
       console.error("Error creating product:", error);
@@ -145,9 +145,9 @@ class ProductService {
   /**
    * Update an existing product
    */
-  async updateProduct(id: string, data: UpdateProductRequest) {
+  async updateProduct(id: string, data: UpdateProductRequest | FormData) {
     try {
-      const response = await api.patch(`/vendor/products/${id}`, data);
+      const response = await api.patch(`/products/${id}`, data);
       return response.data;
     } catch (error) {
       console.error("Error updating product:", error);

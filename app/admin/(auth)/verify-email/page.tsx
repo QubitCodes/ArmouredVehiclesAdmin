@@ -80,6 +80,21 @@ function VerifyEmailContent() {
         identifier,
         code: otpCode,
       });
+      // Store User Details in Local Storage
+      if (response && response.user) {
+        // Dynamic import to avoid circular dependency or client side issues, though imports are fine in client component
+        // But better to use the imported service instance
+        // Assuming we import it at top level
+        // Actually, let's just make sure we imported authService
+      }
+      
+      // Need to import authService at top
+      // Doing it via replace_file_content requires importing it. 
+      // I will add import first.
+      
+      const { authService } = await import("@/services/admin/auth.service");
+      authService.setUserDetails(response.user);
+
       toast.success(
         response.message || "Verified successfully"
       );

@@ -62,6 +62,24 @@ class VendorAuthService {
     if (typeof window === "undefined") return;
     Cookies.remove(ACCESS_TOKEN_KEY, { path: "/" });
     Cookies.remove(REFRESH_TOKEN_KEY, { path: "/" });
+    localStorage.removeItem("user_details");
+  }
+
+  /**
+   * Store user details
+   */
+  setUserDetails(user: any): void {
+      if (typeof window === "undefined") return;
+      localStorage.setItem("user_details", JSON.stringify(user));
+  }
+
+  /**
+   * Get user details
+   */
+  getUserDetails(): any {
+      if (typeof window === "undefined") return null;
+      const str = localStorage.getItem("user_details");
+      return str ? JSON.parse(str) : null;
   }
 
   /**

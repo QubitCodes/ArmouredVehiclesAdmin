@@ -138,6 +138,7 @@ const SECTIONS = [
       "readyStockAvailable",
       "stock",
       "condition",
+      "pricing_tiers",
     ],
   },
   {
@@ -238,6 +239,38 @@ export default function ProductDetailPage() {
   // Render field in section
   const renderField = (fieldName: string) => {
     const value = productData[fieldName];
+
+    // Special handling for pricing_tiers
+    if (fieldName === "pricing_tiers" && Array.isArray(value) && value.length > 0) {
+      return (
+        <div key={fieldName} className="col-span-2">
+          <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Pricing Tiers
+          </label>
+          <div className="mt-2 border rounded-md overflow-hidden">
+             <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr className="border-b">
+                    <th className="px-3 py-2 text-left font-medium">Min Qty</th>
+                    <th className="px-3 py-2 text-left font-medium">Max Qty</th>
+                    <th className="px-3 py-2 text-left font-medium">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(value as any[]).map((tier, i) => (
+                    <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="px-3 py-2">{tier.min_quantity}</td>
+                      <td className="px-3 py-2">{tier.max_quantity || "∞"}</td>
+                      <td className="px-3 py-2">${Number(tier.price).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+             </table>
+          </div>
+        </div>
+      );
+    }
+
     const formattedValue = formatFieldValue(value, fieldName);
 
     return (

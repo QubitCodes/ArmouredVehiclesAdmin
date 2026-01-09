@@ -83,6 +83,12 @@ function VerifyEmailContent() {
 
       // Note: accessToken and refreshToken are automatically stored in cookies
       // by the useVerifyLoginOtp hook via vendorAuthService.setTokens()
+      
+      // Store User Details
+      if (response && response.user) {
+         const { vendorAuthService } = await import("@/services/vendor/auth.service");
+         vendorAuthService.setUserDetails(response.user);
+      }
 
       toast.success(
         response.message || "Email verified successfully"

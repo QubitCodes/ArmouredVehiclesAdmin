@@ -6,6 +6,7 @@ import axios, {
 import { authService } from "@/services/admin/auth.service";
 import { vendorAuthService } from "@/services/vendor/auth.service";
 import { toast } from "sonner";
+import Cookies from "js-cookie";
 
 // Standard API Response Interface
 export interface ApiResponse<T = any> {
@@ -24,17 +25,47 @@ const api = axios.create({
   },
 });
 
-// Helper function to determine which auth service to use based on URL
+// Helper function to determine which auth service to use
 function getAuthService(url?: string) {
-  if (!url) return authService; // Default to admin
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem('user_details');
+    if (userStr) {
+        try {
+            const user = JSON.parse(userStr);
+            if (user.userType === 'vendor') {
+                return vendorAuthService;
+            }
+        } catch (e) {
+            console.error('Error parsing user details', e);
+        }
+    }
+  }
+
+  // Fallback for Server-side or if no user details found (e.g. initial login)
+  // We might still need some context or default to Admin if unsure.
+  // Actually, if we are logging in, we don't have a token yet so we don't call this usually.
+  // But for SSR, we might need cookies. Check cookies if localStorage is not available?
+  // Since User asked to avoid URL logic, we rely on stored state. 
+  // However, `getAuthService` is called by interceptors. 
+  // If we are server-side, we technically don't have localStorage. 
+  // For SSR, we might need to rely on cookie names directly/indirectly. 
+  // `authService` reads `admin_access_token` and `vendorAuthService` reads `vendor_access_token`. 
+  // We could just check which token exists? A user could be both. 
   
-  // Check if the URL is for vendor endpoints
-  const isVendorEndpoint = 
-    url.includes("/vendor/") || 
-    url.startsWith("/vendor") ||
-    url.match(/^\/products\/\d+\/assets$/); // /products/{id}/assets endpoint for vendors
+  // Revised Strategy: Check which token exists in cookies.
+  if (typeof window === 'undefined') {
+      // Server side context - checking cookies via request headers is hard here without passing req.
+      // But typically this api instance is used client side or in actions.
+      // If we are really stuck, the URL hint was actually useful. 
+      // But user said "Why not just retrieve user_type from local storage?". 
+      // So I will stick to the client-side localStorage as primary.
+      return authService; 
+  }
+
+  // If client side and no local storage, maybe check cookie existence?
+  if (Cookies.get("vendor_access_token")) return vendorAuthService;
   
-  return isVendorEndpoint ? vendorAuthService : authService;
+  return authService;
 }
 
 // Request interceptor to add access token to requests

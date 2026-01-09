@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut, Tag, Database } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
 import { cn } from "@/lib/utils";
@@ -28,11 +28,10 @@ export function Sidebar() {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simple check from local storage as per user request
-    const storedType = localStorage.getItem("user_type");
-    if (storedType) {
-        // console.log("Sidebar: user_type from storage:", storedType);
-        setUserRole(storedType.toLowerCase());
+    // Get user details from auth service
+    const user = authService.getUserDetails();
+    if (user && user.userType) {
+        setUserRole(user.userType.toLowerCase());
     }
   }, []);
 
@@ -56,6 +55,12 @@ export function Sidebar() {
         visibility: true,
     },
     {
+        name: "Categories",
+        href: "/admin/categories",
+        icon: Tag, // Auto-import needed
+        visibility: true,
+    },
+    {
         name: "Orders",
         href: "/admin/orders",
         icon: ShoppingCart,
@@ -65,6 +70,12 @@ export function Sidebar() {
         name: "Vendors",
         href: "/admin/vendors",
         icon: Store,
+        visibility: (userRole === "vendor") ? false : true,
+    },
+    {
+        name: "References",
+        href: "/admin/references",
+        icon: Database, // Auto-import needed
         visibility: (userRole === "vendor") ? false : true,
     },
   ];
@@ -77,8 +88,6 @@ export function Sidebar() {
 
   const handleLogoutConfirm = () => {
     authService.clearTokens();
-    // Clear user_type from storage on logout
-    localStorage.removeItem("user_type");
     router.push("/admin/login");
   };
 
