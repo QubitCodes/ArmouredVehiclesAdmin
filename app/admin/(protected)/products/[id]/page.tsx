@@ -374,10 +374,27 @@ export default function ProductDetailPage() {
                       />
                     </div>
                   )}
-                   {/* Add Gallery handling here if needed */}
-                   {(!productData.image && !productData.imageUrl) && (
-                     <p className="text-muted-foreground italic">No media uploaded.</p>
-                   )}
+                  
+                  {Array.isArray(productData.gallery) && productData.gallery.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">Gallery Images</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {productData.gallery.map((url: string, index: number) => (
+                          <div key={index} className="relative aspect-square border rounded-md overflow-hidden">
+                            <img
+                              src={url}
+                              alt={`${product.name} gallery ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(!productData.image && !productData.imageUrl && (!Array.isArray(productData.gallery) || productData.gallery.length === 0)) && (
+                    <p className="text-muted-foreground italic">No media uploaded.</p>
+                  )}
                 </div>
               ) : (
                 <div className="grid gap-6 md:grid-cols-2">

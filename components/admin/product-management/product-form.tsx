@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Image as ImageIcon,
   Shield,
+  UploadCloud,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -57,12 +58,15 @@ import type {
 
 // Pricing Tier Schema
 const pricingTierSchema = z.object({
-  min_quantity: z.number().int().nonnegative(),
-  max_quantity: z.number().int().positive().nullable().optional(),
-  price: z.number().nonnegative(),
+  min_quantity: z.coerce.number().int().nonnegative(),
+  max_quantity: z.union([z.coerce.number().int().positive(), z.null(), z.literal("")]).optional(),
+  price: z.coerce.number().nonnegative(),
 });
 
-const productSchema = z.object({
+// --- Split Schemas for Tabs ---
+
+// Tab 1: Basic Info
+const basicInfoSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   sku: z.string().optional(),
   mainCategoryId: z.number().optional(),
@@ -72,6 +76,17 @@ const productSchema = z.object({
   certifications: z.string().optional(),
   countryOfOrigin: z.string().optional(),
   controlledItemType: z.string().optional(),
+  description: z.string().optional(),
+  make: z.string().optional(),
+  model: z.string().optional(),
+  year: z.number().optional(),
+  condition: z.string().optional(),
+  actionType: z.string().optional(),
+  isFeatured: z.boolean().optional(),
+});
+
+// Tab 2: Specs & Variants
+const specificationsSchema = z.object({
   dimensionLength: z.number().optional(),
   dimensionWidth: z.number().optional(),
   dimensionHeight: z.number().optional(),
@@ -92,16 +107,33 @@ const productSchema = z.object({
   packingDimensionUnit: z.string().optional(),
   packingWeight: z.number().optional(),
   packingWeightUnit: z.string().optional(),
-  basePrice: z.number().min(0, "Base price must be greater than or equal to 0"),
+  minOrderQuantity: z.number().optional(),
+  vehicleFitment: z.array(z.string()).optional(),
+  specifications: z.array(z.string()).optional(),
+});
+
+// Tab 3: Pricing & Stock
+const pricingSchema = z.object({
+  basePrice: z.coerce.number().min(0, "Base price must be greater than or equal to 0"),
   currency: z.string().optional(),
   stock: z.number().optional(),
-  minOrderQuantity: z.number().optional(),
-  condition: z.string().optional(),
-  make: z.string().optional(),
-  model: z.string().optional(),
-  year: z.number().optional(),
   readyStockAvailable: z.boolean().optional(),
   pricingTerms: z.array(z.string()).optional(),
+  pricing_tiers: z.array(pricingTierSchema).optional(),
+});
+
+// Tab 4: Uploads
+const mediaSchema = z.object({
+  image: z
+    .string()
+    .url("Please enter a valid URL")
+    .optional()
+    .or(z.literal("")),
+  gallery: z.array(z.string().url()).optional(),
+});
+
+// Tab 5: Declarations
+const declarationsSchema = z.object({
   productionLeadTime: z.number().optional(),
   manufacturingSource: z.string().optional(),
   manufacturingSourceName: z.string().optional(),
@@ -112,18 +144,7 @@ const productSchema = z.object({
   warrantyTerms: z.string().optional(),
   complianceConfirmed: z.boolean().optional(),
   supplierSignature: z.string().optional(),
-  vehicleFitment: z.array(z.string()).optional(),
-  specifications: z.array(z.string()).optional(),
-  description: z.string().optional(),
   warranty: z.string().optional(),
-  actionType: z.string().optional(),
-  isFeatured: z.boolean().optional(),
-  image: z
-    .string()
-    .url("Please enter a valid URL")
-    .optional()
-    .or(z.literal("")),
-  gallery: z.array(z.string().url()).optional(),
   signatureDate: z
     .object({
       day: z.number().optional(),
@@ -131,11 +152,25 @@ const productSchema = z.object({
       year: z.number().optional(),
     })
     .optional(),
-  // Add pricing tiers to schema
-  pricing_tiers: z.array(pricingTierSchema).optional(),
 });
 
+// Combined schema for type inference (optional usage)
+const productSchema = basicInfoSchema
+  .merge(specificationsSchema)
+  .merge(pricingSchema)
+  .merge(mediaSchema)
+  .merge(declarationsSchema);
+  
 export type ProductFormValues = z.infer<typeof productSchema>;
+
+// Map tabs to schemas
+const SCHEMA_MAP: Record<number, z.ZodObject<any>> = {
+  1: basicInfoSchema,
+  2: specificationsSchema,
+  3: pricingSchema,
+  4: mediaSchema,
+  5: declarationsSchema,
+};
 
 const SECTIONS = [
   {
@@ -255,44 +290,100 @@ export default function ProductForm({ productId }: ProductFormProps) {
     error: productError,
   } = useProduct(currentProductId || ""); // Only run if ID exists
 
+  // Dynamic Resolver based on active tab
+  // This allows validation to default to the current tab's schema
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+    resolver: ((values: any, context: any, options: any) => {
+       const schema = SCHEMA_MAP[activeTab] || basicInfoSchema;
+       // Cast to any to avoid strict type mismatch between partial schemas and full ProductFormValues
+       return zodResolver(schema)(values, context, options);
+    }) as any,
     defaultValues: {
-      name: "",
-      basePrice: 0,
-      currency: "USD",
-      condition: "new",
+      name: "Peak4x4 LC300 Heavy-Duty Brake Kit",
+      sku: "P4x4-LC300-BK",
+      mainCategoryId: 1,
+      categoryId: 10,
+      subCategoryId: 101, // Note: Ensure these IDs exist in your DB
+      certifications: "ISO 9001, TUV Approved",
+      controlledItemType: "No",
+      vehicleCompatibility: "Toyota Land Cruiser 300 (LC300)",
+      make: "Peak4x4",
+      model: "LC300 Heavy-Duty",
+      year: 2025,
+      countryOfOrigin: "Australia",
+      description: "High-performance heavy-duty brake pads and rotors designed for the Toyota Land Cruiser 300 series. Enhanced stopping power for armoured and heavy vehicles.",
+      
+      // Technical
+      dimensionLength: 450,
+      dimensionWidth: 300,
+      dimensionHeight: 150,
       dimensionUnit: "mm",
-      weightUnit: "kg",
-      packingDimensionUnit: "cm",
-      packingWeightUnit: "kg",
-      warrantyDurationUnit: "months",
-      readyStockAvailable: false,
-      requiresExportLicense: false,
-      hasWarranty: false,
-      complianceConfirmed: false,
-      isFeatured: false,
-      actionType: "buy_now",
-      materials: [],
-      features: [],
-      performance: [],
-      specifications: [],
-      driveTypes: [],
+      materials: ["Ceramic Composite", "High-Carbon Steel"],
+      features: ["High thermal stability", "Low dust formula", "Noise reduction shims"],
+      performance: ["Stopping distance reduced by 15%", "Operating temperature up to 650°C"],
+      specifications: ["Front Axle Set", "Includes wear sensors"],
+      technicalDescription: "Complete brake upgrade kit featuring slotted rotors and ceramic pads. Designed for GVM upgrades.",
+      vehicleFitment: ["Toyota Land Cruiser 300 Series (2021+)"],
       sizes: [],
       thickness: [],
-      colors: [],
-      vehicleFitment: [],
-      pricingTerms: [],
+      colors: ["Red", "Black"],
+      weightValue: 12.5,
+      weightUnit: "kg",
+      packingLength: 50,
+      packingWidth: 35,
+      packingHeight: 20,
+      packingDimensionUnit: "cm",
+      packingWeight: 13.0,
+      packingWeightUnit: "kg",
+      minOrderQuantity: 1,
+
+      // Pricing
+      basePrice: 1250.00,
+      currency: "USD",
+      pricingTerms: ["Ex Works (EXW)", "FOB"],
+      productionLeadTime: 14,
+      readyStockAvailable: true,
+      stock: 50,
+      condition: "new",
+      pricing_tiers: [
+          { min_quantity: 10, max_quantity: 49, price: 1150.00 }, // Added max_quantity logic if needed or keep null
+          { min_quantity: 50, max_quantity: null, price: 1050.00 }
+      ],
+
+      // Declarations
+      manufacturingSource: "In-house",
+      manufacturingSourceName: "Peak4x4 Manufacturing",
+      requiresExportLicense: false,
+      hasWarranty: true,
+      warranty: "3 Years / 60,000km Limit",
+      warrantyDuration: 36,
+      warrantyDurationUnit: "months",
+      warrantyTerms: "Covers manufacturing defects only. Normal wear and tear excluded.",
+      complianceConfirmed: true,
+      supplierSignature: "John Doe",
+      signatureDate: {
+          day: 10,
+          month: 1,
+          year: 2026
+      },
+      
+      // Defaults/Placeholders
+      isFeatured: false,
+      actionType: "buy_now",
+      driveTypes: [],
       gallery: [],
-      pricing_tiers: [],
-      signatureDate: undefined,
     },
+    shouldUnregister: false, // Keep values even if fields are unmounted (hidden tabs)
   });
 
   // Populate form with product data when loaded (Edit Mode)
   useEffect(() => {
      if (productId && product) {
       const productData = product as unknown as Record<string, unknown>;
+      console.log("Product Data Raw:", productData);
+      console.log("Product Name Raw:", productData.name, typeof productData.name);
+      
+      // Map basic fields
       // Map basic fields
       const formData: Partial<ProductFormValues> = {
         name: (productData.name as string) || "",
@@ -401,17 +492,10 @@ export default function ProductForm({ productId }: ProductFormProps) {
         subCategoryId: (productData.subCategoryId as number) || (productData.sub_category_id as number) || (productData.sub_category as any)?.id || undefined,
       };
 
-      // Set form values
-      Object.keys(formData).forEach((key) => {
-        const value = formData[key as keyof typeof formData];
-        if (value !== undefined) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          form.setValue(key as keyof ProductFormValues, value as any);
-        }
-      });
-      
-      // Force categories to re-render properly if needed by triggering state updates
-      // The watchers below will handle fetching subcategories based on these values
+      // Use reset to populate the form fully and correctly set default values
+      // This handles unmounted fields better than setValue loop
+      console.log("Resetting form with data:", formData);
+      form.reset(formData as ProductFormValues);
     }
   }, [productId, product, form]);
 
@@ -562,6 +646,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
       if (!currentProductId) {
         // CREATE
+        // Only validate Step 1 fields
+        // Note: The form validation already happened via handleSubmit, but we should ensure we are on step 1
+        
         const response = await createProductMutation.mutateAsync(
           fd as unknown as CreateProductRequest
         );
@@ -577,7 +664,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         if (newProductId) {
           setCurrentProductId(String(newProductId));
           toast.success("Product created successfully!");
-          // Redirect to edit page of the new product
+          // CRITICAL: Redirect to the edit page for this specific product
           router.replace(`/admin/products/${newProductId}/edit`);
         } else {
           throw new Error("Product ID not found in response");
@@ -589,15 +676,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
           data: fd as unknown as UpdateProductRequest,
         });
         toast.success("Product updated successfully!");
-        if (activeTab < SECTIONS.length) {
-          // Optional: Move to next tab automatically on save? Or just stay.
-          // For edit mode, usually staying is better. 
-          // But if "Next" button logic is desired, we can add it.
-          // For now, redirecting to list as per previous logic.
-           router.push("/admin/products/admin");
-        } else {
-          router.push("/admin/products/admin");
-        }
+        // Stay on page or handle next logic if needed
       }
     } catch (error) {
       console.error(error);
@@ -741,16 +820,19 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 />
               </div>
               {/* Additional fields for Step 1 would be here (sku, certifications, etc) - keeping concise for now based on original file structure, ensuring all fields are present */}
-               <FormField
+                <FormField
                 control={form.control}
                 name="sku"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Product Code / SKU</FormLabel>
+                    <FormLabel>Product Code / SKU (Auto-generated)</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Supplier internal code or standard"
+                        placeholder="Auto-generated"
                         {...field}
+                        readOnly
+                        disabled
+                        className="bg-muted text-muted-foreground"
                       />
                     </FormControl>
                     <FormMessage />
@@ -1085,86 +1167,144 @@ export default function ProductForm({ productId }: ProductFormProps) {
         );
 
       case 4:
+         const coverPreview = coverImageFile 
+             ? URL.createObjectURL(coverImageFile) 
+             : (form.watch('image') as string);
+         
          return (
              <Card>
                 <CardHeader><CardTitle>Uploads & Media</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+                     {/* Cover Image Section */}
                      <FormField control={form.control} name="image" render={({field}) => (
                          <FormItem>
-                             <FormLabel>Cover Image</FormLabel>
+                             <FormLabel className="text-base font-semibold">Cover Image</FormLabel>
                              <FormControl>
-                                 <div className="space-y-2">
-                                    <Input 
-                                        type="file" 
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                                setCoverImageFile(file);
-                                                // Create a preview URL locally if needed, but for now just setting file state
-                                                // We can also set the form field to something to satisfy validation if required (though it's optional in schema)
-                                            }
-                                        }} 
-                                    />
-                                    {field.value && typeof field.value === 'string' && (
-                                        <div className="relative w-32 h-32 mt-2">
-                                            <img src={field.value} alt="Preview" className="w-full h-full object-cover rounded-md" />
-                                            <p className="text-xs text-muted-foreground">Current URL</p>
-                                        </div>
-                                    )}
-                                    {coverImageFile && (
-                                        <div className="text-sm text-green-600">Selected: {coverImageFile.name}</div>
-                                    )}
+                                 <div className="space-y-4">
+                                     <div 
+                                         className={`
+                                             relative border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center 
+                                             min-h-[250px] cursor-pointer transition-all duration-200
+                                             ${coverPreview ? 'border-primary/50 bg-accent/10' : 'border-border hover:border-primary/50 hover:bg-accent/5'}
+                                         `}
+                                         onClick={() => document.getElementById('cover-upload-input')?.click()}
+                                     >
+                                         {coverPreview ? (
+                                             <div className="relative w-full h-full flex items-center justify-center">
+                                                 <img 
+                                                     src={coverPreview} 
+                                                     alt="Cover Preview" 
+                                                     className="max-h-[300px] w-auto object-contain rounded-lg shadow-sm" 
+                                                 />
+                                                 <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white font-medium">
+                                                     Click to Change
+                                                 </div>
+                                             </div>
+                                         ) : (
+                                             <div className="text-center space-y-2">
+                                                 <div className="p-4 bg-background rounded-full shadow-sm mx-auto w-fit">
+                                                    <UploadCloud className="w-8 h-8 text-primary" />
+                                                 </div>
+                                                 <div className="space-y-1">
+                                                     <p className="font-medium">Click to upload cover image</p>
+                                                     <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (max. 800x400px)</p>
+                                                 </div>
+                                             </div>
+                                         )}
+                                         <Input 
+                                             id="cover-upload-input"
+                                             type="file" 
+                                             accept="image/*"
+                                             className="hidden"
+                                             onChange={(e) => {
+                                                 const file = e.target.files?.[0];
+                                                 if (file) {
+                                                     setCoverImageFile(file);
+                                                 }
+                                             }} 
+                                         />
+                                     </div>
                                  </div>
                              </FormControl>
                              <FormMessage/>
                          </FormItem>
                      )} />
                      
-                     <div>
-                        <Label>Gallery Images</Label>
-                        <div className="mt-2 space-y-4">
-                            <Input 
-                                type="file" 
-                                multiple
-                                accept="image/*"
-                                onChange={(e) => {
-                                    if (e.target.files) {
-                                        setGalleryFiles(Array.from(e.target.files));
-                                    }
-                                }}
-                            />
-                            {galleryFiles.length > 0 && (
-                                <div className="text-sm">
-                                    <p className="font-semibold">{galleryFiles.length} files selected:</p>
-                                    <ul className="list-disc pl-5">
-                                        {galleryFiles.map((f, i) => <li key={i}>{f.name}</li>)}
-                                    </ul>
-                                </div>
-                            )}
-                            
-                            {/* Display existing gallery URLs if any */}
-                            {gallery.length > 0 && (
-                                <div className="mt-4">
-                                    <p className="text-sm font-semibold mb-2">Current Gallery:</p>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {gallery.map((item, index) => (
-                                           <div key={index} className="relative w-20 h-20 border rounded">
-                                              <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover" />
-                                              <Button 
-                                                type="button" 
-                                                variant="destructive" 
-                                                size="icon" 
-                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                                                onClick={() => removeArrayItem('gallery', index)}
-                                              >
-                                                  <X className="h-3 w-3"/>
-                                              </Button>
-                                           </div>
-                                        ))}
+                     {/* Gallery Section */}
+                     <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <FormLabel className="text-base font-semibold">Gallery Images</FormLabel>
+                            <span className="text-xs text-muted-foreground">{gallery.length + galleryFiles.length} images</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {/* Existing Gallery Items */}
+                            {gallery.map((item, index) => (
+                               <div key={`existing-${index}`} className="group relative aspect-square border rounded-xl overflow-hidden bg-background shadow-sm">
+                                  <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                  <Button 
+                                    type="button" 
+                                    variant="destructive" 
+                                    size="icon" 
+                                    className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                    onClick={() => removeArrayItem('gallery', index)}
+                                  >
+                                      <X className="h-3.5 w-3.5"/>
+                                  </Button>
+                                  <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                      Existing
+                                  </div>
+                               </div>
+                            ))}
+
+                            {/* New Uploads */}
+                            {galleryFiles.map((file, i) => (
+                                <div key={`new-${i}`} className="group relative aspect-square border-2 border-primary/50 rounded-xl overflow-hidden bg-background shadow-sm">
+                                    <img 
+                                        src={URL.createObjectURL(file)} 
+                                        alt={file.name} 
+                                        className="w-full h-full object-cover"
+                                        onLoad={(e) => URL.revokeObjectURL(e.currentTarget.src)}
+                                    />
+                                    <Button 
+                                        type="button" 
+                                        variant="destructive" 
+                                        size="icon" 
+                                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                        onClick={() => {
+                                            const newFiles = [...galleryFiles];
+                                            newFiles.splice(i, 1);
+                                            setGalleryFiles(newFiles);
+                                        }}
+                                    >
+                                        <X className="h-3.5 w-3.5"/>
+                                    </Button>
+                                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground rounded text-[10px] font-medium shadow-sm">
+                                        New
                                     </div>
                                 </div>
-                            )}
+                            ))}
+
+                            {/* Add Button */}
+                            <label className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/5 rounded-xl flex flex-col items-center justify-center aspect-square cursor-pointer transition-all duration-200 group">
+                                <div className="p-3 bg-accent/20 group-hover:bg-primary/10 rounded-full transition-colors mb-2">
+                                    <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                                </div>
+                                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">Add Image</span>
+                                <Input 
+                                    type="file" 
+                                    multiple
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            setGalleryFiles(prev => [...prev, ...Array.from(e.target.files || [])]);
+                                        }
+                                        // Reset input logic if needed
+                                    }}
+                                />
+                            </label>
                         </div>
                      </div>
                 </CardContent>
@@ -1272,22 +1412,29 @@ export default function ProductForm({ productId }: ProductFormProps) {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            console.error("Form Validation Errors:", errors);
+            console.log("Current Form Values:", form.getValues());
+        })} className="space-y-8">
             {/* Custom Tab Navigation Matching Product Detail Page */}
             <div className="flex space-x-1 border-b border-border w-full overflow-x-auto">
                 {SECTIONS.map((section) => {
                   const Icon = section.icon;
                   const isActive = activeTab === section.id;
+                  const isDisabled = !currentProductId && section.id !== 1; // Disable other tabs if creating
                   return (
                     <button
                       key={section.id}
                       type="button"
-                      onClick={() => setActiveTab(section.id)}
+                      disabled={isDisabled}
+                      onClick={() => !isDisabled && setActiveTab(section.id)}
                       className={`
                         flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2
                         ${isActive 
                           ? "border-primary text-primary" 
-                          : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}
+                          : isDisabled 
+                            ? "text-muted-foreground/50 cursor-not-allowed" 
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}
                       `}
                     >
                       <Icon className="h-4 w-4" />
@@ -1316,7 +1463,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                      {createProductMutation.isPending || updateProductMutation.isPending ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
                     ) : (
-                      "Save Product"
+                      !currentProductId ? "Save & Continue" : "Save Changes"
                     )}
                   </Button>
             </div>
