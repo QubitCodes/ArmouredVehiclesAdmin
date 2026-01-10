@@ -4,9 +4,12 @@ export interface Category {
   id: number;
   name: string;
   slug?: string;
+  image?: string;
   description?: string;
   parentId?: number | null;
   parent_id?: number | null; // For API compatibility
+  isControlled?: boolean;
+  is_controlled?: boolean;
 }
 
 class CategoryService {
@@ -64,7 +67,7 @@ class CategoryService {
   /**
    * Create new category
    */
-  async createCategory(data: Partial<Category> & { parentId?: number | null }) {
+  async createCategory(data: any) { // Accept FormData
     try {
       const response = await api.post("/categories", data);
       return response.data.data;
@@ -77,7 +80,7 @@ class CategoryService {
   /**
    * Update category
    */
-  async updateCategory(id: number | string, data: Partial<Category> & { parentId?: number | null }) {
+  async updateCategory(id: number | string, data: any) { // Accept FormData
     try {
       const response = await api.put(`/categories/${id}`, data);
       return response.data.data;
