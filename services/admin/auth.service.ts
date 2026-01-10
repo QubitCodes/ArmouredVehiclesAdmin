@@ -71,7 +71,9 @@ class AuthService {
     if (typeof window === "undefined") return;
     Cookies.remove(ACCESS_TOKEN_KEY, { path: "/" });
     Cookies.remove(REFRESH_TOKEN_KEY, { path: "/" });
-    localStorage.removeItem("user_details");
+    Cookies.remove(ACCESS_TOKEN_KEY, { path: "/" });
+    Cookies.remove(REFRESH_TOKEN_KEY, { path: "/" });
+    localStorage.removeItem("admin_user_details");
   }
 
   /**
@@ -79,7 +81,7 @@ class AuthService {
    */
   setUserDetails(user: any): void {
       if (typeof window === "undefined") return;
-      localStorage.setItem("user_details", JSON.stringify(user));
+      localStorage.setItem("admin_user_details", JSON.stringify(user));
   }
 
   /**
@@ -87,7 +89,7 @@ class AuthService {
    */
   getUserDetails(): any {
       if (typeof window === "undefined") return null;
-      const str = localStorage.getItem("user_details");
+      const str = localStorage.getItem("admin_user_details");
       return str ? JSON.parse(str) : null;
   }
 
