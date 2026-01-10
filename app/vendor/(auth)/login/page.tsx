@@ -85,18 +85,6 @@ export default function VendorLoginPage() {
       <div className="relative z-10 w-full max-w-md p-4 md:ml-8 lg:ml-16">
         <Card className="bg-card border-2 border-border shadow-2xl overflow-hidden px-2">
           <CardHeader className="pb-4 pt-6 gap-0">
-            <div className="flex justify-center pb-5">
-              <div className="relative">
-                <Image
-                  src="/images/Logo.svg"
-                  alt="ArmoredMart Logo"
-                  width={230}
-                  height={230}
-                  className="object-contain drop-shadow-lg"
-                  priority
-                />
-              </div>
-            </div>
             <h1 className="text-2xl font-bold text-foreground uppercase tracking-wide text-center">
               Vendor Login
             </h1>
