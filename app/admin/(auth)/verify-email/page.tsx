@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
 import { useVerifyOtp } from "@/hooks/admin/(auth)/use-verify-otp";
+import { authService } from "@/services/admin/auth.service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -81,19 +82,13 @@ function VerifyEmailContent() {
         code: otpCode,
       });
       // Store User Details in Local Storage
-      if (response && response.user) {
-        // Dynamic import to avoid circular dependency or client side issues, though imports are fine in client component
-        // But better to use the imported service instance
-        // Assuming we import it at top level
-        // Actually, let's just make sure we imported authService
+      if (response && response.data && response.data.user) {
+        authService.setUserDetails(response.data.user);
       }
-      
-      // Need to import authService at top
-      // Doing it via replace_file_content requires importing it. 
-      // I will add import first.
-      
-      const { authService } = await import("@/services/admin/auth.service");
-      authService.setUserDetails(response.user);
+
+      toast.success(
+        response.message || "Verified successfully"
+      );
 
       toast.success(
         response.message || "Verified successfully"
