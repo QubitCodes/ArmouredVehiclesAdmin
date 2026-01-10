@@ -33,7 +33,7 @@ const categorySchema = z.object({
   image: z.string().optional(), // Make optional for now to simplify testing if no upload
   description: z.string().optional(),
   parentId: z.string().optional(), // We'll parse to number on submit
-  isControlled: z.boolean().default(false),
+  isControlled: z.boolean().optional(),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;

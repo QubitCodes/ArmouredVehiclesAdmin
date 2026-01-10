@@ -23,8 +23,8 @@ import { ReferenceItem, referenceService } from "@/services/admin/reference.serv
 
 const referenceSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  isActive: z.boolean().default(true),
-  displayOrder: z.coerce.number().optional(),
+  isActive: z.boolean().optional(),
+  displayOrder: z.number().optional(),
 });
 
 type ReferenceFormValues = z.infer<typeof referenceSchema>;

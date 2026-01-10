@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
 import { useVerifyLoginOtp } from "@/hooks/vendor/(auth)/use-verify-login-otp";
+import { vendorAuthService } from "@/services/vendor/auth.service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -85,9 +86,8 @@ function VerifyEmailContent() {
       // by the useVerifyLoginOtp hook via vendorAuthService.setTokens()
       
       // Store User Details
-      if (response && response.user) {
-         const { vendorAuthService } = await import("@/services/vendor/auth.service");
-         vendorAuthService.setUserDetails(response.user);
+      if (response && response.data && response.data.user) {
+         vendorAuthService.setUserDetails(response.data.user);
       }
 
       toast.success(
