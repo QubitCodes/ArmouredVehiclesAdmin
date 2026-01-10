@@ -26,12 +26,16 @@ export function Sidebar() {
   const router = useRouter();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userDetails, setUserDetails] = useState<any>(null);
 
   useEffect(() => {
     // Get user details from auth service
     const user = authService.getUserDetails();
-    if (user && user.userType) {
-        setUserRole(user.userType.toLowerCase());
+    if (user) {
+        setUserDetails(user);
+        if (user.userType) {
+            setUserRole(user.userType.toLowerCase());
+        }
     }
   }, []);
 
@@ -116,15 +120,31 @@ export function Sidebar() {
         })}
       </nav>
       
-      {/* Logout Button */}
+      {/* Mini Profile Card & Logout */}
       <div className="border-t border-primary/20 p-4">
-        <button
-          onClick={handleLogoutClick}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors bg-white/10 hover:bg-muted hover:text-foreground"
-        >
-          <LogOut className="h-5 w-5" />
-          <span>Logout</span>
-        </button>
+        <div className="flex items-center gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10 transition-colors">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+            <Users className="h-5 w-5" />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <span className="truncate text-sm font-medium text-primary-foreground">
+              {userDetails?.name || "Admin User"}
+            </span>
+            <span className="truncate text-xs text-primary-foreground/70">
+              {userDetails?.email || "admin@example.com"}
+            </span>
+            <span className="truncate text-[10px] uppercase text-primary-foreground/50 tracking-wider">
+              {(userDetails?.userType || "ADMIN").replace(/_/g, " ")}
+            </span>
+          </div>
+          <button
+            onClick={handleLogoutClick}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary-foreground/70 hover:bg-white/20 hover:text-white transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Logout Confirmation Dialog */}
