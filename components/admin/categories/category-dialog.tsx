@@ -55,6 +55,7 @@ export function CategoryDialog({
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [mainCategoryId, setMainCategoryId] = useState<string>("none");
   const [subCategoryId, setSubCategoryId] = useState<string>("none");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -102,10 +103,11 @@ export function CategoryDialog({
 
       setMainCategoryId(mainId);
       setSubCategoryId(subId);
+      setImageFile(null); // Reset file on edit load
 
       form.reset({
         name: category.name,
-        image: "https://example.com/placeholder.jpg",
+        image: category.image || "",
         description: category.description || "",
         parentId: parentId ? parentId.toString() : "none",
         // @ts-ignore
@@ -121,6 +123,7 @@ export function CategoryDialog({
         });
         setMainCategoryId("none");
         setSubCategoryId("none");
+        setImageFile(null);
     }
   }, [open, category, allCategories, form]);
 
@@ -153,24 +156,38 @@ export function CategoryDialog({
   const onSubmit = async (data: CategoryFormValues) => {
     setLoading(true);
     try {
-      const payload = {
-        name: data.name,
-        image: data.image || "https://placehold.co/400", // Fallback
-        description: data.description,
-        parentId: data.parentId === "none" ? null : parseInt(data.parentId || "0"),
-        isControlled: data.isControlled,
-      };
+      const formData = new FormData();
+      formData.append("name", data.name);
+      formData.append("description", data.description || "");
+      if (data.parentId && data.parentId !== "none") {
+         formData.append("parentId", data.parentId);
+      } else {
+         formData.append("parentId", ""); // Handle empty on backend
+      }
+      formData.append("isControlled", String(data.isControlled || false));
+
+      if (imageFile) {
+          formData.append("files", imageFile);
+      }
+
+      // If we have an existing image URL and no new file, we can optionally pass it
+      // But usually just not sending files means keep existing. 
+      // If we wanted to clear it, we might need a flag. For now, assume keeping.
+      if (!imageFile && data.image) {
+          formData.append("image", data.image);
+      }
 
       if (category) {
-        await categoryService.updateCategory(category.id, payload);
+        await categoryService.updateCategory(category.id, formData);
         toast.success("Category updated successfully");
       } else {
-        await categoryService.createCategory(payload);
+        await categoryService.createCategory(formData);
         toast.success("Category created successfully");
       }
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
+      console.error(error);
       toast.error(error.response?.data?.message || "Failed to save category");
     } finally {
       setLoading(false);
@@ -186,6 +203,39 @@ export function CategoryDialog({
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="image"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Category Image</FormLabel>
+                    <FormControl>
+                        <div className="flex items-center gap-4">
+                           {/* Preview */}
+                           <div className="relative w-16 h-16 border rounded bg-muted flex items-center justify-center overflow-hidden">
+                                {imageFile ? (
+                                    <img src={URL.createObjectURL(imageFile)} alt="Preview" className="w-full h-full object-cover" onLoad={(e) => URL.revokeObjectURL(e.currentTarget.src)} />
+                                ) : field.value ? (
+                                    <img src={field.value} alt="Current" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-xs text-muted-foreground">No Img</span>
+                                )}
+                           </div>
+                           <Input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        setImageFile(e.target.files[0]);
+                                    }
+                                }}
+                            />
+                        </div>
+                    </FormControl>
+                </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="name"
@@ -246,10 +296,6 @@ export function CategoryDialog({
             </div>
           </div>
 
-          {/* Hidden field to register parentId with hook form if needed, or we just rely on onSubmit using the state? 
-              Actually, let's keep the FormField for parentId to ensure validation if any, but hide it, 
-              OR just manual assignment. The form uses `form.handleSubmit`, so we need to update the form value.
-           */}
            <input type="hidden" {...form.register("parentId")} />
           
           <FormField
