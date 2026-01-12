@@ -6,10 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, Search, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useVendorCategories } from "@/hooks/vendor/dashboard/use-vendor-categories";
 import { useOnboardingStep4 } from "@/hooks/vendor/dashboard/use-onboarding-step4";
+import { useCurrencies } from "@/hooks/vendor/dashboard/use-currencies";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
 
 import { Button } from "@/components/ui/button";
@@ -49,12 +51,21 @@ type AccountPreferencesFormValues = z.infer<typeof accountPreferencesSchema>;
 const currencyOptions = [
   { value: "AED", label: "AED" },
   { value: "USD", label: "USD" },
+  { value: "EUR", label: "EUR" },
+  { value: "other", label: "Other" },
 ];
 
 export default function AccountPreferencesPage() {
   const router = useRouter();
   const { data: categoryOptions = [], isLoading: isCategoriesLoading } = useVendorCategories();
+  const { data: allCurrencies = [], isLoading: isCurrenciesLoading } = useCurrencies();
   const step4Mutation = useOnboardingStep4();
+
+  // Currency dropdown state
+  const [currencySearch, setCurrencySearch] = useState("");
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+  const [selectedCustomCurrency, setSelectedCustomCurrency] = useState<string | null>(null);
+  const currencyDropdownRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<AccountPreferencesFormValues>({
     resolver: zodResolver(accountPreferencesSchema),
@@ -69,11 +80,22 @@ export default function AccountPreferencesPage() {
 
   const onSubmit = async (data: AccountPreferencesFormValues) => {
     try {
+      // Validate that a custom currency is selected when "other" is chosen
+      if (data.preferredCurrency === "other" && !selectedCustomCurrency) {
+        toast.error("Please select a currency from the dropdown");
+        return;
+      }
+
+      // Use the selected custom currency if "other" was chosen, otherwise use the radio selection
+      const finalCurrency = data.preferredCurrency === "other" && selectedCustomCurrency
+        ? selectedCustomCurrency
+        : data.preferredCurrency;
+
       // Transform form data to match API schema
       const apiPayload = {
         sellingCategories: data.categories,
         registerAs: data.registerAs === "verified-supplier" ? "Verified Supplier" : data.registerAs,
-        preferredCurrency: data.preferredCurrency.toUpperCase(),
+        preferredCurrency: finalCurrency.toUpperCase(),
         sponsorContent: data.sponsorContent === "yes",
         isDraft: false,
         password: "demo-demo",
@@ -97,6 +119,36 @@ export default function AccountPreferencesPage() {
   };
 
   const selectedCategories = form.watch("categories");
+  const preferredCurrency = form.watch("preferredCurrency");
+
+  // Filter currencies based on search
+  const filteredCurrencies = allCurrencies.filter((currency) =>
+    currency.code.toLowerCase().includes(currencySearch.toLowerCase()) ||
+    currency.name.toLowerCase().includes(currencySearch.toLowerCase())
+  );
+
+  // Handle currency selection from dropdown
+  const handleCurrencySelect = (currencyCode: string) => {
+    setSelectedCustomCurrency(currencyCode);
+    setIsCurrencyDropdownOpen(false);
+    setCurrencySearch("");
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(event.target as Node)) {
+        setIsCurrencyDropdownOpen(false);
+      }
+    };
+
+    if (isCurrencyDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isCurrencyDropdownOpen]);
 
   const handleRemoveCategory = (category: string) => {
     const current = form.getValues("categories");
@@ -296,53 +348,146 @@ export default function AccountPreferencesPage() {
                         <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
-                        <div className="flex flex-wrap gap-6">
-                          {currencyOptions.map((option) => (
-                            <div
-                              key={option.value}
-                              className="flex items-center space-x-2"
-                            >
-                              <label
-                                htmlFor={`currency-${option.value}`}
-                                className="relative flex items-center cursor-pointer"
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap gap-6">
+                            {currencyOptions.map((option) => (
+                              <div
+                                key={option.value}
+                                className="flex items-center space-x-2"
                               >
-                                <input
-                                  type="radio"
-                                  id={`currency-${option.value}`}
-                                  name="preferredCurrency"
-                                  value={option.value}
-                                  checked={field.value === option.value}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      field.onChange(option.value);
-                                    }
-                                  }}
-                                  className="sr-only"
-                                />
-                                <span
-                                  className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
+                                <label
+                                  htmlFor={`currency-${option.value}`}
+                                  className="relative flex items-center cursor-pointer"
+                                >
+                                  <input
+                                    type="radio"
+                                    id={`currency-${option.value}`}
+                                    name="preferredCurrency"
+                                    value={option.value}
+                                    checked={field.value === option.value}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        field.onChange(option.value);
+                                        if (option.value !== "other") {
+                                          setSelectedCustomCurrency(null);
+                                        }
+                                      }
+                                    }}
+                                    className="sr-only"
+                                  />
+                                  <span
+                                    className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
+                                      field.value === option.value
+                                        ? "border-border"
+                                        : ""
+                                    }`}
+                                  >
+                                    {field.value === option.value && (
+                                      <span className="h-2 w-2 rounded-full bg-border"></span>
+                                    )}
+                                  </span>
+                                </label>
+                                <label
+                                  htmlFor={`currency-${option.value}`}
+                                  className={`text-sm font-medium leading-none cursor-pointer ${
                                     field.value === option.value
-                                      ? "border-border"
-                                      : ""
+                                      ? "text-black"
+                                      : "text-gray-500"
                                   }`}
                                 >
-                                  {field.value === option.value && (
-                                    <span className="h-2 w-2 rounded-full bg-border"></span>
-                                  )}
-                                </span>
-                              </label>
-                              <label
-                                htmlFor={`currency-${option.value}`}
-                                className={`text-sm font-medium leading-none cursor-pointer ${
-                                  field.value === option.value
-                                    ? "text-black"
-                                    : "text-gray-500"
-                                }`}
+                                  {option.label}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Currency Dropdown - Shows when Other is selected */}
+                          {preferredCurrency === "other" && (
+                            <div className="relative" ref={currencyDropdownRef}>
+                              <div
+                                className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex items-center cursor-pointer"
+                                onClick={() => !isCurrenciesLoading && setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}
                               >
-                                {option.label}
-                              </label>
+                                {isCurrenciesLoading ? (
+                                  <span className="text-sm text-gray-400">
+                                    Loading currencies...
+                                  </span>
+                                ) : selectedCustomCurrency ? (
+                                  <span className="text-sm text-black">
+                                    {selectedCustomCurrency} - {allCurrencies.find(c => c.code === selectedCustomCurrency)?.name}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-400">
+                                    Select a currency...
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Dropdown Arrow */}
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                {isCurrenciesLoading ? (
+                                  <Spinner size="sm" className="text-gray-400" />
+                                ) : (
+                                  <ChevronDown
+                                    className={`h-5 w-5 text-gray-400 transition-transform ${
+                                      isCurrencyDropdownOpen ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                )}
+                              </div>
+
+                              {/* Dropdown Menu */}
+                              {isCurrencyDropdownOpen && !isCurrenciesLoading && (
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-border shadow-lg rounded-md flex flex-col">
+                                  {/* Search Input */}
+                                  <div className="p-3 border-b border-border bg-white">
+                                    <div className="relative">
+                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                      <input
+                                        type="text"
+                                        placeholder="Search currencies..."
+                                        value={currencySearch}
+                                        onChange={(e) => setCurrencySearch(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="pl-9 h-9 w-full bg-bg-medium border border-border rounded px-3 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Currency List */}
+                                  <div className="overflow-y-auto p-2 max-h-64">
+                                    {filteredCurrencies.length === 0 ? (
+                                      <div className="text-sm text-gray-500 p-4 text-center">
+                                        No currencies found
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {filteredCurrencies.map((currency) => {
+                                          const isSelected = selectedCustomCurrency === currency.code;
+                                          return (
+                                            <div
+                                              key={currency.code}
+                                              className={`flex items-center gap-3 p-2 hover:bg-bg-medium rounded cursor-pointer transition-colors ${
+                                                isSelected ? "bg-bg-medium" : ""
+                                              }`}
+                                              onClick={() => handleCurrencySelect(currency.code)}
+                                            >
+                                              <span className="text-sm font-medium text-black w-16">
+                                                {currency.code}
+                                              </span>
+                                              <span className="text-sm text-gray-600 flex-1">
+                                                {currency.name}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          ))}
+                          )}
                         </div>
                       </FormControl>
                       <FormMessage />

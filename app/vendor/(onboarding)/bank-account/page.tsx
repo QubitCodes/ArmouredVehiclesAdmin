@@ -8,6 +8,18 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { Upload, Info, ChevronDown, X } from "lucide-react";
 import { useState, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import PDF viewer to avoid SSR issues
+const PDFViewer = dynamic(() => import("@/components/vendor/pdf-viewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 w-full">
+      <div className="text-gray-500">Loading PDF preview...</div>
+    </div>
+  ),
+});
+
 import { useFinancialInstitutions } from "@/hooks/vendor/dashboard/use-financial-institutions";
 import { useProofTypes } from "@/hooks/vendor/dashboard/use-proof-types";
 import { useOnboardingStep5 } from "@/hooks/vendor/dashboard/use-onboarding-step5";
@@ -49,6 +61,7 @@ type PaymentMethodFormValues = z.infer<typeof paymentMethodSchema>;
 export default function AddPaymentMethodPage() {
   const router = useRouter();
   const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null);
   const proofFileRef = useRef<HTMLInputElement>(null);
 
   // Fetch reference data from API
@@ -109,17 +122,22 @@ export default function AddPaymentMethodPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+      if (file.type.startsWith("image/")) {
         form.setValue("bankProofFile", file, { shouldValidate: true });
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setProofPreview(e.target?.result as string);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          setProofPreview(null);
-        }
+        setFileType('image');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setProofPreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        form.setValue("bankProofFile", file, { shouldValidate: true });
+        setFileType('pdf');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setProofPreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
       } else {
         toast.error("Please select an image file (JPEG, PNG) or PDF");
       }
@@ -129,6 +147,7 @@ export default function AddPaymentMethodPage() {
   const handleRemoveProof = () => {
     form.setValue("bankProofFile", undefined, { shouldValidate: true });
     setProofPreview(null);
+    setFileType(null);
     if (proofFileRef.current) {
       proofFileRef.current.value = "";
     }
@@ -378,15 +397,19 @@ export default function AddPaymentMethodPage() {
                             />
                             {proofPreview ? (
                               <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                <img
-                                  src={proofPreview}
-                                  alt="Proof Document Preview"
-                                  className="w-full h-64 object-contain"
-                                />
+                                {fileType === 'image' ? (
+                                  <img
+                                    src={proofPreview}
+                                    alt="Proof Document Preview"
+                                    className="w-full h-64 object-contain"
+                                  />
+                                ) : fileType === 'pdf' ? (
+                                  <PDFViewer file={proofPreview} />
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={handleRemoveProof}
-                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
                                   aria-label="Remove file"
                                 >
                                   <X className="w-4 h-4" />
@@ -401,8 +424,8 @@ export default function AddPaymentMethodPage() {
                                 <p className="text-sm font-medium text-gray-700 mb-1">
                                   Choose a File
                                 </p>
-                                <p className="text-xs text-gray-400 mt-2">
-                                  Accepted files: JPEG, PNG, PDF (max 10 MB).
+                                <p className="text-xs text-gray-500 text-center max-w-md">
+                                  Accepted files: JPEG, PNG and PDF.
                                 </p>
                               </div>
                             )}

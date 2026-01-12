@@ -9,6 +9,17 @@ import { toast } from "sonner";
 import { Info, X, ChevronDown, Search, Upload } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import PDF viewer to avoid SSR issues
+const PDFViewer = dynamic(() => import("@/components/vendor/pdf-viewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 w-full">
+      <div className="text-gray-500">Loading PDF preview...</div>
+    </div>
+  ),
+});
 import { useNatureOfBusiness } from "@/hooks/vendor/dashboard/use-nature-of-business";
 import { useEndUseMarkets } from "@/hooks/vendor/dashboard/use-end-use-markets";
 import { useCountries, type Country } from "@/hooks/vendor/dashboard/use-countries";
@@ -261,24 +272,32 @@ export default function DeclarationPage() {
   const companyProfileRef = useRef<HTMLInputElement>(null);
   const [businessLicensePreview, setBusinessLicensePreview] = useState<string | null>(null);
   const [companyProfilePreview, setCompanyProfilePreview] = useState<string | null>(null);
+  const [businessLicenseFileType, setBusinessLicenseFileType] = useState<'image' | 'pdf' | null>(null);
+  const [companyProfileFileType, setCompanyProfileFileType] = useState<'image' | 'pdf' | null>(null);
   const licenseFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [licensePreviews, setLicensePreviews] = useState<Record<string, string | null>>({});
+  const [licenseFileTypes, setLicenseFileTypes] = useState<Record<string, 'image' | 'pdf' | null>>({});
 
   // Handle file selection for business license
   const handleBusinessLicenseSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+      if (file.type.startsWith("image/")) {
         form.setValue("businessLicenseFile", file, { shouldValidate: true });
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setBusinessLicensePreview(e.target?.result as string);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          setBusinessLicensePreview(null);
-        }
+        setBusinessLicenseFileType('image');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setBusinessLicensePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        form.setValue("businessLicenseFile", file, { shouldValidate: true });
+        setBusinessLicenseFileType('pdf');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setBusinessLicensePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
       } else {
         toast.error("Please select an image file (JPEG, PNG) or PDF");
       }
@@ -289,6 +308,7 @@ export default function DeclarationPage() {
   const handleRemoveBusinessLicense = () => {
     form.setValue("businessLicenseFile", undefined, { shouldValidate: true });
     setBusinessLicensePreview(null);
+    setBusinessLicenseFileType(null);
     if (businessLicenseRef.current) {
       businessLicenseRef.current.value = "";
     }
@@ -298,17 +318,22 @@ export default function DeclarationPage() {
   const handleCompanyProfileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+      if (file.type.startsWith("image/")) {
         form.setValue("companyProfileFile", file, { shouldValidate: true });
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setCompanyProfilePreview(e.target?.result as string);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          setCompanyProfilePreview(null);
-        }
+        setCompanyProfileFileType('image');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setCompanyProfilePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        form.setValue("companyProfileFile", file, { shouldValidate: true });
+        setCompanyProfileFileType('pdf');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setCompanyProfilePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
       } else {
         toast.error("Please select an image file (JPEG, PNG) or PDF");
       }
@@ -319,6 +344,7 @@ export default function DeclarationPage() {
   const handleRemoveCompanyProfile = () => {
     form.setValue("companyProfileFile", undefined, { shouldValidate: true });
     setCompanyProfilePreview(null);
+    setCompanyProfileFileType(null);
     if (companyProfileRef.current) {
       companyProfileRef.current.value = "";
     }
@@ -328,19 +354,26 @@ export default function DeclarationPage() {
   const handleLicenseFileSelect = (licenseValue: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.type.startsWith("image/") || file.type === "application/pdf") {
-        const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+      const fileFieldName = LICENSE_TO_FILE_FIELD[licenseValue] as keyof DeclarationFormValues;
+      if (file.type.startsWith("image/")) {
         if (fileFieldName) {
           form.setValue(fileFieldName, file, { shouldValidate: true });
-          if (file.type.startsWith("image/")) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              setLicensePreviews(prev => ({ ...prev, [licenseValue]: e.target?.result as string }));
-            };
-            reader.readAsDataURL(file);
-          } else {
-            setLicensePreviews(prev => ({ ...prev, [licenseValue]: null }));
-          }
+          setLicenseFileTypes(prev => ({ ...prev, [licenseValue]: 'image' }));
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setLicensePreviews(prev => ({ ...prev, [licenseValue]: e.target?.result as string }));
+          };
+          reader.readAsDataURL(file);
+        }
+      } else if (file.type === "application/pdf") {
+        if (fileFieldName) {
+          form.setValue(fileFieldName, file, { shouldValidate: true });
+          setLicenseFileTypes(prev => ({ ...prev, [licenseValue]: 'pdf' }));
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setLicensePreviews(prev => ({ ...prev, [licenseValue]: e.target?.result as string }));
+          };
+          reader.readAsDataURL(file);
         }
       } else {
         toast.error("Please select an image file (JPEG, PNG) or PDF");
@@ -354,6 +387,10 @@ export default function DeclarationPage() {
     if (fileFieldName) {
       form.setValue(fileFieldName, undefined, { shouldValidate: true });
       setLicensePreviews(prev => {
+        const { [licenseValue]: removed, ...rest } = prev;
+        return rest;
+      });
+      setLicenseFileTypes(prev => {
         const { [licenseValue]: removed, ...rest } = prev;
         return rest;
       });
@@ -985,15 +1022,19 @@ export default function DeclarationPage() {
                             />
                             {businessLicensePreview ? (
                               <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                <img
-                                  src={businessLicensePreview}
-                                  alt="Business License Preview"
-                                  className="w-full h-64 object-contain"
-                                />
+                                {businessLicenseFileType === 'image' ? (
+                                  <img
+                                    src={businessLicensePreview}
+                                    alt="Business License Preview"
+                                    className="w-full h-64 object-contain"
+                                  />
+                                ) : businessLicenseFileType === 'pdf' ? (
+                                  <PDFViewer file={businessLicensePreview} />
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={handleRemoveBusinessLicense}
-                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
                                   aria-label="Remove file"
                                 >
                                   <X className="w-4 h-4" />
@@ -1041,15 +1082,19 @@ export default function DeclarationPage() {
                             />
                             {companyProfilePreview ? (
                               <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                <img
-                                  src={companyProfilePreview}
-                                  alt="Company Profile Preview"
-                                  className="w-full h-64 object-contain"
-                                />
+                                {companyProfileFileType === 'image' ? (
+                                  <img
+                                    src={companyProfilePreview}
+                                    alt="Company Profile Preview"
+                                    className="w-full h-64 object-contain"
+                                  />
+                                ) : companyProfileFileType === 'pdf' ? (
+                                  <PDFViewer file={companyProfilePreview} />
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={handleRemoveCompanyProfile}
-                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
                                   aria-label="Remove file"
                                 >
                                   <X className="w-4 h-4" />
@@ -1116,15 +1161,19 @@ export default function DeclarationPage() {
                                           />
                                           {preview ? (
                                             <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                              <img
-                                                src={preview}
-                                                alt={`${license.label} Preview`}
-                                                className="w-full h-64 object-contain"
-                                              />
+                                              {licenseFileTypes[licenseValue] === 'image' ? (
+                                                <img
+                                                  src={preview}
+                                                  alt={`${license.label} Preview`}
+                                                  className="w-full h-64 object-contain"
+                                                />
+                                              ) : licenseFileTypes[licenseValue] === 'pdf' ? (
+                                                <PDFViewer file={preview} />
+                                              ) : null}
                                               <button
                                                 type="button"
                                                 onClick={() => handleRemoveLicenseFile(licenseValue)}
-                                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
                                                 aria-label="Remove file"
                                               >
                                                 <X className="w-4 h-4" />

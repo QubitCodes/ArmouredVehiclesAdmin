@@ -8,6 +8,17 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { Info, Upload, X, ChevronDown } from "lucide-react";
 import { useState, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import PDF viewer to avoid SSR issues
+const PDFViewer = dynamic(() => import("@/components/vendor/pdf-viewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 w-full">
+      <div className="text-gray-500">Loading PDF preview...</div>
+    </div>
+  ),
+});
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +65,7 @@ export default function ContactPersonPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null);
 
   const step2Mutation = useOnboardingStep2();
 
@@ -75,18 +87,24 @@ export default function ContactPersonPage() {
     const file = e.target.files?.[0];
     if (file) {
       // Check if it's an image or PDF
-      if (file.type.startsWith("image/") || file.type === "application/pdf") {
+      if (file.type.startsWith("image/")) {
         form.setValue("passport", file, { shouldValidate: true });
-        // Create preview URL (only for images)
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setImagePreview(e.target?.result as string);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          setImagePreview(null); // PDF doesn't show preview
-        }
+        setFileType('image');
+        // Create preview URL for image
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        form.setValue("passport", file, { shouldValidate: true });
+        setFileType('pdf');
+        // Create preview URL for PDF
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
       } else {
         toast.error("Please select an image file (JPEG, PNG) or PDF");
       }
@@ -97,6 +115,7 @@ export default function ContactPersonPage() {
   const handleRemoveImage = () => {
     form.setValue("passport", undefined, { shouldValidate: true });
     setImagePreview(null);
+    setFileType(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -232,16 +251,20 @@ export default function ContactPersonPage() {
                               />
                               {imagePreview ? (
                                 <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                  <img
-                                    src={imagePreview}
-                                    alt="Passport/ID Preview"
-                                    className="w-full h-64 object-contain"
-                                  />
+                                  {fileType === 'image' ? (
+                                    <img
+                                      src={imagePreview}
+                                      alt="Passport/ID Preview"
+                                      className="w-full h-64 object-contain"
+                                    />
+                                  ) : fileType === 'pdf' ? (
+                                    <PDFViewer file={imagePreview} />
+                                  ) : null}
                                   <button
                                     type="button"
                                     onClick={handleRemoveImage}
-                                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                                    aria-label="Remove image"
+                                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                                    aria-label="Remove file"
                                   >
                                     <X className="w-4 h-4" />
                                   </button>

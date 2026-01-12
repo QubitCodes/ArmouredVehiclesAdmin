@@ -8,6 +8,17 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { Info, Upload, ChevronDown, X } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import PDF viewer to avoid SSR issues
+const PDFViewer = dynamic(() => import("@/components/vendor/pdf-viewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 w-full">
+      <div className="text-gray-500">Loading PDF preview...</div>
+    </div>
+  ),
+});
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +116,7 @@ export default function CompanyInformationPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null);
 
   // Fetch countries from API
   const { data: countries = [], isLoading: isCountriesLoading } = useCountries();
@@ -170,17 +182,27 @@ export default function CompanyInformationPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check if it's an image
+      // Check if it's an image or PDF
       if (file.type.startsWith("image/")) {
         form.setValue("vatCertificate", file);
-        // Create preview URL
+        setFileType('image');
+        // Create preview URL for image
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        form.setValue("vatCertificate", file);
+        setFileType('pdf');
+        // Create preview URL for PDF
         const reader = new FileReader();
         reader.onload = (e) => {
           setImagePreview(e.target?.result as string);
         };
         reader.readAsDataURL(file);
       } else {
-        toast.error("Please select an image file (JPEG, PNG)");
+        toast.error("Please select an image file (JPEG, PNG) or PDF");
       }
     }
   };
@@ -189,6 +211,7 @@ export default function CompanyInformationPage() {
   const handleRemoveImage = () => {
     form.setValue("vatCertificate", undefined);
     setImagePreview(null);
+    setFileType(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -571,22 +594,26 @@ export default function CompanyInformationPage() {
                             <input
                               ref={fileInputRef}
                               type="file"
-                              accept="image/jpeg,image/png,image/jpg"
+                              accept="image/jpeg,image/png,image/jpg,application/pdf"
                               onChange={handleFileSelect}
                               className="hidden"
                             />
                             {imagePreview ? (
                               <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                <img
-                                  src={imagePreview}
-                                  alt="VAT Certificate Preview"
-                                  className="w-full h-64 object-contain"
-                                />
+                                {fileType === 'image' ? (
+                                  <img
+                                    src={imagePreview}
+                                    alt="VAT Certificate Preview"
+                                    className="w-full h-64 object-contain"
+                                  />
+                                ) : fileType === 'pdf' ? (
+                                  <PDFViewer file={imagePreview} />
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={handleRemoveImage}
-                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                                  aria-label="Remove image"
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                                  aria-label="Remove file"
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
