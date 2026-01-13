@@ -33,10 +33,19 @@ const addAdminSchema = z.object({
     .string()
     .min(1, "Email is required")
     .email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  phoneCountryCode: z.string().min(1, "Country code is required"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
 });
 
 type AddAdminFormValues = z.infer<typeof addAdminSchema>;
+
+const phoneCountryCodes = [
+  { value: "971", code: "+971", flag: "🇦🇪", label: "United Arab Emirates" },
+  { value: "1", code: "+1", flag: "🇺🇸", label: "United States" },
+  { value: "44", code: "+44", flag: "🇬🇧", label: "United Kingdom" },
+  { value: "91", code: "+91", flag: "🇮🇳", label: "India" },
+  { value: "966", code: "+966", flag: "🇸🇦", label: "Saudi Arabia" },
+];
 
 interface AddAdminDialogProps {
   open: boolean;
@@ -49,7 +58,8 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
     defaultValues: {
       name: "",
       email: "",
-      password: "",
+      phoneCountryCode: "971",
+      phoneNumber: "",
     },
   });
 
@@ -57,10 +67,16 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
 
   const onSubmit = async (data: AddAdminFormValues) => {
     try {
+      // Find the country code object to get the code with "+"
+      const selectedPhoneCode = phoneCountryCodes.find(
+        (code) => code.value === data.phoneCountryCode
+      );
+
       await createAdminMutation.mutateAsync({
         name: data.name,
         email: data.email,
-        password: data.password,
+        phone: data.phoneNumber,
+        country_code: selectedPhoneCode?.code || `+${data.phoneCountryCode}`,
       });
 
       toast.success("Admin created successfully!");
@@ -147,26 +163,82 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <FormLabel className="text-foreground font-semibold text-xs uppercase tracking-wide">
-                    Password
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Enter password"
-                      className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-600 text-xs" />
-                </FormItem>
-              )}
-            />
+             <div className="space-y-1.5">
+                <FormLabel className="text-foreground font-semibold text-xs uppercase tracking-wide">
+                    Phone Number
+                </FormLabel>
+                <div className="flex gap-2">
+                <FormField
+                    control={form.control}
+                    name="phoneCountryCode"
+                    render={({ field }) => {
+                        const selectedPhoneCode = phoneCountryCodes.find(
+                            (c) => c.value === field.value
+                        );
+                        return (
+                            <FormItem className="w-[120px]">
+                            <FormControl>
+                                <div className="relative">
+                                <select
+                                    {...field}
+                                    className="w-full bg-input border border-border h-11 pl-10 pr-8 text-sm outline-none appearance-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 cursor-pointer text-foreground"
+                                >
+                                    {phoneCountryCodes.map((code) => (
+                                    <option key={code.value} value={code.value}>
+                                        {code.code}
+                                    </option>
+                                    ))}
+                                </select>
+                                {selectedPhoneCode && (
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
+                                    {selectedPhoneCode.flag}
+                                    </span>
+                                )}
+                                {/* Using a simple arrow if icon import is missing, but ChevronDown was imported earlier in snippet. 
+                                    Looking at context, I need to make sure ChevronDown is imported. 
+                                    I will reuse the import from Lucide if it exists or add it.
+                                    The original file had 'Loader2' imported. I should check imports. 
+                                */}
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                                >
+                                    <path d="m6 9 6 6 6-6"/>
+                                </svg>
+                                </div>
+                            </FormControl>
+                            <FormMessage className="text-red-600 text-xs" />
+                            </FormItem>
+                        );
+                    }}
+                />
+                <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                        <FormItem className="flex-1">
+                        <FormControl>
+                            <Input
+                            type="tel"
+                            placeholder="Enter phone number"
+                            className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
+                            {...field}
+                            />
+                        </FormControl>
+                        <FormMessage className="text-red-600 text-xs" />
+                        </FormItem>
+                    )}
+                />
+                </div>
+            </div>
 
             <DialogFooter className="mt-6">
               <Button

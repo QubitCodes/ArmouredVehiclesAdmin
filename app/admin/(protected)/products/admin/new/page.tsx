@@ -350,11 +350,11 @@ export default function NewProductPage() {
       });
 
       // Console preview of the data
-      console.log("=== Product Data Preview ===");
-      console.log("Raw form data:", data);
-      console.log("Cleaned data to be sent:", cleanedData);
-      console.log("Data as JSON:", JSON.stringify(cleanedData, null, 2));
-      console.log("===========================");
+
+
+
+
+
 
       await createProductMutation.mutateAsync(cleanedData);
       toast.success("Product created successfully!");

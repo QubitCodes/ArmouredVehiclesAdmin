@@ -7,7 +7,7 @@ import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { Info, Upload, X, ChevronDown } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 
 // Dynamically import PDF viewer to avoid SSR issues
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/form";
 import { useOnboardingStep2 } from "@/hooks/vendor/dashboard/use-onboarding-step2";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 
 const contactPersonSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -67,6 +68,9 @@ export default function ContactPersonPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null);
 
+  // Fetch onboarding profile data
+  const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
+
   const step2Mutation = useOnboardingStep2();
 
   const form = useForm<ContactPersonFormValues>({
@@ -81,6 +85,35 @@ export default function ContactPersonPage() {
       confirmAccuracy: false,
     },
   });
+
+  // Auto-fill form when profile data is available
+  useEffect(() => {
+    if (profileData?.profile && !isProfileLoading) {
+      const p = profileData.profile;
+      form.reset({
+        fullName: p.contact_full_name || "",
+        jobTitle: p.contact_job_title || "",
+        workEmail: p.contact_work_email || "",
+        phoneCountryCode: p.contact_mobile_country_code ? p.contact_mobile_country_code.replace('+', '') : "971",
+        phoneNumber: p.contact_mobile || "",
+        confirmAccuracy: p.terms_accepted || false,
+      });
+
+      // Handle file preview if URL exists
+      if (p.contact_id_document_url) {
+        setImagePreview(p.contact_id_document_url);
+        const isPdf = p.contact_id_document_url.toLowerCase().endsWith('.pdf');
+        setFileType(isPdf ? 'pdf' : 'image');
+        
+        // Dummy file for validation - we create a File object 
+        // Note: In a real scenario handling existing files with RHF and Zod validation requiring proper File objects is tricky.
+        // We use a dummy file here to satisfy "required" validation if the user doesn't change it.
+        // If the user uploads a new file, it replaces this.
+        const dummyFile = new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" });
+        form.setValue("passport", dummyFile);
+      }
+    }
+  }, [profileData, isProfileLoading, form]);
 
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -4,18 +4,20 @@ import { AxiosError } from "axios";
 import api from "@/lib/api";
 import { vendorAuthService } from "@/services/vendor/auth.service";
 
+import { ApiResponse } from "@/lib/api";
+
 export interface VerifyPhoneRequest {
   userId: string;
   phone: string;
   code: string;
 }
 
-export interface VerifyPhoneResponse {
-  message: string;
+export type VerifyPhoneResponse = ApiResponse<{
   user: Record<string, any>;
   accessToken: string;
   refreshToken: string;
-}
+  phoneVerified: boolean;
+}>;
 
 /**
  * React Query hook for vendor phone verification API
@@ -28,11 +30,12 @@ export function useVerifyPhone() {
         data
       );
       
-      // Store tokens if provided in response
-      if (response.data.accessToken && response.data.refreshToken) {
+      // Store tokens if provided in response data (payload)
+      const payload = response.data.data;
+      if (payload?.accessToken && payload?.refreshToken) {
         vendorAuthService.setTokens(
-          response.data.accessToken,
-          response.data.refreshToken
+          payload.accessToken,
+          payload.refreshToken
         );
       }
       

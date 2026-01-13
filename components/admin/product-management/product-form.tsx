@@ -22,6 +22,7 @@ import {
   Image as ImageIcon,
   Shield,
   UploadCloud,
+  Eye,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -380,101 +381,123 @@ export default function ProductForm({ productId }: ProductFormProps) {
   useEffect(() => {
      if (productId && product) {
       const productData = product as unknown as Record<string, unknown>;
-      console.log("Product Data Raw:", productData);
-      console.log("Product Name Raw:", productData.name, typeof productData.name);
+
+
       
       // Map basic fields
       // Map basic fields
+      // Helper to get value from either camelCase or snake_case
+      const getVal = (k1: string, k2: string) => (productData[k1] !== undefined ? productData[k1] : productData[k2]);
+
       const formData: Partial<ProductFormValues> = {
         name: (productData.name as string) || "",
         sku: (productData.sku as string) || "",
         basePrice:
-          (productData.basePrice as number) ||
-          (productData.price as number) ||
+          (getVal("basePrice", "base_price") as number) ||
+          (getVal("price", "price") as number) ||
           0,
-        currency: (productData.currency as string) || "USD",
-        condition: (productData.condition as string) || "new",
-        dimensionUnit: (productData.dimensionUnit as string) || "mm",
-        weightUnit: (productData.weightUnit as string) || "kg",
-        packingDimensionUnit:
-          (productData.packingDimensionUnit as string) || "cm",
-        packingWeightUnit: (productData.packingWeightUnit as string) || "kg",
-        warrantyDurationUnit:
-          (productData.warrantyDurationUnit as string) || "months",
-        readyStockAvailable:
-          (productData.readyStockAvailable as boolean) ?? false,
-        requiresExportLicense:
-          (productData.requiresExportLicense as boolean) ?? false,
-        hasWarranty: (productData.hasWarranty as boolean) ?? false,
-        complianceConfirmed:
-          (productData.complianceConfirmed as boolean) ?? false,
-        isFeatured: (productData.isFeatured as boolean) ?? false,
-        stock: productData.stock as number | undefined,
+        currency: (getVal("currency", "currency") as string) || "USD",
+        condition: (getVal("condition", "condition") as string) || "new",
+        
+        // Dimensions
+        dimensionUnit: (getVal("dimensionUnit", "dimension_unit") as string) || "mm",
+        dimensionLength: (getVal("dimensionLength", "dimension_length") as number) || undefined,
+        dimensionWidth: (getVal("dimensionWidth", "dimension_width") as number) || undefined,
+        dimensionHeight: (getVal("dimensionHeight", "dimension_height") as number) || undefined,
+        
+        // Weight
+        weightValue: (getVal("weightValue", "weight_value") as number) || undefined,
+        weightUnit: (getVal("weightUnit", "weight_unit") as string) || "kg",
+        
+        // Packing
+        packingLength: (getVal("packingLength", "packing_length") as number) || undefined,
+        packingWidth: (getVal("packingWidth", "packing_width") as number) || undefined,
+        packingHeight: (getVal("packingHeight", "packing_height") as number) || undefined,
+        packingDimensionUnit: (getVal("packingDimensionUnit", "packing_dimension_unit") as string) || "cm",
+        packingWeight: (getVal("packingWeight", "packing_weight") as number) || undefined,
+        packingWeightUnit: (getVal("packingWeightUnit", "packing_weight_unit") as string) || "kg",
+        
+        minOrderQuantity: (getVal("minOrderQuantity", "min_order_quantity") as number) || undefined,
+        productionLeadTime: (getVal("productionLeadTime", "production_lead_time") as number) || undefined,
+        
+        // Declarations
+        manufacturingSource: (getVal("manufacturingSource", "manufacturing_source") as string) || "",
+        manufacturingSourceName: (getVal("manufacturingSourceName", "manufacturing_source_name") as string) || "",
+        
+        readyStockAvailable: (getVal("readyStockAvailable", "ready_stock_available") as boolean) ?? false,
+        requiresExportLicense: (getVal("requiresExportLicense", "requires_export_license") as boolean) ?? false,
+        hasWarranty: (getVal("hasWarranty", "has_warranty") as boolean) ?? false,
+        complianceConfirmed: (getVal("complianceConfirmed", "compliance_confirmed") as boolean) ?? false,
+        
+        warrantyDuration: (getVal("warrantyDuration", "warranty_duration") as number) || undefined,
+        warrantyDurationUnit: (getVal("warrantyDurationUnit", "warranty_duration_unit") as string) || "months",
+        warrantyTerms: (getVal("warrantyTerms", "warranty_terms") as string) || "",
+        supplierSignature: (getVal("supplierSignature", "supplier_signature") as string) || "",
+        
+        warranty: (productData.warranty as string) || "",
+        technicalDescription: (getVal("technicalDescription", "technical_description") as string) || "",
         description: (productData.description as string) || "",
-        vehicleCompatibility:
-          (productData.vehicleCompatibility as string) || "",
+        
+        vehicleCompatibility: (getVal("vehicleCompatibility", "vehicle_compatibility") as string) || "",
         certifications: (productData.certifications as string) || "",
-        countryOfOrigin: (productData.countryOfOrigin as string) || "",
-        controlledItemType: (productData.controlledItemType as string) || "",
+        countryOfOrigin: (getVal("countryOfOrigin", "country_of_origin") as string) || "",
+        controlledItemType: (getVal("controlledItemType", "controlled_item_type") as string) || "",
+        
         make: (productData.make as string) || "",
         model: (productData.model as string) || "",
         year: productData.year as number | undefined,
-        dimensionLength: productData.dimensionLength as number | undefined,
-        dimensionWidth: productData.dimensionWidth as number | undefined,
-        dimensionHeight: productData.dimensionHeight as number | undefined,
-        weightValue: productData.weightValue as number | undefined,
-        packingLength: productData.packingLength as number | undefined,
-        packingWidth: productData.packingWidth as number | undefined,
-        packingHeight: productData.packingHeight as number | undefined,
-        packingWeight: productData.packingWeight as number | undefined,
-        minOrderQuantity: productData.minOrderQuantity as number | undefined,
-        productionLeadTime: productData.productionLeadTime as
-          | number
-          | undefined,
-        manufacturingSource: (productData.manufacturingSource as string) || "",
-        manufacturingSourceName:
-          (productData.manufacturingSourceName as string) || "",
-        warrantyDuration: productData.warrantyDuration as number | undefined,
-        warrantyTerms: (productData.warrantyTerms as string) || "",
-        supplierSignature: (productData.supplierSignature as string) || "",
-        technicalDescription:
-          (productData.technicalDescription as string) || "",
-        warranty: (productData.warranty as string) || "",
+        
+        isFeatured: (productData.isFeatured as boolean) ?? false,
+        stock: productData.stock as number | undefined,
+        
         image:
           (productData.image as string) ||
           (productData.imageUrl as string) ||
           "",
-        // Map arrays safely
-        materials: Array.isArray(productData.materials)
-          ? (productData.materials as string[])
-          : [],
-        features: Array.isArray(productData.features)
-          ? (productData.features as string[])
-          : [],
-        performance: Array.isArray(productData.performance)
-          ? (productData.performance as string[])
-          : [],
-        specifications: Array.isArray(productData.specifications)
-          ? (productData.specifications as string[])
-          : [],
-        sizes: Array.isArray(productData.sizes)
-          ? (productData.sizes as string[])
-          : [],
-        thickness: Array.isArray(productData.thickness)
-          ? (productData.thickness as string[])
-          : [],
-        colors: Array.isArray(productData.colors)
-          ? (productData.colors as string[])
-          : [],
-        vehicleFitment: Array.isArray(productData.vehicleFitment)
-          ? (productData.vehicleFitment as string[])
-          : [],
-        pricingTerms: Array.isArray(productData.pricingTerms)
-          ? (productData.pricingTerms as string[])
-          : [],
+          
+        // Map arrays safely - check both keys
+        materials: Array.isArray(getVal("materials", "materials")) ? (getVal("materials", "materials") as string[]) : [],
+        features: Array.isArray(getVal("features", "features")) ? (getVal("features", "features") as string[]) : [],
+        performance: Array.isArray(getVal("performance", "performance")) ? (getVal("performance", "performance") as string[]) : [],
+        specifications: (() => {
+          const val = getVal("specifications", "specifications");
+          if (Array.isArray(val)) return val as string[];
+          if (typeof val === 'string' && val.trim() !== '') {
+            try {
+              const parsed = JSON.parse(val);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+              return [];
+            }
+          }
+          return [];
+        })(),
+        sizes: Array.isArray(getVal("sizes", "sizes")) ? (getVal("sizes", "sizes") as string[]) : [],
+        thickness: Array.isArray(getVal("thickness", "thickness")) ? (getVal("thickness", "thickness") as string[]) : [],
+        colors: Array.isArray(getVal("colors", "colors")) ? (getVal("colors", "colors") as string[]) : [],
+        
+        vehicleFitment: (() => {
+          const val = getVal("vehicleFitment", "vehicle_fitment");
+          if (Array.isArray(val)) return val as string[];
+          if (typeof val === 'string' && val.trim() !== '') {
+            try {
+              const parsed = JSON.parse(val);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+              return [];
+            }
+          }
+          return [];
+        })(),
+            
+        pricingTerms: Array.isArray(getVal("pricingTerms", "pricing_terms")) 
+            ? (getVal("pricingTerms", "pricing_terms") as string[]) 
+            : [],
+            
         gallery: Array.isArray(productData.gallery)
           ? (productData.gallery as string[])
           : [],
+          
         pricing_tiers: Array.isArray(productData.pricing_tiers)
             ? (productData.pricing_tiers as any[]).map(t => ({
                 min_quantity: t.min_quantity,
@@ -482,9 +505,23 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 price: t.price
             }))
             : [],
-        signatureDate: productData.signatureDate as
-          | { day?: number; month?: number; year?: number }
-          | undefined,
+            
+        // Date Handling
+        signatureDate: (() => {
+             const val = getVal("signatureDate", "submission_date");
+             if (typeof val === 'string') {
+                 // Parse "YYYY-MM-DD"
+                 const parts = val.split('-');
+                 if (parts.length === 3) {
+                     return { 
+                         year: parseInt(parts[0]), 
+                         month: parseInt(parts[1]), 
+                         day: parseInt(parts[2]) 
+                     };
+                 }
+             }
+             return val as { day?: number; month?: number; year?: number } | undefined;
+        })(),
           
         // Map Categories (IMPORTANT: Ensure IDs are numbers)
         mainCategoryId: (productData.mainCategoryId as number) || (productData.main_category_id as number) || (productData.main_category as any)?.id || undefined,
@@ -494,7 +531,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
       // Use reset to populate the form fully and correctly set default values
       // This handles unmounted fields better than setValue loop
-      console.log("Resetting form with data:", formData);
+
       form.reset(formData as ProductFormValues);
     }
   }, [productId, product, form]);
@@ -508,6 +545,22 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const categoryId = form.watch("categoryId");
   const { data: subCategories = [], isLoading: isLoadingSubCategories } =
     useCategoriesByParent(categoryId || undefined);
+
+  // Controlled Item Visibility Logic
+  const subCategoryId = form.watch("subCategoryId");
+  
+  const isControlledItemVisible = (() => {
+      const main = mainCategories.find(c => c.id === mainCategoryId);
+      const cat = categories.find(c => c.id === categoryId);
+      const sub = subCategories.find(c => c.id === subCategoryId);
+      
+      // Check both snake_case and camelCase just in case, based on Service interface
+      return (
+          !!main?.is_controlled || !!main?.isControlled ||
+          !!cat?.is_controlled || !!cat?.isControlled ||
+          !!sub?.is_controlled || !!sub?.isControlled
+      );
+  })();
 
   const materials = form.watch("materials") || [];
   const features = form.watch("features") || [];
@@ -574,6 +627,47 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
 
 
+  // Mapping from Form (camelCase) to API (snake_case)
+  const FIELD_MAPPING: Record<string, string> = {
+      vehicleFitment: 'vehicle_fitment',
+      dimensionLength: 'dimension_length',
+      dimensionWidth: 'dimension_width',
+      dimensionHeight: 'dimension_height',
+      dimensionUnit: 'dimension_unit',
+      weightValue: 'weight_value',
+      weightUnit: 'weight_unit',
+      packingLength: 'packing_length',
+      packingWidth: 'packing_width',
+      packingHeight: 'packing_height',
+      packingDimensionUnit: 'packing_dimension_unit',
+      packingWeight: 'packing_weight',
+      packingWeightUnit: 'packing_weight_unit',
+      minOrderQuantity: 'min_order_quantity',
+      pricingTerms: 'pricing_terms',
+      productionLeadTime: 'production_lead_time',
+      readyStockAvailable: 'ready_stock_available',
+      manufacturingSource: 'manufacturing_source',
+      manufacturingSourceName: 'manufacturing_source_name',
+      requiresExportLicense: 'requires_export_license',
+      hasWarranty: 'has_warranty',
+      warrantyDuration: 'warranty_duration',
+      warrantyDurationUnit: 'warranty_duration_unit',
+      warrantyTerms: 'warranty_terms',
+      complianceConfirmed: 'compliance_confirmed',
+      supplierSignature: 'supplier_signature',
+      signatureDate: 'submission_date', // Special format handling needed
+      detailDescription: 'description',
+      driveTypes: 'drive_types',
+      technicalDescription: 'technical_description',
+      vehicleFitment: 'vehicle_fitment',
+      controlledItemType: 'controlled_item_type',
+      countryOfOrigin: 'country_of_origin',
+      mainCategoryId: 'main_category_id',
+      categoryId: 'category_id',
+      subCategoryId: 'sub_category_id',
+      basePrice: 'base_price'
+  };
+
   const cleanDataForApi = (
     data: ProductFormValues,
     fields: string[]
@@ -582,6 +676,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
     fields.forEach((field) => {
       const value = data[field as keyof ProductFormValues];
+      const apiField = FIELD_MAPPING[field] || field;
 
       if (field === "signatureDate") {
         if (value && typeof value === "object") {
@@ -590,23 +685,28 @@ export default function ProductForm({ productId }: ProductFormProps) {
             month?: number;
             year?: number;
           };
-          if (dateValue.day || dateValue.month || dateValue.year) {
-            cleanedData[field] = value;
+          if (dateValue.day && dateValue.month && dateValue.year) {
+             // Create ISO date string YYYY-MM-DD
+             const dateStr = `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
+             cleanedData[apiField] = dateStr;
           }
         }
       } else if (field === "pricing_tiers") {
            // Pass through pricing tiers
             if (value) {
-                cleanedData[field] = value;
+                cleanedData[apiField] = value;
             }
       } else if (Array.isArray(value)) {
         // Filter empty strings from arrays
         const filtered = value.filter((item) => item !== "");
+        // Send empty arrays too, to clear data if needed, or at least dependent on requirement. 
+        // For now, only send if not empty to match previous logic, BUT for reset/clearing we might need to send empty.
+        // Let's keep existing logic: send if > 0. 
         if (filtered.length > 0) {
-          cleanedData[field] = filtered;
+          cleanedData[apiField] = filtered;
         }
     } else if (value !== "" && value !== undefined && value !== null) {
-        cleanedData[field] = value;
+        cleanedData[apiField] = value;
       }
     });
 
@@ -854,19 +954,21 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       </FormItem>
                     )}
                  />
-                 <FormField
-                    control={form.control}
-                    name="controlledItemType"
-                    render={({ field }) => (
-                       <FormItem>
-                        <FormLabel>Controlled Item Type</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. ITAR" {...field} />
-                        </FormControl>
-                         <FormMessage />
-                      </FormItem>
-                    )}
-                 />
+                 {isControlledItemVisible && (
+                     <FormField
+                        control={form.control}
+                        name="controlledItemType"
+                        render={({ field }) => (
+                           <FormItem>
+                            <FormLabel className="text-destructive font-medium">Controlled Item Type *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. ITAR / Dual-Use" {...field} />
+                            </FormControl>
+                             <FormMessage />
+                          </FormItem>
+                        )}
+                     />
+                 )}
               </div>
 
                <div className="grid gap-4 md:grid-cols-2">
@@ -1385,10 +1487,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     );
   }
   
-  // Need to import Trash2 from lucide-react if I used it in pricing tier section
-  // Quick fix: Add Trash2 to imports at top if not there. 
-  // Code block above includes Trash2? No. I need to ensure imports are correct.
-  // I will assume I need to add Trash2 to imports.
+
 
   return (
     <div className="flex w-full flex-col">
@@ -1409,12 +1508,30 @@ export default function ProductForm({ productId }: ProductFormProps) {
             Fill in the details below.
           </p>
         </div>
+        {currentProductId && (
+          <Button
+            variant="outline"
+            className="ml-auto"
+            onClick={() =>
+              window.open(
+                `${
+                  process.env.NEXT_PUBLIC_WEBSITE_URL ||
+                  "http://localhost:3000"
+                }/product/${currentProductId}`,
+                "_blank"
+              )
+            }
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            Preview
+          </Button>
+        )}
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
             console.error("Form Validation Errors:", errors);
-            console.log("Current Form Values:", form.getValues());
+
         })} className="space-y-8">
             {/* Custom Tab Navigation Matching Product Detail Page */}
             <div className="flex space-x-1 border-b border-border w-full overflow-x-auto">

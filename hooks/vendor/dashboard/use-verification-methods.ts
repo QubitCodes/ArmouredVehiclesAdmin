@@ -6,9 +6,9 @@ export interface VerificationMethod {
   id: number;
   name: string;
   description: string;
-  isAvailable: boolean;
-  displayOrder: number;
-  isActive: boolean;
+  is_available: boolean;
+  display_order: number;
+  is_active: boolean;
 }
 
 export interface VerificationMethodResponse {
@@ -25,7 +25,7 @@ export function useVerificationMethods() {
     queryKey: ["verification-methods"],
     queryFn: async () => {
       const response = await api.get<VerificationMethodResponse | VerificationMethod[]>(
-        "/reference/verification-methods"
+        "/references/verification-methods"
       );
       
       // Handle both response formats: { data: [...] } or direct array

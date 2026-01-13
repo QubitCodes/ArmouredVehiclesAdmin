@@ -50,7 +50,7 @@ export default function VerificationPage() {
       !form.getValues("verificationMethod")
     ) {
       const defaultMethod = verificationMethods.find(
-        (method) => method.isAvailable
+        (method) => method.is_available
       );
       if (defaultMethod) {
         form.setValue("verificationMethod", defaultMethod.name);
@@ -132,11 +132,11 @@ export default function VerificationPage() {
                           </div>
                         ) : (
                           verificationMethods
-                            .sort((a, b) => a.displayOrder - b.displayOrder)
+                            .sort((a, b) => a.display_order - b.display_order)
                             .map((method) => {
                               const isSelected =
                                 field.value === method.name;
-                              const isDisabled = !method.isAvailable;
+                              const isDisabled = !method.is_available;
 
                               return (
                                 <div
@@ -146,12 +146,12 @@ export default function VerificationPage() {
                                       ? "border-secondary"
                                       : "border-border"
                                   } ${
-                                    method.isAvailable
+                                    method.is_available
                                       ? "cursor-pointer hover:border-gray-400"
                                       : "opacity-60 cursor-not-allowed"
                                   }`}
                                   onClick={() => {
-                                    if (method.isAvailable) {
+                                    if (method.is_available) {
                                       field.onChange(method.name);
                                     }
                                   }}

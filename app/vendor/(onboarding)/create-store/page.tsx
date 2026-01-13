@@ -134,11 +134,11 @@ export default function CreateStorePage() {
       );
 
       // Prepare API payload
+      // Prepare API payload
       const payload = {
         companyName: data.companyName,
-        companyEmail: data.email,
-        companyPhone: data.phoneNumber,
-        companyPhoneCountryCode: selectedPhoneCode?.code || `+${data.phoneCountryCode}`,
+        // companyEmail and companyPhone are read-only and pre-filled from DB, 
+        // so we don't need to send them back to the API as per instructions.
       };
 
       // Call the API

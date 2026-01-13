@@ -25,7 +25,7 @@ export function useOnboardingProgress(enabled: boolean = true) {
     queryKey: ["vendor-onboarding-progress"],
     queryFn: async () => {
       const response = await api.get<OnboardingProgressResponse>(
-        "/vendor/onboarding/progress"
+        "/onboarding/progress"
       );
       return response.data;
     },

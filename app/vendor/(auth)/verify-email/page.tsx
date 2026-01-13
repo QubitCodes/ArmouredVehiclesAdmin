@@ -106,7 +106,7 @@ function VerifyEmailContent() {
         return;
       }
 
-      console.log("otpCode", otpCode, "email", email, "userId", finalUserId);
+
       const response = await verifyMutation.mutateAsync({
         userId: finalUserId,
         email,
@@ -118,7 +118,7 @@ function VerifyEmailContent() {
       );
 
       // Get userId from response if available, otherwise use finalUserId
-      const verifiedUserId = response.userId || finalUserId;
+      const verifiedUserId = response.data?.user?.id || finalUserId;
 
       // Redirect to phone verification step for both flows
       setTimeout(() => {

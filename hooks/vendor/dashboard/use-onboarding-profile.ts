@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import api from "@/lib/api";
+import api, { ApiResponse } from "@/lib/api";
 
 export interface OnboardingProfileUser {
   id: string;
@@ -25,10 +25,10 @@ export function useOnboardingProfile(enabled: boolean = true) {
   return useQuery<OnboardingProfileResponse, AxiosError>({
     queryKey: ["vendor-onboarding-profile"],
     queryFn: async () => {
-      const response = await api.get<OnboardingProfileResponse>(
-        "/vendor/onboarding/profile"
+      const response = await api.get<ApiResponse<OnboardingProfileResponse>>(
+        "/onboarding/profile"
       );
-      return response.data;
+      return response.data.data;
     },
     enabled,
     retry: false,

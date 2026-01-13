@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const QUICK_USERS = [
+  { label: "Super Admin", email: "sa@demo.com", icon: Shield, role: "super_admin" },
   { label: "Admin", email: "admin@demo.com", icon: Shield, role: "admin" },
   { label: "Vendor", email: "vendor@demo.com", icon: Store, role: "vendor" },
   { label: "Customer", email: "customer@demo.com", icon: User, role: "customer" },

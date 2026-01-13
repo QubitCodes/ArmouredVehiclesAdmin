@@ -22,7 +22,7 @@ export function useEndUseMarkets() {
     queryKey: ["end-use-markets"],
     queryFn: async () => {
       const response = await api.get<EndUseMarketResponse | EndUseMarket[]>(
-        "/reference/end-use-markets"
+        "/references/end-use-markets"
       );
       
       // Handle both response formats: { data: [...] } or direct array

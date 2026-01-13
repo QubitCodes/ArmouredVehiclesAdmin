@@ -23,7 +23,7 @@ export function useSubmitVerification() {
   >({
     mutationFn: async (data: SubmitVerificationRequest) => {
       const response = await api.post<SubmitVerificationResponse>(
-        "/vendor/onboarding/submit-verification",
+        "/onboarding/submit-verification",
         data,
         {
           headers: {

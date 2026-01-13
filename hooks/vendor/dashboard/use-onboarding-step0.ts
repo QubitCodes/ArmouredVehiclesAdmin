@@ -4,9 +4,9 @@ import api from "@/lib/api";
 
 export interface OnboardingStep0Request {
   companyName: string;
-  companyEmail: string;
-  companyPhone: string;
-  companyPhoneCountryCode: string;
+  companyEmail?: string;
+  companyPhone?: string;
+  companyPhoneCountryCode?: string;
 }
 
 export interface OnboardingStep0Response {
@@ -26,7 +26,7 @@ export function useOnboardingStep0() {
   >({
     mutationFn: async (data: OnboardingStep0Request) => {
       const response = await api.post<OnboardingStep0Response>(
-        "/vendor/onboarding/step0",
+        "/onboarding/step0",
         data
       );
       return response.data;

@@ -22,7 +22,7 @@ export function useProofTypes() {
     queryKey: ["proof-types"],
     queryFn: async () => {
       const response = await api.get<ProofTypeResponse | ProofType[]>(
-        "/reference/proof-types"
+        "/references/proof-types"
       );
       
       // Handle both response formats: { data: [...] } or direct array

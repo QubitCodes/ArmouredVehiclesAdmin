@@ -22,7 +22,7 @@ export function useFinancialInstitutions() {
     queryKey: ["financial-institutions"],
     queryFn: async () => {
       const response = await api.get<FinancialInstitutionResponse | FinancialInstitution[]>(
-        "/reference/financial-institutions"
+        "/references/financial-institutions"
       );
       
       // Handle both response formats: { data: [...] } or direct array

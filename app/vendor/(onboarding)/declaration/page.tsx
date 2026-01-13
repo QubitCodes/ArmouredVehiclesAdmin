@@ -25,6 +25,7 @@ import { useEndUseMarkets } from "@/hooks/vendor/dashboard/use-end-use-markets";
 import { useCountries, type Country } from "@/hooks/vendor/dashboard/use-countries";
 import { useOnboardingStep3 } from "@/hooks/vendor/dashboard/use-onboarding-step3";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,6 +144,7 @@ export default function DeclarationPage() {
   const { data: natureOfBusinessOptions = [], isLoading: isNatureOfBusinessLoading } = useNatureOfBusiness();
   const { data: endUseMarketOptions = [], isLoading: isEndUseMarketsLoading } = useEndUseMarkets();
   const { data: countryOptions = [], isLoading: isCountriesLoading } = useCountries();
+  const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
   
   // Single combined loading state
   const isLoading = isNatureOfBusinessLoading || isEndUseMarketsLoading || isCountriesLoading;
@@ -170,6 +172,67 @@ export default function DeclarationPage() {
       agreeToCompliance: false,
     },
   });
+
+  // Auto-fill form when profile data is available
+  useEffect(() => {
+    if (profileData?.profile && !isProfileLoading) {
+      const p = profileData.profile;
+      form.reset({
+        natureOfBusiness: p.nature_of_business || [],
+        controlledDualUseItems: p.controlled_dual_use_items || "",
+        manufacturingSourceName: p.manufacturing_source_name || "",
+        endUseMarket: p.end_use_markets || [],
+        licenses: p.license_types || [],
+        operatingCountries: p.operating_countries || [],
+        countryInput: "",
+        onSanctionsList: p.is_on_sanctions_list ? "yes" : "no",
+        agreeToCompliance: p.compliance_terms_accepted || false,
+      });
+
+      // Handle file previews if URLs exist
+      if (p.business_license_url) {
+        setBusinessLicensePreview(p.business_license_url);
+        const isPdf = p.business_license_url.toLowerCase().endsWith('.pdf');
+        setBusinessLicenseFileType(isPdf ? 'pdf' : 'image');
+        // Dummy file
+        form.setValue("businessLicenseFile", new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" }));
+      }
+
+      if (p.company_profile_url) {
+        setCompanyProfilePreview(p.company_profile_url);
+        const isPdf = p.company_profile_url.toLowerCase().endsWith('.pdf');
+        setCompanyProfileFileType(isPdf ? 'pdf' : 'image');
+        // Dummy file
+        form.setValue("companyProfileFile", new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" }));
+      }
+
+      // Handle license files
+      // Mapping from license type value to URL field in profile is not 1:1 direct property name
+      // We need to check if we have separate fields in profile response or if they are generic.
+      // Based on previous chats, profile has: defense_approval_url, eocn_approval_url, itar_registration_url, local_authority_approval_url
+      
+      const licenseUrlMap: Record<string, string | undefined> = {
+        "authority_license": p.defense_approval_url,
+        "eocn": p.eocn_approval_url,
+        "itar": p.itar_registration_url,
+        "local": p.local_authority_approval_url
+      };
+
+      Object.entries(licenseUrlMap).forEach(([licenseType, url]) => {
+          if (url && p.license_types?.includes(licenseType)) {
+             setLicensePreviews(prev => ({ ...prev, [licenseType]: url }));
+             const isPdf = url.toLowerCase().endsWith('.pdf');
+             setLicenseFileTypes(prev => ({ ...prev, [licenseType]: isPdf ? 'pdf' : 'image' }));
+             
+             const fileFieldName = LICENSE_TO_FILE_FIELD[licenseType] as keyof DeclarationFormValues;
+             if (fileFieldName) {
+                 form.setValue(fileFieldName, new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" }));
+             }
+          }
+      });
+
+    }
+  }, [profileData, isProfileLoading, form]);
 
   const onSubmit = async (data: DeclarationFormValues) => {
     try {

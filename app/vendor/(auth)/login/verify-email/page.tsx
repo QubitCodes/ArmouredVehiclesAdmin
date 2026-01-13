@@ -76,7 +76,7 @@ function VerifyEmailContent() {
     }
 
     try {
-      console.log("otpCode", otpCode, "email", email);
+
       const response = await verifyMutation.mutateAsync({
         email,
         code: otpCode,

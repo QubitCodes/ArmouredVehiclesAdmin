@@ -70,13 +70,8 @@ export function useOnboardingStep1() {
       }
 
       const response = await api.post<OnboardingStep1Response>(
-        "/vendor/onboarding/step1",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        "/onboarding/step1",
+        formData
       );
       return response.data;
     },

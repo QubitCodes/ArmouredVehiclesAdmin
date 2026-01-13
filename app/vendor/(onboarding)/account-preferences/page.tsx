@@ -13,6 +13,7 @@ import { useVendorCategories } from "@/hooks/vendor/dashboard/use-vendor-categor
 import { useOnboardingStep4 } from "@/hooks/vendor/dashboard/use-onboarding-step4";
 import { useCurrencies } from "@/hooks/vendor/dashboard/use-currencies";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,6 +60,7 @@ export default function AccountPreferencesPage() {
   const router = useRouter();
   const { data: categoryOptions = [], isLoading: isCategoriesLoading } = useVendorCategories();
   const { data: allCurrencies = [], isLoading: isCurrenciesLoading } = useCurrencies();
+  const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
   const step4Mutation = useOnboardingStep4();
 
   // Currency dropdown state
@@ -77,6 +79,29 @@ export default function AccountPreferencesPage() {
       captcha: "",
     },
   });
+
+  // Auto-fill form when profile data is available
+  useEffect(() => {
+    if (profileData?.profile && !isProfileLoading) {
+      const p = profileData.profile;
+      const currency = p.currency || "AED";
+      
+      // Check if currency is in the main options
+      const isStandardCurrency = currencyOptions.some(opt => opt.value === currency);
+      
+      form.reset({
+        categories: p.selling_categories || [],
+        registerAs: p.subscription_type || "verified-supplier",
+        preferredCurrency: isStandardCurrency ? currency : "other",
+        sponsorContent: p.sponsor_content ? "yes" : "no",
+        captcha: "", // Captcha cannot be pre-filled
+      });
+
+      if (!isStandardCurrency) {
+        setSelectedCustomCurrency(currency);
+      }
+    }
+  }, [profileData, isProfileLoading, form]);
 
   const onSubmit = async (data: AccountPreferencesFormValues) => {
     try {

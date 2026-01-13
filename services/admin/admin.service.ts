@@ -24,9 +24,9 @@ export interface GetAdminsParams {
 export interface CreateAdminRequest {
   name: string;
   email: string;
-  password: string;
+  phone: string;
+  country_code: string;
   userType?: string;
-  phone?: string;
 }
 
 class AdminService {

@@ -2,6 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import api from "@/lib/api";
 
+import { ApiResponse } from "@/lib/api";
+
 export interface VendorRegistrationRequest {
   email: string;
   username: string;
@@ -9,11 +11,11 @@ export interface VendorRegistrationRequest {
   userType: "vendor";
 }
 
-export interface VendorRegistrationResponse {
-  message?: string;
-  success?: boolean;
-  userId?: string;
-}
+export type VendorRegistrationResponse = ApiResponse<{
+  userId: string;
+  email: string;
+  username: string;
+}>;
 
 /**
  * React Query hook for vendor registration API (OTP registration start)

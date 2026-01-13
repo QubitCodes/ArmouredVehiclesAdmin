@@ -23,7 +23,7 @@ export function usePaymentMethods() {
     queryKey: ["payment-methods"],
     queryFn: async () => {
       const response = await api.get<PaymentMethodResponse | PaymentMethod[]>(
-        "/reference/payment-methods"
+        "/references/payment-methods"
       );
       
       // Handle both response formats: { data: [...] } or direct array

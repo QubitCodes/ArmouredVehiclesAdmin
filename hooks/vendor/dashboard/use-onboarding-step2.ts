@@ -44,13 +44,8 @@ export function useOnboardingStep2() {
       formData.append("termsAccepted", data.termsAccepted.toString());
 
       const response = await api.post<OnboardingStep2Response>(
-        "/vendor/onboarding/step2",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        "/onboarding/step2",
+        formData
       );
       return response.data;
     },

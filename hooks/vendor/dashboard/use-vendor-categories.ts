@@ -22,7 +22,7 @@ export function useVendorCategories() {
     queryKey: ["vendor-categories"],
     queryFn: async () => {
       const response = await api.get<VendorCategoryResponse | VendorCategory[]>(
-        "/reference/vendor-categories"
+        "/references/vendor-categories"
       );
       
       // Handle both response formats: { data: [...] } or direct array

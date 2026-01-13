@@ -22,7 +22,7 @@ export function useNatureOfBusiness() {
     queryKey: ["nature-of-business"],
     queryFn: async () => {
       const response = await api.get<NatureOfBusinessResponse | NatureOfBusiness[]>(
-        "/reference/nature-of-business"
+        "/references/nature-of-business"
       );
       
       // Handle both response formats: { data: [...] } or direct array

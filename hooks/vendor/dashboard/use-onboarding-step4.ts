@@ -28,7 +28,7 @@ export function useOnboardingStep4() {
   >({
     mutationFn: async (data: OnboardingStep4Request) => {
       const response = await api.post<OnboardingStep4Response>(
-        "/vendor/onboarding/step4",
+        "/onboarding/step4",
         data,
         {
           headers: {

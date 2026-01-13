@@ -7,7 +7,7 @@ import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { Upload, Info, ChevronDown, X } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 
 // Dynamically import PDF viewer to avoid SSR issues
@@ -27,6 +27,7 @@ import { useCountries, type Country } from "@/hooks/vendor/dashboard/use-countri
 import { Spinner } from "@/components/ui/spinner";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ export default function AddPaymentMethodPage() {
   const { data: proofTypesData = [], isLoading: isProofTypesLoading } =
     useProofTypes();
   const { data: countries = [], isLoading: isCountriesLoading } = useCountries();
+  const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
   
   const step5Mutation = useOnboardingStep5();
 
@@ -88,6 +90,33 @@ export default function AddPaymentMethodPage() {
     },
   });
 
+  // Auto-fill form when profile data is available
+  useEffect(() => {
+    if (profileData?.profile && !isProfileLoading) {
+      const p = profileData.profile;
+      form.reset({
+        bankCountry: p.bank_country || "United Arab Emirates",
+        financialInstitution: p.financial_institution || "",
+        swiftCode: p.swift_code || "",
+        bankAccountNumber: p.bank_account_number || "",
+        confirmAccountNumber: p.bank_account_number || "", // Must match
+        proofType: p.proof_type || "",
+        bankProofFile: undefined, // File can't be pre-filled with URL directly
+      });
+
+      // Handle file preview if URL exists
+      if (p.bank_proof_url) {
+        setProofPreview(p.bank_proof_url);
+        const isPdf = p.bank_proof_url.toLowerCase().endsWith('.pdf');
+        setFileType(isPdf ? 'pdf' : 'image');
+        
+        // Dummy file for validation
+        const dummyFile = new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" });
+        form.setValue("bankProofFile", dummyFile);
+      }
+    }
+  }, [profileData, isProfileLoading, form]);
+
   const onSubmit = async (data: PaymentMethodFormValues) => {
     try {
       // Map form data to API schema format
@@ -98,6 +127,7 @@ export default function AddPaymentMethodPage() {
         bankAccountNumber: data.bankAccountNumber,
         proofType: data.proofType,
         bankProofFile: data.bankProofFile instanceof File ? data.bankProofFile : undefined,
+        bankProofUrl: profileData?.profile?.bank_proof_url, // Send existing URL if available
       };
 
       await step5Mutation.mutateAsync(payload);

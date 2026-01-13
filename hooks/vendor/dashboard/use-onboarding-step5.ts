@@ -9,6 +9,7 @@ export interface OnboardingStep5Request {
   bankAccountNumber: string;
   proofType: string;
   bankProofFile?: File;
+  bankProofUrl?: string;
 }
 
 export interface OnboardingStep5Response {
@@ -40,15 +41,13 @@ export function useOnboardingStep5() {
       if (data.bankProofFile) {
         formData.append("bankProofFile", data.bankProofFile);
       }
+      if (data.bankProofUrl) {
+        formData.append("bankProofUrl", data.bankProofUrl);
+      }
 
       const response = await api.post<OnboardingStep5Response>(
-        "/vendor/onboarding/step5",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        "/onboarding/step5",
+        formData
       );
       return response.data;
     },

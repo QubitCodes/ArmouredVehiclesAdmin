@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Trash2, Eye } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,22 @@ const formatFieldValue = (value: unknown, fieldName: string): string => {
     return value.toString();
   }
 
+  if (typeof value === "string") {
+      // Check if it's a JSON array string for specific fields
+      if (["vehicle_fitment", "specifications", "features", "materials", "performance", "drive_types", "sizes", "thickness", "colors", "pricing_terms"].includes(fieldName)) {
+          try {
+              const parsed = JSON.parse(value);
+              if (Array.isArray(parsed)) {
+                  if (parsed.length === 0) return "—";
+                  return parsed.filter((item) => item !== "" && item !== null).join(", ");
+              }
+          } catch (e) {
+              // Not valid JSON, treat as normal string
+          }
+      }
+      return value;
+  }
+
   return String(value);
 };
 
@@ -84,16 +100,16 @@ const SECTIONS = [
     fields: [
       "name",
       "sku",
-      "mainCategory",
+      "main_category", // maps to 'main_category' (object or id)
       "category",
-      "subCategory",
+      "sub_category",
       "certifications",
-      "controlledItemType",
-      "vehicleCompatibility",
+      "controlled_item_type",
+      "vehicle_compatibility", // Was vehicleCompatibility
       "make",
       "model",
       "year",
-      "countryOfOrigin",
+      "country_of_origin",
       "description",
     ],
   },
@@ -102,28 +118,29 @@ const SECTIONS = [
     name: "Technical Description",
     icon: Settings,
     fields: [
-      "dimensionLength",
-      "dimensionWidth",
-      "dimensionHeight",
-      "dimensionUnit",
+      "dimension_length",
+      "dimension_width",
+      "dimension_height",
+      "dimension_unit",
       "materials",
       "features",
       "performance",
       "specifications",
-      "technicalDescription",
-      "vehicleFitment",
+      "technical_description",
+      "vehicle_fitment", 
       "sizes",
       "thickness",
       "colors",
-      "weightValue",
-      "weightUnit",
-      "packingLength",
-      "packingWidth",
-      "packingHeight",
-      "packingDimensionUnit",
-      "packingWeight",
-      "packingWeightUnit",
-      "minOrderQuantity",
+      "weight_value",
+      "weight_unit",
+      "packing_length",
+      "packing_width",
+      "packing_height",
+      "packing_dimension_unit",
+      "packing_weight",
+      "packing_weight_unit",
+      "min_order_quantity",
+      "drive_types"
     ],
   },
   {
@@ -131,11 +148,11 @@ const SECTIONS = [
     name: "Pricing & Availability",
     icon: ShoppingCart,
     fields: [
-      "basePrice",
+      "base_price",
       "currency",
-      "pricingTerms",
-      "productionLeadTime",
-      "readyStockAvailable",
+      "pricing_terms",
+      "production_lead_time",
+      "ready_stock_available",
       "stock",
       "condition",
       "pricing_tiers",
@@ -152,17 +169,17 @@ const SECTIONS = [
     name: "Declarations",
     icon: Shield,
     fields: [
-      "manufacturingSource",
-      "manufacturingSourceName",
-      "requiresExportLicense",
-      "hasWarranty",
+      "manufacturing_source",
+      "manufacturing_source_name",
+      "requires_export_license",
+      "has_warranty",
       "warranty",
-      "warrantyDuration",
-      "warrantyDurationUnit",
-      "warrantyTerms",
-      "complianceConfirmed",
-      "supplierSignature",
-      "signatureDate",
+      "warranty_duration",
+      "warranty_duration_unit",
+      "warranty_terms",
+      "compliance_confirmed",
+      "supplier_signature",
+      "submission_date", // Was signatureDate
     ],
   },
 ];
@@ -311,6 +328,21 @@ export default function ProductDetailPage() {
         </div>
         {!fromVendor && (
           <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() =>
+                window.open(
+                  `${
+                    process.env.NEXT_PUBLIC_WEBSITE_URL ||
+                    "http://localhost:3000"
+                  }/product/${product.id}`,
+                  "_blank"
+                )
+              }
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Preview
+            </Button>
             <Button variant="default" onClick={() => router.push(`/admin/products/${product.id}/edit`)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit Product

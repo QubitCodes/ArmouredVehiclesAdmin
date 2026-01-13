@@ -65,7 +65,7 @@ export default function CreateSupplierAccountPage() {
       );
 
       // Navigate to OTP verification page with email, username, and userId parameters
-      const userId = response.userId || "";
+      const userId = response.data?.userId || "";
       router.push(
         `/vendor/verify-email?email=${encodeURIComponent(data.email)}&username=${encodeURIComponent(data.username)}${userId ? `&userId=${encodeURIComponent(userId)}` : ""}`
       );
