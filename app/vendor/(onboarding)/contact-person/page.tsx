@@ -6,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { Info, Upload, X, ChevronDown } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Info, Upload, X, ChevronDown, Search } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 
 // Dynamically import PDF viewer to avoid SSR issues
@@ -35,6 +35,8 @@ import {
 import { useOnboardingStep2 } from "@/hooks/vendor/dashboard/use-onboarding-step2";
 import { OnboardingProgressBar } from "@/components/vendor/onboarding-progress-bar";
 import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
+import { COUNTRY_LIST } from "@/lib/countries";
+import { cn } from "@/lib/utils";
 
 const contactPersonSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -52,14 +54,6 @@ const contactPersonSchema = z.object({
   }),
 });
 
-const phoneCountryCodes = [
-  { value: "971", code: "+971", flag: "🇦🇪", label: "United Arab Emirates" },
-  { value: "1", code: "+1", flag: "🇺🇸", label: "United States" },
-  { value: "44", code: "+44", flag: "🇬🇧", label: "United Kingdom" },
-  { value: "91", code: "+91", flag: "🇮🇳", label: "India" },
-  { value: "966", code: "+966", flag: "🇸🇦", label: "Saudi Arabia" },
-];
-
 type ContactPersonFormValues = z.infer<typeof contactPersonSchema>;
 
 export default function ContactPersonPage() {
@@ -67,6 +61,12 @@ export default function ContactPersonPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null);
+
+  // State for searchable country dropdown
+  const [isCountryOpen, setIsCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const countryDropdownRef = useRef<HTMLDivElement>(null);
+  const countrySearchInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch onboarding profile data
   const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
@@ -80,11 +80,53 @@ export default function ContactPersonPage() {
       fullName: "",
       jobTitle: "",
       workEmail: "",
-      phoneCountryCode: "971",
+      phoneCountryCode: "+971",
       phoneNumber: "",
       confirmAccuracy: false,
     },
   });
+
+  // Filter countries based on search
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch) return COUNTRY_LIST;
+    const term = countrySearch.toLowerCase();
+    return COUNTRY_LIST.filter(
+      (c) =>
+        c.name.toLowerCase().includes(term) ||
+        c.value.includes(term) ||
+        c.countryCode.toLowerCase().includes(term)
+    );
+  }, [countrySearch]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        countryDropdownRef.current &&
+        !countryDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCountryOpen(false);
+        setCountrySearch("");
+      }
+    };
+
+    if (isCountryOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      setTimeout(() => countrySearchInputRef.current?.focus(), 0);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isCountryOpen]);
+
+  // Handle country selection
+  const handleCountrySelect = (country: (typeof COUNTRY_LIST)[0]) => {
+    form.setValue("phoneCountryCode", country.value);
+    form.trigger("phoneCountryCode");
+    setIsCountryOpen(false);
+    setCountrySearch("");
+  };
 
   // Auto-fill form when profile data is available
   useEffect(() => {
@@ -94,7 +136,7 @@ export default function ContactPersonPage() {
         fullName: p.contact_full_name || "",
         jobTitle: p.contact_job_title || "",
         workEmail: p.contact_work_email || "",
-        phoneCountryCode: p.contact_mobile_country_code ? p.contact_mobile_country_code.replace('+', '') : "971",
+        phoneCountryCode: p.contact_mobile_country_code ? (p.contact_mobile_country_code.startsWith('+') ? p.contact_mobile_country_code : `+${p.contact_mobile_country_code}`) : "+971",
         phoneNumber: p.contact_mobile || "",
         confirmAccuracy: p.terms_accepted || false,
       });
@@ -156,11 +198,6 @@ export default function ContactPersonPage() {
 
   const onSubmit = async (data: ContactPersonFormValues) => {
     try {
-      // Find the country code object to get the code with "+"
-      const selectedPhoneCode = phoneCountryCodes.find(
-        (code) => code.value === data.phoneCountryCode
-      );
-
       // Prepare API payload
       const payload = {
         contactFullName: data.fullName,
@@ -168,7 +205,7 @@ export default function ContactPersonPage() {
         contactWorkEmail: data.workEmail,
         contactIdDocumentFile: data.passport as File | undefined,
         contactMobile: data.phoneNumber,
-        contactMobileCountryCode: selectedPhoneCode?.code || `+${data.phoneCountryCode}`,
+        contactMobileCountryCode: data.phoneCountryCode,
         termsAccepted: data.confirmAccuracy,
       };
 
@@ -350,65 +387,127 @@ export default function ContactPersonPage() {
                     />
 
                     {/* Phone Number */}
-                    <div className="space-y-2">
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Phone Number <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <div className="flex gap-2">
-                        <FormField
-                          control={form.control}
-                          name="phoneCountryCode"
-                          render={({ field }) => {
-                            const selectedPhoneCode = phoneCountryCodes.find(
-                              (c) => c.value === field.value
-                            );
-                            return (
-                              <FormItem className="w-[120px]">
-                                <FormControl>
-                                  <div className="relative">
-                                    <select
-                                      {...field}
-                                      className="w-full bg-bg-medium border border-gray-300 h-11 pl-10 pr-8 text-sm outline-none appearance-none focus:border-secondary focus:ring-1 focus:ring-secondary cursor-pointer"
-                                    >
-                                      {phoneCountryCodes.map((code) => (
-                                        <option key={code.value} value={code.value}>
-                                          {code.code}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    {selectedPhoneCode && (
-                                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
-                                        {selectedPhoneCode.flag}
-                                      </span>
-                                    )}
-                                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                  </div>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            );
-                          }}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="phoneNumber"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormControl>
-                                <Input
-                                  type="tel"
-                                  placeholder="Type Your Phone Number."
-                                  className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                                  {...field}
+                    <FormField
+                      control={form.control}
+                      name="phoneCountryCode"
+                      render={({ field }) => {
+                        const phoneCountryCode = field.value;
+                        const selectedCountry = COUNTRY_LIST.find(
+                          (c) => c.value === phoneCountryCode
+                        );
+                        return (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                              Phone Number <span className="text-red-500">*</span>
+                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                            </FormLabel>
+                            <FormControl>
+                              <div className="flex items-center border border-gray-300 focus-within:border-secondary transition-all bg-bg-medium">
+                                {/* Country Code Selector */}
+                                <div
+                                  ref={countryDropdownRef}
+                                  className="relative flex items-center border-r border-gray-300 bg-bg-medium"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsCountryOpen(!isCountryOpen)}
+                                    className="flex items-center gap-1 bg-bg-medium pl-3 pr-2 py-3 text-sm text-black focus:outline-none cursor-pointer h-11 min-w-[100px]"
+                                  >
+                                    <span>{selectedCountry?.flag}</span>
+                                    <span>{selectedCountry?.value}</span>
+                                    <ChevronDown
+                                      className={cn(
+                                        "h-4 w-4 text-gray-400 transition-transform ml-1",
+                                        isCountryOpen && "rotate-180"
+                                      )}
+                                    />
+                                  </button>
+
+                                  {/* Searchable Dropdown */}
+                                  {isCountryOpen && (
+                                    <div className="absolute top-[calc(100%+4px)] left-0 z-[100] w-72 rounded-md border border-gray-300 bg-white shadow-lg">
+                                      {/* Search Input */}
+                                      <div className="p-2 border-b border-gray-200">
+                                        <div className="relative">
+                                          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                          <input
+                                            ref={countrySearchInputRef}
+                                            type="text"
+                                            value={countrySearch}
+                                            onChange={(e) =>
+                                              setCountrySearch(e.target.value)
+                                            }
+                                            placeholder="Search countries..."
+                                            className="w-full h-9 pl-8 pr-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:border-secondary"
+                                          />
+                                        </div>
+                                      </div>
+                                      {/* Country List */}
+                                      <div className="max-h-60 overflow-y-auto">
+                                        {filteredCountries.length === 0 ? (
+                                          <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                                            No countries found
+                                          </div>
+                                        ) : (
+                                          filteredCountries.map((country) => (
+                                            <button
+                                              key={country.countryCode}
+                                              type="button"
+                                              onClick={() =>
+                                                handleCountrySelect(country)
+                                              }
+                                              className={cn(
+                                                "w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-2 transition-colors",
+                                                selectedCountry?.countryCode ===
+                                                  country.countryCode && "bg-gray-100"
+                                              )}
+                                            >
+                                              <span>{country.flag}</span>
+                                              <span className="flex-1 truncate">
+                                                {country.name}
+                                              </span>
+                                              <span className="text-gray-500">
+                                                {country.value}
+                                              </span>
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Phone Number Input */}
+                                <FormField
+                                  control={form.control}
+                                  name="phoneNumber"
+                                  render={({ field: phoneField }) => (
+                                    <Input
+                                      type="tel"
+                                      placeholder="Type Your Phone Number."
+                                      className={cn(
+                                        "border-0 focus:outline-none focus:ring-0 focus:border-0",
+                                        "focus-visible:outline-none focus-visible:ring-0",
+                                        "text-black placeholder:text-gray-400 h-11 text-sm flex-1"
+                                      )}
+                                      {...phoneField}
+                                      onChange={(e) => {
+                                        // Only allow digits
+                                        const value = e.target.value.replace(/\D/g, "");
+                                        // Limit to max 15 digits (ITU-T E.164 standard)
+                                        const limitedValue = value.slice(0, 15);
+                                        phoneField.onChange(limitedValue);
+                                      }}
+                                    />
+                                  )}
                                 />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
                   </div>
                 </div>
 
