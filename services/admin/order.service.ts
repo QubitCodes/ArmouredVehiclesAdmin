@@ -67,8 +67,13 @@ class OrderService {
         params,
       });
       return response.data;
-    } catch (error) {
-      console.error("Error fetching orders:", error);
+    } catch (error: any) {
+      console.error("Error fetching orders:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url
+      });
       throw error;
     }
   }
@@ -80,8 +85,13 @@ class OrderService {
     try {
       const response = await api.get<{ success: boolean; data: Order }>(`/admin/orders/${orderId}`);
       return response.data;
-    } catch (error) {
-      console.error("Error fetching order:", error);
+    } catch (error: any) {
+      console.error("Error fetching order:", {
+        id: orderId,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       throw error;
     }
   }

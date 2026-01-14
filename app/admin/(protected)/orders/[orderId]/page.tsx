@@ -256,7 +256,7 @@ export default function OrderDetailPage() {
                     </p>
                   </div>
                   <p className="font-medium text-foreground">
-                    ${item.price.toFixed(2)}
+                    ${typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(String(item.price)).toFixed(2)}
                   </p>
                 </div>
               ))}
