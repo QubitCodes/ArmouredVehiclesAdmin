@@ -22,6 +22,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 import { useOnboardingStep0 } from "@/hooks/vendor/dashboard/use-onboarding-step0";
+import { COUNTRY_LIST } from "@/lib/countries";
 
 const createStoreSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -35,14 +36,6 @@ const createStoreSchema = z.object({
 
 type CreateStoreFormValues = z.infer<typeof createStoreSchema>;
 
-const phoneCountryCodes = [
-  { value: "971", code: "+971", flag: "🇦🇪", label: "United Arab Emirates" },
-  { value: "1", code: "+1", flag: "🇺🇸", label: "United States" },
-  { value: "44", code: "+44", flag: "🇬🇧", label: "United Kingdom" },
-  { value: "91", code: "+91", flag: "🇮🇳", label: "India" },
-  { value: "966", code: "+966", flag: "🇸🇦", label: "Saudi Arabia" },
-];
-
 export default function CreateStorePage() {
   const router = useRouter();
 
@@ -51,7 +44,7 @@ export default function CreateStorePage() {
     defaultValues: {
       companyName: "",
       email: "",
-      phoneCountryCode: "971",
+      phoneCountryCode: "+971",
       phoneNumber: "",
     },
   });
@@ -73,35 +66,28 @@ export default function CreateStorePage() {
         updates.email = profileData.user.email;
       }
 
-      // Auto-fill company name from user name
-      if (profileData.user?.name && !form.getValues("companyName")) {
-        updates.companyName = profileData.user.name;
-      }
-
       // Auto-fill phone number from user
       if (profileData.user?.phone) {
         const phone = profileData.user.phone.trim();
-        
+
         // Check if phone includes country code (starts with +)
         if (phone.startsWith("+")) {
-          // Remove + and any spaces, then try to match country codes
-          const phoneWithoutPlus = phone.replace(/^\+/, "").replace(/\s/g, "");
-          
-          // Try to match country codes (try longer codes first)
-          const sortedCodes = [...phoneCountryCodes].sort(
+          // Remove spaces
+          const phoneClean = phone.replace(/\s/g, "");
+
+          // Try to match country codes from COUNTRY_LIST (try longer codes first)
+          const sortedCountries = [...COUNTRY_LIST].sort(
             (a, b) => b.value.length - a.value.length
           );
-          
-          for (const codeOption of sortedCodes) {
-            if (phoneWithoutPlus.startsWith(codeOption.value)) {
-              const phoneNumber = phoneWithoutPlus.slice(
-                codeOption.value.length
-              );
-              
+
+          for (const country of sortedCountries) {
+            if (phoneClean.startsWith(country.value)) {
+              const phoneNumber = phoneClean.slice(country.value.length);
+
               if (phoneNumber && !form.getValues("phoneCountryCode")) {
-                updates.phoneCountryCode = codeOption.value;
+                updates.phoneCountryCode = country.value;
               }
-              
+
               if (phoneNumber && !form.getValues("phoneNumber")) {
                 updates.phoneNumber = phoneNumber;
               }
@@ -128,16 +114,10 @@ export default function CreateStorePage() {
 
   const onSubmit = async (data: CreateStoreFormValues) => {
     try {
-      // Find the country code object to get the code with "+"
-      const selectedPhoneCode = phoneCountryCodes.find(
-        (code) => code.value === data.phoneCountryCode
-      );
-
-      // Prepare API payload
-      // Prepare API payload
+      // Prepare API payload - only companyName is editable
       const payload = {
         companyName: data.companyName,
-        // companyEmail and companyPhone are read-only and pre-filled from DB, 
+        // companyEmail and companyPhone are read-only and pre-filled from DB,
         // so we don't need to send them back to the API as per instructions.
       };
 
@@ -166,7 +146,7 @@ export default function CreateStorePage() {
     control: form.control,
     name: "phoneCountryCode",
   });
-  const selectedPhoneCode = phoneCountryCodes.find(
+  const selectedCountry = COUNTRY_LIST.find(
     (c) => c.value === phoneCountryCode
   );
 
@@ -226,7 +206,7 @@ export default function CreateStorePage() {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Blueweb"
+                        placeholder="Enter your company name"
                         className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
                         {...field}
                       />
@@ -249,7 +229,7 @@ export default function CreateStorePage() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="info@blueweb2.com"
+                        // placeholder="info@blueweb2.com"
                         className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed"
                         readOnly
                         {...field}
@@ -279,15 +259,15 @@ export default function CreateStorePage() {
                               className="w-full bg-gray-100 border border-gray-300 h-11 pl-10 pr-6 text-sm cursor-not-allowed outline-none appearance-none"
                               disabled
                             >
-                              {phoneCountryCodes.map((code) => (
-                                <option key={code.value} value={code.value}>
-                                  {code.code}
+                              {COUNTRY_LIST.map((country) => (
+                                <option key={country.countryCode} value={country.value}>
+                                  {country.value}
                                 </option>
                               ))}
                             </select>
-                            {selectedPhoneCode && (
+                            {selectedCountry && (
                               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
-                                {selectedPhoneCode.flag}
+                                {selectedCountry.flag}
                               </span>
                             )}
                           </div>
