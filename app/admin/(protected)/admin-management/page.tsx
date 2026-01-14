@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
@@ -11,13 +12,15 @@ import { AddAdminDialog } from "@/components/admin/admin-management/add-admin-di
 
 export default function AdminManagementPage() {
   const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search") || "";
 
-  // Use React Query to fetch admins
+  // Use React Query to fetch admins with search parameter
   const {
     data: admins = [],
     isLoading,
     error,
-  } = useAdmins();
+  } = useAdmins({ search: search || undefined });
 
   // Show error toast when query fails
   useEffect(() => {

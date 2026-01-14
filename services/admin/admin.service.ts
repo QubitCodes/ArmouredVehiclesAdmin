@@ -20,6 +20,7 @@ export interface Admin {
 export interface GetAdminsParams {
   page?: number;
   limit?: number;
+  search?: string;
 }
 
 export interface CreateAdminRequest {
