@@ -659,7 +659,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
       detailDescription: 'description',
       driveTypes: 'drive_types',
       technicalDescription: 'technical_description',
-      vehicleFitment: 'vehicle_fitment',
       controlledItemType: 'controlled_item_type',
       countryOfOrigin: 'country_of_origin',
       mainCategoryId: 'main_category_id',
