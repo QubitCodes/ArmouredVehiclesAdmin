@@ -30,7 +30,7 @@ const createStoreSchema = z.object({
     .string()
     .email("Please enter a valid email address")
     .min(1, "Email is required"),
-  phoneCountryCode: z.string().min(1, "Country code is required"),
+  countryCode: z.string().min(1, "Country code is required"),
   phoneNumber: z.string().min(1, "Store phone number is required"),
 });
 
@@ -44,7 +44,7 @@ export default function CreateStorePage() {
     defaultValues: {
       companyName: "",
       email: "",
-      phoneCountryCode: "+971",
+      countryCode: "",
       phoneNumber: "",
     },
   });
@@ -66,6 +66,11 @@ export default function CreateStorePage() {
         updates.email = profileData.user.email;
       }
 
+      // Auto-fill countryCode from user profile
+      if (profileData.user?.countryCode && !form.getValues("countryCode")) {
+        updates.countryCode = profileData.user.countryCode;
+      }
+
       // Auto-fill phone number from user
       if (profileData.user?.phone) {
         const phone = profileData.user.phone.trim();
@@ -84,11 +89,9 @@ export default function CreateStorePage() {
             if (phoneClean.startsWith(country.value)) {
               const phoneNumber = phoneClean.slice(country.value.length);
 
-              if (phoneNumber && !form.getValues("phoneCountryCode")) {
-                updates.phoneCountryCode = country.value;
-              }
-
-              if (phoneNumber && !form.getValues("phoneNumber")) {
+              if (phoneNumber) {
+                // Always update country code from API (this is a read-only field)
+                updates.countryCode = country.value;
                 updates.phoneNumber = phoneNumber;
               }
               break;
@@ -97,7 +100,7 @@ export default function CreateStorePage() {
         } else {
           // Phone number without country code - just set the number
           const phoneNumber = phone.replace(/\s/g, "");
-          if (phoneNumber && !form.getValues("phoneNumber")) {
+          if (phoneNumber) {
             updates.phoneNumber = phoneNumber;
           }
         }
@@ -142,12 +145,12 @@ export default function CreateStorePage() {
     }
   };
 
-  const phoneCountryCode = useWatch({
+  const countryCode = useWatch({
     control: form.control,
-    name: "phoneCountryCode",
+    name: "countryCode",
   });
   const selectedCountry = COUNTRY_LIST.find(
-    (c) => c.value === phoneCountryCode
+    (c) => c.value === countryCode
   );
 
   return (
@@ -249,7 +252,7 @@ export default function CreateStorePage() {
                 <div className="flex gap-2">
                   <FormField
                     control={form.control}
-                    name="phoneCountryCode"
+                    name="countryCode"
                     render={({ field }) => (
                       <FormItem className="w-[120px]">
                         <FormControl>

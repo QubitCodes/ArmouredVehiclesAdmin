@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Sidebar } from "@/components/admin/sidebar";
-import { GlobalHeader } from "@/components/global-header";
 
 export const metadata: Metadata = {
   title: "ArmoredMart Admin",
@@ -14,7 +13,6 @@ export default function AdminLayout({
 }) {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <GlobalHeader />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-y-auto bg-background">
