@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut, Tag, Database } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
@@ -97,7 +98,18 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col bg-primary">
-      <nav className="flex-1 space-y-1 p-4 pt-10">
+      {/* Logo */}
+      <div className="flex items-center justify-center px-4">
+        <Image
+          src="/images/white-logo.svg"
+          alt="ArmoredMart Logo"
+          width={180}
+          height={50}
+          priority
+        />
+      </div>
+
+      <nav className="flex-1 space-y-1 p-4">
         {filteredNavigation.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;

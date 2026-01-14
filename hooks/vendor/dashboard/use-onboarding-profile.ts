@@ -7,6 +7,7 @@ export interface OnboardingProfileUser {
   name: string;
   email: string;
   phone: string;
+  countryCode: string;
   userType: string;
   emailVerified: boolean;
   phoneVerified: boolean;

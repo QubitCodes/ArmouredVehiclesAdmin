@@ -378,7 +378,7 @@ export default function CompanyInformationPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left Column */}
                   <div className="space-y-6">
-                    {/* Registered Company Name */}
+                    {/* Registered Company Name - Read Only */}
                     <FormField
                       control={form.control}
                       name="registeredCompanyName"
@@ -392,9 +392,10 @@ export default function CompanyInformationPage() {
                           <FormControl>
                             <div className="relative">
                               <Input
-                                className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary pr-10"
+                                className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed text-gray-900 pr-10"
                                 {...field}
-                                disabled={isProfileLoading}
+                                readOnly
+                                disabled
                               />
                               {isProfileLoading && (
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2">

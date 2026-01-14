@@ -8,7 +8,7 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { X, Search, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { Turnstile } from "@marsidev/react-turnstile";
+// import { Turnstile } from "@marsidev/react-turnstile";
 import { useVendorCategories } from "@/hooks/vendor/dashboard/use-vendor-categories";
 import { useOnboardingStep4 } from "@/hooks/vendor/dashboard/use-onboarding-step4";
 import { useCurrencies } from "@/hooks/vendor/dashboard/use-currencies";
@@ -27,7 +27,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+// const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 const accountPreferencesSchema = z.object({
   categories: z
@@ -42,9 +42,9 @@ const accountPreferencesSchema = z.object({
   sponsorContent: z.enum(["yes", "no"], {
     message: "Please select whether you wish to sponsor content/listings",
   }),
-  captcha: turnstileSiteKey
-    ? z.string().min(1, "Please complete the CAPTCHA verification")
-    : z.string().optional(),
+  // captcha: turnstileSiteKey
+  //   ? z.string().min(1, "Please complete the CAPTCHA verification")
+  //   : z.string().optional(),
 });
 
 type AccountPreferencesFormValues = z.infer<typeof accountPreferencesSchema>;
@@ -76,7 +76,7 @@ export default function AccountPreferencesPage() {
       registerAs: "verified-supplier",
       preferredCurrency: "AED",
       sponsorContent: "no",
-      captcha: "",
+      // captcha: "",
     },
   });
 
@@ -94,7 +94,7 @@ export default function AccountPreferencesPage() {
         registerAs: p.subscription_type || "verified-supplier",
         preferredCurrency: isStandardCurrency ? currency : "other",
         sponsorContent: p.sponsor_content ? "yes" : "no",
-        captcha: "", // Captcha cannot be pre-filled
+        // captcha: "", // Captcha cannot be pre-filled
       });
 
       if (!isStandardCurrency) {
@@ -589,7 +589,7 @@ export default function AccountPreferencesPage() {
             </div>
 
             {/* CAPTCHA Verification - Separate Light Container */}
-            <div className="bg-bg-light p-6">
+            {/* <div className="bg-bg-light p-6">
               <FormField
                 control={form.control}
                 name="captcha"
@@ -632,7 +632,7 @@ export default function AccountPreferencesPage() {
                   </FormItem>
                 )}
               />
-            </div>
+            </div> */}
 
             {/* Navigation Buttons */}
             <div className="flex justify-center items-center gap-6 mt-8 pb-8">
