@@ -96,6 +96,7 @@ export interface GetProductsResponse {
 export interface GetProductsParams {
   page?: number;
   limit?: number;
+  search?: string;
   vendorId?: string;
   vendor_id?: string; // Add support for backend param style
 }
@@ -106,8 +107,12 @@ class ProductService {
    */
   async getProducts(params: GetProductsParams = {}) {
     try {
+      const { search, ...rest } = params;
       const response = await api.get<GetProductsResponse>("/admin/products", {
-        params,
+        params: {
+          ...rest,
+          name: search, // API expects 'name' for search
+        },
       });
       return response.data;
     } catch (error) {
