@@ -4,11 +4,12 @@ export interface Admin {
   id: string;
   name: string;
   email: string;
-  userType: string;
+  user_type: string;
   isActive: boolean;
   createdAt: string;
   avatar?: string | null;
   phone?: string | null;
+  country_code?: string | null;
   emailVerified?: boolean;
   phoneVerified?: boolean;
   suspendedAt?: string | null;
