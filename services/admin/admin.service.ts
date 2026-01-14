@@ -3,24 +3,41 @@ import api from "@/lib/api";
 export interface Admin {
   id: string;
   name: string;
+  username?: string | null;
   email: string;
-  user_type: string;
-  isActive: boolean;
-  createdAt: string;
-  avatar?: string | null;
   phone?: string | null;
   country_code?: string | null;
-  emailVerified?: boolean;
-  phoneVerified?: boolean;
-  suspendedAt?: string | null;
-  suspendedBy?: string | null;
-  suspendedReason?: string | null;
+  firebase_uid?: string | null;
+  user_type: string;
+  avatar?: string | null;
+  email_verified?: boolean;
+  phone_verified?: boolean;
+  completion_percentage?: number;
+  token_version?: number;
+  onboarding_step?: number;
+  is_active: boolean;
+  suspended_at?: string | null;
+  suspended_by?: string | null;
+  suspended_reason?: string | null;
+  created_at: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface GetAdminsParams {
   page?: number;
   limit?: number;
   search?: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T[];
+  misc: {
+    total: number;
+    page: number;
+    pages: number;
+  };
 }
 
 export interface CreateAdminRequest {

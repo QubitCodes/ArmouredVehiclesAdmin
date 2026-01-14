@@ -27,7 +27,7 @@ export function AdminTable({ admins }: AdminTableProps) {
             Phone
           </div>
           <div className="min-w-[100px] text-sm font-semibold text-black">
-            User Type
+            User Role
           </div>
         </div>
       </div>
