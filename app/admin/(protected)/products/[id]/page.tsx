@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import Image from "next/image";
 import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Trash2, Eye } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
 import { useDeleteProduct } from "@/hooks/admin/product-management/use-products";
+import { normalizeImageUrl } from "@/lib/utils";
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
@@ -399,24 +401,28 @@ export default function ProductDetailPage() {
                   {((productData.image as string) || (productData.imageUrl as string)) && (
                     <div>
                       <h3 className="text-sm font-semibold mb-2">Cover Image</h3>
-                      <img
-                        src={(productData.image as string) || (productData.imageUrl as string)}
-                        alt={product.name}
-                        className="w-full max-w-md rounded-md border object-cover"
-                      />
+                      <div className="relative w-full max-w-md aspect-video rounded-md border overflow-hidden">
+                        <Image
+                          src={normalizeImageUrl((productData.image as string) || (productData.imageUrl as string)) || ""}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                     </div>
                   )}
-                  
+
                   {Array.isArray(productData.gallery) && productData.gallery.length > 0 && (
                     <div>
                       <h3 className="text-sm font-semibold mb-2">Gallery Images</h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {productData.gallery.map((url: string, index: number) => (
                           <div key={index} className="relative aspect-square border rounded-md overflow-hidden">
-                            <img
-                              src={url}
+                            <Image
+                              src={normalizeImageUrl(url) || ""}
                               alt={`${product.name} gallery ${index + 1}`}
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
                             />
                           </div>
                         ))}

@@ -1,38 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, XCircle, ChevronDown, Clock } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Product, productService } from "@/services/admin/product.service";
+import Image from "next/image";
+import { Package } from "lucide-react";
+import { Product } from "@/services/admin/product.service";
+import { normalizeImageUrl } from "@/lib/utils";
 
 interface ProductTableProps {
   products: Product[];
   fromVendor?: boolean;
 }
 
-export function ProductTable({ products, fromVendor = false }: ProductTableProps) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return await productService.updateProductStatus(id, status);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendor-products"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-    },
-  });
+export function ProductTable({
+  products,
+  fromVendor = false,
+}: ProductTableProps) {
   if (products.length === 0) {
     return (
       <div className="border p-8 text-center text-muted-foreground">
@@ -41,134 +23,90 @@ export function ProductTable({ products, fromVendor = false }: ProductTableProps
     );
   }
 
-  const handleStatusChange = async (productId: string, status: string) => {
-    try {
-      setUpdatingId(productId);
-      await updateStatusMutation.mutateAsync({ id: productId, status });
-      toast.success(`Product ${status === "approved" ? "approved" : "rejected"} successfully`);
-      router.refresh();
-    } catch (error) {
-      console.error("Error updating product status:", error);
-      toast.error("Failed to update product status");
-    } finally {
-      setUpdatingId(null);
-    }
+  const getPrice = (product: Product) => {
+    const price = product.base_price ?? product.basePrice ?? product.price ?? 0;
+    const currency = product.currency || "USD";
+    return `${currency} ${
+      typeof price === "number"
+        ? price.toFixed(2)
+        : parseFloat(String(price)).toFixed(2)
+    }`;
   };
 
-  const getStatusDisplay = (status?: string) => {
-    if (status === "draft") return "Pending";
-    if (status) return status.charAt(0).toUpperCase() + status.slice(1);
-    return "Active";
-  };
-
-  const getStatusColor = (status?: string) => {
-    if (status === "approved" || !status) return "text-green-600 dark:text-green-500";
-    if (status === "draft") return "text-yellow-600 dark:text-yellow-500";
-    if (status === "rejected") return "text-red-600 dark:text-red-500";
-    return "text-orange-600 dark:text-orange-500";
+  const getImageUrl = (product: Product) => {
+    return normalizeImageUrl(product.image || product.imageUrl);
   };
 
   return (
     <div className="w-full">
       <div className="w-full overflow-hidden mb-1">
-        <div className="grid items-center grid-cols-[2fr_120px_130px_100px] gap-4 px-4 py-3 bg-transparent">
-          <div className="text-sm font-semibold text-black">
-            Name
-          </div>
-          <div className="text-sm font-semibold text-black">
-            Stock
-          </div>
-          <div className="text-sm font-semibold text-black">
-            Base Price
-          </div>
-          <div className="text-sm font-semibold text-black">
-            Status
-          </div>
+        <div className="grid items-center grid-cols-[60px_2fr_120px_80px_130px] gap-4 px-4 py-3 bg-transparent">
+          <div className="text-sm font-semibold text-black">Image</div>
+          <div className="text-sm font-semibold text-black">Name</div>
+          <div className="text-sm font-semibold text-black">SKU</div>
+          <div className="text-sm font-semibold text-black">Stock</div>
+          <div className="text-sm font-semibold text-black">Base Price</div>
         </div>
       </div>
 
       <div className="w-full space-y-1">
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className="w-full overflow-hidden bg-bg-light transition-all hover:bg-muted/50 hover:shadow-sm"
-          >
-            <div className="grid items-center grid-cols-[2fr_120px_130px_100px] gap-4 px-4 py-3">
-              <Link
-                href={`/admin/products/${product.id}${fromVendor ? '?from=vendor' : ''}`}
-                className="font-medium text-foreground truncate cursor-pointer"
-              >
-                {product.name}
-              </Link>
-              <Link
-                href={`/admin/products/${product.id}${fromVendor ? '?from=vendor' : ''}`}
-                className="text-sm text-foreground hover:underline cursor-pointer"
-              >
-                {product.stock !== undefined && product.stock !== null 
-                  ? product.stock 
-                  : "—"}
-              </Link>
-              <Link
-                href={`/admin/products/${product.id}${fromVendor ? '?from=vendor' : ''}`}
-                className="text-sm text-foreground hover:underline cursor-pointer"
-              >
-                ${typeof product.basePrice === 'number' 
-                  ? product.basePrice.toFixed(2) 
-                  : typeof product.price === 'number'
-                  ? product.price.toFixed(2)
-                  : parseFloat(String(product.basePrice || product.price || '0')).toFixed(2)}
-              </Link>
-              <div onClick={(e) => e.stopPropagation()}>
-                {fromVendor ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={updatingId === product.id}
-                      className="flex items-center gap-1 outline-none"
-                    >
-                      <span
-                        className={`text-sm font-medium ${getStatusColor(product.status)} ${
-                          updatingId === product.id ? "opacity-50" : ""
-                        }`}
-                      >
-                        {updatingId === product.id ? "Updating..." : getStatusDisplay(product.status)}
-                      </span>
-                      {updatingId !== product.id && (
-                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                      )}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => handleStatusChange(product.id, "approved")}
-                        className="flex items-center gap-2 hover:bg-green-50 dark:hover:bg-green-950/20"
-                      >
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        Approve
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleStatusChange(product.id, "draft")}
-                        className="flex items-center gap-2 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
-                      >
-                        <Clock className="h-4 w-4 text-yellow-600" />
-                        Pending
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleStatusChange(product.id, "rejected")}
-                        className="flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-950/20"
-                      >
-                        <XCircle className="h-4 w-4 text-red-600" />
-                        Reject
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <span className={`text-sm font-medium ${getStatusColor(product.status)}`}>
-                    {getStatusDisplay(product.status)}
-                  </span>
-                )}
+        {products.map((product) => {
+          const imageUrl = getImageUrl(product);
+          const productLink = `/admin/products/${product.id}${
+            fromVendor ? "?from=vendor" : ""
+          }`;
+
+          return (
+            <div
+              key={product.id}
+              className="w-full overflow-hidden bg-bg-light transition-all hover:bg-muted/50 hover:shadow-sm"
+            >
+              <div className="grid items-center grid-cols-[60px_2fr_120px_80px_130px] gap-4 px-4 py-3">
+                <Link href={productLink} className="block">
+                  {imageUrl ? (
+                    <Image
+                      src={imageUrl}
+                      alt={product.name}
+                      width={48}
+                      height={48}
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded bg-muted">
+                      <Package className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                </Link>
+                <Link
+                  href={productLink}
+                  className="font-medium text-foreground truncate cursor-pointer hover:underline"
+                >
+                  {product.name}
+                </Link>
+                <Link
+                  href={productLink}
+                  className="text-sm text-foreground truncate cursor-pointer hover:underline"
+                >
+                  {product.sku || "—"}
+                </Link>
+                <Link
+                  href={productLink}
+                  className="text-sm text-foreground cursor-pointer hover:underline"
+                >
+                  {product.stock !== undefined && product.stock !== null
+                    ? product.stock
+                    : "—"}
+                </Link>
+                <Link
+                  href={productLink}
+                  className="text-sm text-foreground cursor-pointer hover:underline"
+                >
+                  {getPrice(product)}
+                </Link>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

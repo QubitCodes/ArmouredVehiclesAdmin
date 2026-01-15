@@ -6,6 +6,8 @@ export interface Product {
   description?: string;
   price?: number;
   basePrice?: number;
+  base_price?: number;
+  currency?: string;
   status?: string;
   category?: string;
   mainCategory?: string;
@@ -13,6 +15,7 @@ export interface Product {
   updatedAt?: string;
   created_at?: string;
   updated_at?: string;
+  image?: string | null;
   imageUrl?: string | null;
   stock?: number;
   sku?: string;

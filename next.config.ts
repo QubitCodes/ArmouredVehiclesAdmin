@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "armapi.qubyt.codes",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
   env: {
