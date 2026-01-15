@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { ArrowLeft, Package, Calendar, User, Truck, DollarSign } from "lucide-react";
+import { ArrowLeft, Package, Calendar, User, DollarSign } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -108,7 +108,7 @@ export default function VendorOrderDetailPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              Order {order.trackingNumber || `#${order.id.slice(0, 8)}`}
+              Order {order.tracking_number || `#${order.id.slice(0, 8)}`}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Order Details for Vendor
@@ -144,34 +144,12 @@ export default function VendorOrderDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="text-lg font-semibold text-foreground">
-              ${order.total 
-                ? parseFloat(order.total).toFixed(2)
-                : typeof order.totalAmount === 'number' 
-                ? order.totalAmount.toFixed(2) 
-                : parseFloat(String(order.totalAmount || '0')).toFixed(2)}
+              {order.total_amount
+                ? `${parseFloat(String(order.total_amount)).toFixed(2)} ${order.currency || 'AED'}`
+                : '—'}
             </p>
           </CardContent>
         </Card>
-
-        {order.estimatedDelivery && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Truck className="h-4 w-4" />
-                Estimated Delivery
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-semibold text-foreground">
-                {new Date(order.estimatedDelivery).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Customer Information */}
@@ -325,16 +303,16 @@ export default function VendorOrderDetailPage() {
               Created At
             </label>
             <p className="text-foreground mt-2">
-              {formatDate(order.createdAt)}
+              {order.created_at ? formatDate(order.created_at) : '—'}
             </p>
           </div>
-          {order.updatedAt && (
+          {order.updated_at && (
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Last Updated
               </label>
               <p className="text-foreground mt-2">
-                {formatDate(order.updatedAt)}
+                {formatDate(order.updated_at)}
               </p>
             </div>
           )}

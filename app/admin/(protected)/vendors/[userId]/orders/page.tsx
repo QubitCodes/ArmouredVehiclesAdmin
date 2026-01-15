@@ -14,10 +14,12 @@ export default function VendorOrdersPage() {
 
   // Fetch orders for this vendor
   const {
-    data: orders = [],
+    data,
     isLoading,
     error,
   } = useOrders({ vendorId });
+
+  const orders = data?.orders || [];
 
   // Show error toast when query fails
   useEffect(() => {

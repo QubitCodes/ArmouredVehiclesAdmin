@@ -31,13 +31,13 @@ export function useOrders(params: GetOrdersParams = {}) {
       if (params.vendorId) {
         const response: any = await vendorService.getVendorOrders(params.vendorId, params);
         const data = response.data || [];
-        const misc = response.misc || {};
+        const misc = response.misc as { page?: number; pages?: number; total?: number } | undefined;
         return {
           orders: data,
           pagination: {
-            page: misc.page ?? params.page ?? 1,
-            totalPages: misc.pages ?? Math.ceil((misc.total ?? data.length) / limit),
-            total: misc.total ?? data.length,
+            page: misc?.page ?? params.page ?? 1,
+            totalPages: misc?.pages ?? Math.ceil((misc?.total ?? data.length) / limit),
+            total: misc?.total ?? data.length,
             limit,
           },
         };
@@ -45,13 +45,13 @@ export function useOrders(params: GetOrdersParams = {}) {
 
       const response = await orderService.getOrders(params);
       const orders = response.data || [];
-      const misc = response.misc || {};
+      const misc = response.misc as { page?: number; pages?: number; total?: number } | undefined;
       return {
         orders,
         pagination: {
-          page: misc.page ?? params.page ?? 1,
-          totalPages: misc.pages ?? Math.ceil((misc.total ?? orders.length) / limit),
-          total: misc.total ?? orders.length,
+          page: misc?.page ?? params.page ?? 1,
+          totalPages: misc?.pages ?? Math.ceil((misc?.total ?? orders.length) / limit),
+          total: misc?.total ?? orders.length,
           limit,
         },
       };
