@@ -114,7 +114,7 @@ class ProductService {
       const response = await api.get<GetProductsResponse>("/admin/products", {
         params: {
           ...rest,
-          name: search, // API expects 'name' for search
+          search: search, // API expects 'name' for search
         },
       });
       return response.data;

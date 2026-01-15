@@ -5,23 +5,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import Image from "next/image";
-import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Trash2, Eye } from "lucide-react";
+import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Eye } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
-import { useDeleteProduct } from "@/hooks/admin/product-management/use-products";
 import { normalizeImageUrl } from "@/lib/utils";
 
 // Helper function to format field names (camelCase to Title Case)
@@ -193,16 +182,11 @@ export default function ProductDetailPage() {
   const productId = params.id as string;
   const fromVendor = searchParams.get('from') === 'vendor';
 
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
   const {
     data: product,
     isLoading,
     error,
-  } = useProduct(productId, !isDeleting);
-
-  const deleteProductMutation = useDeleteProduct();
+  } = useProduct(productId);
 
   const [activeTab, setActiveTab] = useState(SECTIONS[0].id);
 
@@ -212,7 +196,7 @@ export default function ProductDetailPage() {
       const axiosError = error as AxiosError<{ message?: string; error?: string }>;
       if (axiosError?.response?.status === 404) {
         // Product doesn't exist, redirect to listing page
-        router.replace("/admin/products/admin");
+        router.replace("/admin/products");
         return;
       }
       const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Failed to fetch product";
@@ -345,17 +329,9 @@ export default function ProductDetailPage() {
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
-            <Button variant="default" onClick={() => router.push(`/admin/products/${product.id}/edit`)}>
+            <Button variant="secondary" onClick={() => router.push(`/admin/products/${product.id}/edit`)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit Product
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={deleteProductMutation.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
             </Button>
           </div>
         )}
@@ -495,58 +471,6 @@ export default function ProductDetailPage() {
           </Card>
         </div>
       </div>
-
-       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the product &quot;{product.name}&quot; 
-              and remove all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteProductMutation.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  setShowDeleteDialog(false);
-                  setIsDeleting(true); // Disable product query before deletion
-                  await deleteProductMutation.mutateAsync(productId);
-                  toast.success("Product deleted successfully!");
-                  // Navigate immediately after deletion
-                  router.replace("/admin/products/admin");
-                } catch (error) {
-                  console.error(error);
-                  setIsDeleting(false); // Re-enable query if deletion fails
-                  const axiosError = error as AxiosError<{
-                    message?: string;
-                    error?: string;
-                  }>;
-
-                  let errorMessage = "Failed to delete product. Please try again.";
-                  
-                  if (axiosError?.response?.data?.message) {
-                    errorMessage = axiosError.response.data.message;
-                  } else if (axiosError?.response?.data?.error) {
-                    errorMessage = axiosError.response.data.error;
-                  }
-
-                  toast.error(errorMessage);
-                  setShowDeleteDialog(false);
-                }
-              }}
-              disabled={deleteProductMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteProductMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

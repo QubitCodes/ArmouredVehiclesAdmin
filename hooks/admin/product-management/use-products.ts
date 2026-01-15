@@ -97,9 +97,12 @@ export function useDeleteProduct() {
       queryClient.removeQueries({ queryKey: ["product", id] });
     },
     onSuccess: (_, id) => {
-      // Invalidate and refetch products list after successful deletion
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      // Ensure the product query is removed (redundant but safe)
+      // Invalidate and immediately refetch all products queries
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+        refetchType: "all",
+      });
+      // Ensure the product query is removed
       queryClient.removeQueries({ queryKey: ["product", id] });
     },
   });
