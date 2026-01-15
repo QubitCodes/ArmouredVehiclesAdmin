@@ -42,14 +42,17 @@ export interface OrderItem {
 export interface GetOrdersResponse {
   success: boolean;
   data: Order[];
-  total: number;
-  page: number;
-  limit: number;
+  misc?: {
+    total: number;
+    page: number;
+    pages: number;
+  };
 }
 
 export interface GetOrdersParams {
   page?: number;
   limit?: number;
+  search?: string;
   vendorId?: string;
 }
 

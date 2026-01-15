@@ -1,19 +1,34 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
+import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
 import { useOrders } from "@/hooks/admin/order-management/use-orders";
 import { OrderTable } from "@/components/admin/order-management/order-table";
 
-export default function OrdersPage() {
-  // Use React Query to fetch orders
-  const {
-    data: orders = [],
-    isLoading,
-    error,
-  } = useOrders();
+function OrdersContent() {
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search") || "";
+  const page = Number(searchParams.get("page")) || 1;
+
+  // Use React Query to fetch orders with search and pagination parameters
+  const { data, isLoading, error } = useOrders({
+    search: search || undefined,
+    page,
+    limit: 10,
+  });
+
+  const orders = data?.orders || [];
+  const pagination = data?.pagination || {
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    limit: 10,
+  };
 
   // Show error toast when query fails
   useEffect(() => {
@@ -34,6 +49,10 @@ export default function OrdersPage() {
         </p>
       </div>
 
+      <div className="flex items-center justify-end">
+        <SearchInput placeholder="Search by order ID or customer" />
+      </div>
+
       {isLoading ? (
         <div className="flex min-h-[calc(100vh-300px)] items-center justify-center">
           <div className="flex flex-col items-center gap-4">
@@ -44,9 +63,34 @@ export default function OrdersPage() {
           </div>
         </div>
       ) : (
-        <OrderTable orders={orders} />
+        <>
+          <OrderTable orders={orders} />
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+          />
+        </>
       )}
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[calc(100vh-300px)] items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Spinner size="3xl" className="text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">
+              Loading...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <OrdersContent />
+    </Suspense>
   );
 }
 
