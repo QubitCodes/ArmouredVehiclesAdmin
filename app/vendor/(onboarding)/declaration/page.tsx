@@ -178,12 +178,12 @@ export default function DeclarationPage() {
     if (profileData?.profile && !isProfileLoading) {
       const p = profileData.profile;
       form.reset({
-        natureOfBusiness: p.nature_of_business || [],
+        natureOfBusiness: Array.isArray(p.nature_of_business) ? p.nature_of_business : [],
         controlledDualUseItems: p.controlled_dual_use_items || "",
         manufacturingSourceName: p.manufacturing_source_name || "",
-        endUseMarket: p.end_use_markets || [],
-        licenses: p.license_types || [],
-        operatingCountries: p.operating_countries || [],
+        endUseMarket: Array.isArray(p.end_use_markets) ? p.end_use_markets : [],
+        licenses: Array.isArray(p.license_types) ? p.license_types : [],
+        operatingCountries: Array.isArray(p.operating_countries) ? p.operating_countries : [],
         countryInput: "",
         onSanctionsList: p.is_on_sanctions_list ? "yes" : "no",
         agreeToCompliance: p.compliance_terms_accepted || false,

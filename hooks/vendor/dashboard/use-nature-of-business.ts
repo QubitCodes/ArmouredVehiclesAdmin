@@ -29,7 +29,10 @@ export function useNatureOfBusiness() {
       if (Array.isArray(response.data)) {
         return response.data;
       }
-      return response.data.data || [];
+      if (response.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+      return [];
     },
     staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
     gcTime: 1000 * 60 * 60 * 24, // Keep in cache for 24 hours (gcTime replaces cacheTime in React Query v5)
