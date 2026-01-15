@@ -8,22 +8,12 @@ interface OrderTableProps {
   basePath?: string;
 }
 
-type StatusType = "success" | "warning" | "error" | "info" | "default";
-
-const statusStyles: Record<StatusType, string> = {
-  success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  warning: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  info: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  default: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
-};
-
 export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTableProps) {
   const router = useRouter();
 
   if (orders.length === 0) {
     return (
-      <div className="border rounded-lg p-8 text-center text-muted-foreground">
+      <div className="border p-8 text-center text-muted-foreground">
         No orders found.
       </div>
     );
@@ -55,133 +45,98 @@ export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTablePro
       .join(" ");
   };
 
-  const getOrderStatusType = (status?: string): StatusType => {
-    if (!status) return "default";
+  const getStatusColor = (status?: string | null, type: "order" | "payment" | "shipment" = "order"): string => {
+    if (!status) return "text-foreground";
     const s = status.toLowerCase();
-    if (["completed", "delivered", "approved"].includes(s)) return "success";
-    if (["pending", "pending_review", "pending_approval", "processing"].includes(s)) return "warning";
-    if (["cancelled", "rejected", "failed"].includes(s)) return "error";
-    if (["shipped", "in_transit"].includes(s)) return "info";
-    return "default";
-  };
 
-  const getPaymentStatusType = (status?: string | null): StatusType => {
-    if (!status) return "default";
-    const s = status.toLowerCase();
-    if (["paid", "completed", "success"].includes(s)) return "success";
-    if (["pending", "awaiting"].includes(s)) return "warning";
-    if (["failed", "declined", "refunded"].includes(s)) return "error";
-    return "default";
-  };
+    if (type === "order") {
+      if (["completed", "delivered", "approved"].includes(s)) return "text-green-600 dark:text-green-500";
+      if (["pending", "pending_review", "pending_approval", "processing"].includes(s)) return "text-yellow-600 dark:text-yellow-500";
+      if (["cancelled", "rejected", "failed"].includes(s)) return "text-red-600 dark:text-red-500";
+      if (["shipped", "in_transit"].includes(s)) return "text-blue-600 dark:text-blue-500";
+    }
 
-  const getShipmentStatusType = (status?: string | null): StatusType => {
-    if (!status) return "default";
-    const s = status.toLowerCase();
-    if (["delivered", "completed"].includes(s)) return "success";
-    if (["pending", "processing", "ready"].includes(s)) return "warning";
-    if (["shipped", "in_transit", "out_for_delivery"].includes(s)) return "info";
-    if (["failed", "returned", "cancelled"].includes(s)) return "error";
-    return "default";
-  };
+    if (type === "payment") {
+      if (["paid", "completed", "success"].includes(s)) return "text-green-600 dark:text-green-500";
+      if (["pending", "awaiting"].includes(s)) return "text-yellow-600 dark:text-yellow-500";
+      if (["failed", "declined", "refunded"].includes(s)) return "text-red-600 dark:text-red-500";
+    }
 
-  const StatusBadge = ({ status, type }: { status: string; type: StatusType }) => (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyles[type]}`}
-    >
-      {status}
-    </span>
-  );
+    if (type === "shipment") {
+      if (["delivered", "completed"].includes(s)) return "text-green-600 dark:text-green-500";
+      if (["pending", "processing", "ready"].includes(s)) return "text-yellow-600 dark:text-yellow-500";
+      if (["shipped", "in_transit", "out_for_delivery"].includes(s)) return "text-blue-600 dark:text-blue-500";
+      if (["failed", "returned", "cancelled"].includes(s)) return "text-red-600 dark:text-red-500";
+    }
+
+    return "text-foreground";
+  };
 
   return (
-    <div className="w-full overflow-x-auto">
-      <table className="w-full min-w-[900px]">
-        <thead>
-          <tr className="border-b">
-            <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-              Customer
-            </th>
-            <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-              Email
-            </th>
-            <th className="text-right py-3 px-4 text-sm font-semibold text-foreground">
-              Total
-            </th>
-            <th className="text-center py-3 px-4 text-sm font-semibold text-foreground">
-              Status
-            </th>
-            <th className="text-center py-3 px-4 text-sm font-semibold text-foreground">
-              Payment
-            </th>
-            <th className="text-center py-3 px-4 text-sm font-semibold text-foreground">
-              Shipment
-            </th>
-            <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
-              Created
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr
-              key={order.id}
-              onClick={() => router.push(`${basePath}/${order.id}`)}
-              className="border-b bg-bg-light hover:bg-muted/50 cursor-pointer transition-colors"
-            >
-              <td className="py-3 px-4">
-                <span className="font-medium text-foreground truncate block max-w-[150px]">
-                  {order.user?.name || "—"}
+    <div className="w-full">
+      <div className="w-full overflow-hidden mb-1">
+        <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)] gap-4 px-4 py-3 bg-transparent">
+          <div className="min-w-[120px] text-sm font-semibold text-black">
+            Customer
+          </div>
+          <div className="min-w-[160px] text-sm font-semibold text-black">
+            Email
+          </div>
+          <div className="min-w-[120px] text-sm font-semibold text-black">
+            Total
+          </div>
+          <div className="min-w-[100px] text-sm font-semibold text-black">
+            Status
+          </div>
+          <div className="min-w-[100px] text-sm font-semibold text-black">
+            Payment
+          </div>
+          <div className="min-w-[100px] text-sm font-semibold text-black">
+            Shipment
+          </div>
+          <div className="min-w-[100px] text-sm font-semibold text-black">
+            Created
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full space-y-1">
+        {orders.map((order) => (
+          <div
+            key={order.id}
+            onClick={() => router.push(`${basePath}/${order.id}`)}
+            className="w-full overflow-hidden bg-bg-light transition-all hover:shadow-sm cursor-pointer"
+          >
+            <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)] gap-4 px-4 py-3">
+              <div className="font-medium text-foreground">
+                {order.user?.name || "—"}
+              </div>
+              <div className="text-foreground">{order.user?.email || "—"}</div>
+              <div className="text-foreground">
+                {formatAmount(order.total_amount, order.currency)}
+              </div>
+              <div className="text-foreground">
+                <span className={`text-sm capitalize ${getStatusColor(order.status, "order")}`}>
+                  {formatStatusLabel(order.status)}
                 </span>
-              </td>
-              <td className="py-3 px-4">
-                <span className="text-sm text-muted-foreground truncate block max-w-[180px]">
-                  {order.user?.email || "—"}
+              </div>
+              <div className="text-foreground">
+                <span className={`text-sm capitalize ${getStatusColor(order.payment_status, "payment")}`}>
+                  {formatStatusLabel(order.payment_status)}
                 </span>
-              </td>
-            
-              <td className="py-3 px-4 text-right">
-                <span className="text-sm font-medium text-foreground">
-                  {formatAmount(order.total_amount, order.currency)}
+              </div>
+              <div className="text-foreground">
+                <span className={`text-sm capitalize ${getStatusColor(order.shipment_status, "shipment")}`}>
+                  {formatStatusLabel(order.shipment_status)}
                 </span>
-              </td>
-              <td className="py-3 px-4 text-center">
-                {order.status ? (
-                  <StatusBadge
-                    status={formatStatusLabel(order.status)}
-                    type={getOrderStatusType(order.status)}
-                  />
-                ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
-                )}
-              </td>
-              <td className="py-3 px-4 text-center">
-                {order.payment_status ? (
-                  <StatusBadge
-                    status={formatStatusLabel(order.payment_status)}
-                    type={getPaymentStatusType(order.payment_status)}
-                  />
-                ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
-                )}
-              </td>
-              <td className="py-3 px-4 text-center">
-                {order.shipment_status ? (
-                  <StatusBadge
-                    status={formatStatusLabel(order.shipment_status)}
-                    type={getShipmentStatusType(order.shipment_status)}
-                  />
-                ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
-                )}
-              </td>
-              <td className="py-3 px-4">
-                <span className="text-sm text-muted-foreground">
-                  {formatDate(order.created_at)}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </div>
+              <div className="text-foreground">
+                {formatDate(order.created_at)}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
