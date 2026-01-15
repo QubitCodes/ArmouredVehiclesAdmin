@@ -4,7 +4,7 @@ export interface Order {
   id: string;
   user_id: string;
   tracking_number?: string | null;
-  status?: string;
+  order_status?: string;
   total_amount?: number | string | null;
   currency?: string;
   payment_status?: string | null;
