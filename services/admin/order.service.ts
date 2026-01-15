@@ -6,7 +6,9 @@ export interface Order {
   tracking_number?: string | null;
   status?: string;
   total_amount?: number | string | null;
+  currency?: string;
   payment_status?: string | null;
+  shipment_status?: string | null;
   created_at?: string | null;
   updated_at?: string;
   items?: OrderItem[];
