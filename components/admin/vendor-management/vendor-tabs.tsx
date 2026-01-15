@@ -2,6 +2,7 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Info, Package, ShoppingCart } from "lucide-react";
 
 interface VendorTabsProps {
   userId: string;
@@ -16,16 +17,19 @@ export function VendorTabs({ userId }: VendorTabsProps) {
       id: "details",
       label: "Info",
       path: `/admin/vendors/${userId}`,
+      icon: Info,
     },
     {
       id: "products",
       label: "Products",
       path: `/admin/vendors/${userId}/products`,
+      icon: Package,
     },
     {
       id: "orders",
       label: "Orders",
       path: `/admin/vendors/${userId}/orders`,
+      icon: ShoppingCart,
     },
   ];
 
@@ -43,13 +47,14 @@ export function VendorTabs({ userId }: VendorTabsProps) {
               key={tab.id}
               onClick={() => router.push(tab.path)}
               className={cn(
-                "px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
+                "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
                 isActive
                   ? "text-primary border-primary"
                   : "text-muted-foreground border-transparent hover:text-foreground hover:border-muted-foreground"
               )}
             >
-              {tab.label}
+              <tab.icon className="h-4 w-4" />
+              <span>{tab.label}</span>
             </button>
           );
         })}

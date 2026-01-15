@@ -17,7 +17,7 @@ function VendorsContent() {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
-  const onboardingStatus = searchParams.get("onboarding_status") || "approved";
+  const onboardingStatus = searchParams.get("onboarding_status") || "pending_verification";
 
   // Use React Query to fetch vendors with search, pagination, and onboarding_status parameters
   const { data, isLoading, error } = useVendors({

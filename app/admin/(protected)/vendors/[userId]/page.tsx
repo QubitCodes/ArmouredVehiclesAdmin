@@ -19,6 +19,25 @@ const formatFieldName = (fieldName: string): string => {
     .trim();
 };
 
+// Helper function to map onboarding step to step name
+const getOnboardingStepName = (step: number | null | undefined): string => {
+  if (step === null) {
+    return "Completed";
+  }
+
+  const stepMap: Record<number, string> = {
+    0: "Create Store",
+    1: "Company Information",
+    2: "Contact Person",
+    3: "Declaration",
+    4: "Account Preferences",
+    5: "Bank Details",
+    6: "Verification",
+  };
+
+  return stepMap[step as number] || "—";
+};
+
 // Helper function to format field value
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const formatFieldValue = (value: unknown, fieldName: string): string => {
@@ -113,14 +132,27 @@ export default function VendorDetailPage() {
     const value = vendorProfileData?.[fieldName];
     const formattedValue = formatFieldValue(value, fieldName);
 
+    const isEmail = fieldName.toLowerCase().includes("email") && value;
+    const isPhone = (fieldName.toLowerCase().includes("phone") || fieldName.toLowerCase().includes("mobile")) && value;
+
     return (
       <div key={fieldName}>
         <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {formatFieldName(fieldName)}
         </label>
-        <p className="text-foreground mt-2">
-          {formattedValue}
-        </p>
+        <div className="text-foreground mt-2">
+          {isEmail ? (
+            <a href={`mailto:${value}`} className="text-primary hover:underline">
+              {formattedValue}
+            </a>
+          ) : isPhone ? (
+            <a href={`tel:${value}`} className="text-primary hover:underline">
+              {formattedValue}
+            </a>
+          ) : (
+            formattedValue
+          )}
+        </div>
       </div>
     );
   };
@@ -137,14 +169,6 @@ export default function VendorDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Vendor ID
-              </label>
-              <p className="text-foreground mt-2 font-mono text-sm">
-                {vendor.id}
-              </p>
-            </div>
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Name
@@ -165,17 +189,23 @@ export default function VendorDetailPage() {
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Email
               </label>
-              <p className="text-foreground mt-2">
-                {vendor.email}
-              </p>
+              <div className="text-foreground mt-2">
+                <a href={`mailto:${vendor.email}`} className="text-primary hover:underline">
+                  {vendor.email}
+                </a>
+              </div>
             </div>
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Phone
               </label>
-              <p className="text-foreground mt-2">
-                {vendor.phone ? `${vendor.country_code || ""} ${vendor.phone}` : "—"}
-              </p>
+              <div className="text-foreground mt-2">
+                {vendor.phone ? (
+                  <a href={`tel:${vendor.phone}`} className="text-primary hover:underline">
+                    {vendor.country_code || ""} {vendor.phone}
+                  </a>
+                ) : "—"}
+              </div>
             </div>
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -211,10 +241,10 @@ export default function VendorDetailPage() {
             </div>
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Completion Percentage
+                Onboarding Step
               </label>
               <p className="text-foreground mt-2">
-                {vendor.completion_percentage}%
+                {getOnboardingStepName(vendor.onboarding_step)}
               </p>
             </div>
           </div>
