@@ -6,6 +6,8 @@ export interface Product {
   description?: string;
   price?: number;
   basePrice?: number;
+  base_price?: number;
+  currency?: string;
   status?: string;
   category?: string;
   mainCategory?: string;
@@ -13,6 +15,7 @@ export interface Product {
   updatedAt?: string;
   created_at?: string;
   updated_at?: string;
+  image?: string | null;
   imageUrl?: string | null;
   stock?: number;
   sku?: string;
@@ -96,6 +99,7 @@ export interface GetProductsResponse {
 export interface GetProductsParams {
   page?: number;
   limit?: number;
+  search?: string;
   vendorId?: string;
   vendor_id?: string; // Add support for backend param style
 }
@@ -106,8 +110,12 @@ class ProductService {
    */
   async getProducts(params: GetProductsParams = {}) {
     try {
+      const { search, ...rest } = params;
       const response = await api.get<GetProductsResponse>("/admin/products", {
-        params,
+        params: {
+          ...rest,
+          search: search, // API expects 'name' for search
+        },
       });
       return response.data;
     } catch (error) {

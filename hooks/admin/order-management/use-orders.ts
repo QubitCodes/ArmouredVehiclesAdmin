@@ -8,23 +8,53 @@ import {
 
 import { vendorService } from "@/services/admin/vendor.service";
 
+interface OrdersResponse {
+  orders: Order[];
+  pagination: {
+    page: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+}
+
 /**
  * React Query hook for fetching orders
  */
 export function useOrders(params: GetOrdersParams = {}) {
-  return useQuery<Order[], AxiosError>({
+  return useQuery<OrdersResponse, AxiosError>({
     queryKey: ["orders", params],
     queryFn: async () => {
+      const limit = params.limit || 10;
+
       // If vendorId is present, use the nested route
       if (params.vendorId) {
-        // Need to cast or ensure types match. vendorService returns { success, data, ... }
-        // getVendorOrders returns Promise<any> currently in my edit, let's fix types implicitly
         const response: any = await vendorService.getVendorOrders(params.vendorId, params);
-        return response.data || [];
+        const data = response.data || [];
+        const misc = response.misc as { page?: number; pages?: number; total?: number } | undefined;
+        return {
+          orders: data,
+          pagination: {
+            page: misc?.page ?? params.page ?? 1,
+            totalPages: misc?.pages ?? Math.ceil((misc?.total ?? data.length) / limit),
+            total: misc?.total ?? data.length,
+            limit,
+          },
+        };
       }
-      
+
       const response = await orderService.getOrders(params);
-      return response.data || [];
+      const orders = response.data || [];
+      const misc = response.misc as { page?: number; pages?: number; total?: number } | undefined;
+      return {
+        orders,
+        pagination: {
+          page: misc?.page ?? params.page ?? 1,
+          totalPages: misc?.pages ?? Math.ceil((misc?.total ?? orders.length) / limit),
+          total: misc?.total ?? orders.length,
+          limit,
+        },
+      };
     },
   });
 }

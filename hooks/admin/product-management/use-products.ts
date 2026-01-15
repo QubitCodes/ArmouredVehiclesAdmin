@@ -8,16 +8,34 @@ import {
   UpdateProductRequest,
 } from "@/services/admin/product.service";
 
+interface ProductsResponse {
+  products: Product[];
+  pagination: {
+    page: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+}
+
 /**
  * React Query hook for fetching products
  */
 export function useProducts(params: GetProductsParams = {}) {
-  return useQuery<Product[], AxiosError>({
+  return useQuery<ProductsResponse, AxiosError>({
     queryKey: ["products", params],
     queryFn: async () => {
       const response = await productService.getProducts(params);
-      // Response structure: { products: [...], total, page, limit }
-      return response.data || [];
+      const misc = response.misc || { total: 0, page: 1, limit: 10, pages: 1 };
+      return {
+        products: response.data || [],
+        pagination: {
+          page: misc.page,
+          totalPages: misc.pages,
+          total: misc.total,
+          limit: misc.limit,
+        },
+      };
     },
   });
 }
@@ -79,9 +97,12 @@ export function useDeleteProduct() {
       queryClient.removeQueries({ queryKey: ["product", id] });
     },
     onSuccess: (_, id) => {
-      // Invalidate and refetch products list after successful deletion
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      // Ensure the product query is removed (redundant but safe)
+      // Invalidate and immediately refetch all products queries
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+        refetchType: "all",
+      });
+      // Ensure the product query is removed
       queryClient.removeQueries({ queryKey: ["product", id] });
     },
   });

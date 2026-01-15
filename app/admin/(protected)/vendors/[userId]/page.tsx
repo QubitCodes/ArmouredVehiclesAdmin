@@ -174,7 +174,7 @@ export default function VendorDetailPage() {
                 Phone
               </label>
               <p className="text-foreground mt-2">
-                {vendor.phone ? `${vendor.countryCode || ""} ${vendor.phone}` : "—"}
+                {vendor.phone ? `${vendor.country_code || ""} ${vendor.phone}` : "—"}
               </p>
             </div>
             <div>
@@ -182,7 +182,7 @@ export default function VendorDetailPage() {
                 Email Verified
               </label>
               <p className="text-foreground mt-2">
-                {vendor.emailVerified ? "Yes" : "No"}
+                {vendor.email_verified ? "Yes" : "No"}
               </p>
             </div>
             <div>
@@ -190,7 +190,7 @@ export default function VendorDetailPage() {
                 Phone Verified
               </label>
               <p className="text-foreground mt-2">
-                {vendor.phoneVerified ? "Yes" : "No"}
+                {vendor.phone_verified ? "Yes" : "No"}
               </p>
             </div>
             <div>
@@ -200,12 +200,12 @@ export default function VendorDetailPage() {
               <p className="text-foreground mt-2">
                 <span
                   className={`text-sm font-medium ${
-                    vendor.isActive
+                    vendor.is_active
                       ? "text-green-600 dark:text-green-500"
                       : "text-orange-600 dark:text-orange-500"
                   }`}
                 >
-                  {vendor.isActive ? "Active" : "Inactive"}
+                  {vendor.is_active ? "Active" : "Inactive"}
                 </span>
               </p>
             </div>
@@ -214,7 +214,7 @@ export default function VendorDetailPage() {
                 Completion Percentage
               </label>
               <p className="text-foreground mt-2">
-                {vendor.completionPercentage}%
+                {vendor.completion_percentage}%
               </p>
             </div>
           </div>
@@ -409,16 +409,16 @@ export default function VendorDetailPage() {
                 <p className="text-foreground mt-2">
                   <span
                     className={`text-sm font-medium capitalize ${
-                      vendor.userProfile?.onboardingStatus === "approved"
+                      vendor.userProfile?.onboarding_status === "approved"
                         ? "text-green-600 dark:text-green-500"
-                        : vendor.userProfile?.onboardingStatus === "under_review"
+                        : vendor.userProfile?.onboarding_status === "under_review"
                         ? "text-yellow-600 dark:text-yellow-500"
-                        : vendor.userProfile?.onboardingStatus === "rejected"
+                        : vendor.userProfile?.onboarding_status === "rejected"
                         ? "text-red-600 dark:text-red-500"
                         : "text-gray-600 dark:text-gray-500"
                     }`}
                   >
-                    {vendor.userProfile?.onboardingStatus?.replace("_", " ") || "N/A"}
+                    {vendor.userProfile?.onboarding_status?.replace("_", " ") || "N/A"}
                   </span>
                 </p>
               </div>
@@ -449,7 +449,7 @@ export default function VendorDetailPage() {
               Created At
             </label>
             <p className="text-foreground mt-2">
-              {new Date(vendor.createdAt).toLocaleString("en-GB", {
+              {new Date(vendor.created_at).toLocaleString("en-GB", {
                 day: "2-digit",
                 month: "long",
                 year: "numeric",
@@ -458,13 +458,13 @@ export default function VendorDetailPage() {
               })}
             </p>
           </div>
-          {vendor.userProfile?.updatedAt && (
+          {vendor.userProfile?.updated_at && (
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Last Updated
               </label>
               <p className="text-foreground mt-2">
-                {new Date(vendor.userProfile.updatedAt).toLocaleString("en-GB", {
+                {new Date(vendor.userProfile.updated_at).toLocaleString("en-GB", {
                   day: "2-digit",
                   month: "long",
                   year: "numeric",

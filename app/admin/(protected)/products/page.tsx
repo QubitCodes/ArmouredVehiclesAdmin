@@ -1,23 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
+import { Pagination } from "@/components/ui/pagination";
 import { useProducts } from "@/hooks/admin/product-management/use-products";
 import { ProductTable } from "@/components/admin/product-management/product-table";
 import { ProductActions } from "@/components/admin/product-management/product-actions";
-import { AddProductDialog } from "@/components/admin/product-management/add-product-dialog";
 
-export default function ProductsPage() {
-  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+function ProductsContent() {
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search") || "";
+  const page = Number(searchParams.get("page")) || 1;
 
-  // Use React Query to fetch products
+  // Use React Query to fetch products with search and pagination parameters
   const {
-    data: products = [],
+    data,
     isLoading,
     error,
-  } = useProducts();
+  } = useProducts({ search: search || undefined, page, limit: 10 });
+
+  const products = data?.products || [];
+  const pagination = data?.pagination || { page: 1, totalPages: 1, total: 0, limit: 10 };
 
   // Show error toast when query fails
   useEffect(() => {
@@ -26,10 +32,6 @@ export default function ProductsPage() {
       toast.error("Failed to fetch products");
     }
   }, [error]);
-
-  const handleAddProduct = () => {
-    setIsAddProductDialogOpen(true);
-  };
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -42,7 +44,7 @@ export default function ProductsPage() {
         </p>
       </div>
 
-      <ProductActions onAddProduct={handleAddProduct} />
+      <ProductActions />
 
       {isLoading ? (
         <div className="flex min-h-[calc(100vh-300px)] items-center justify-center">
@@ -54,14 +56,34 @@ export default function ProductsPage() {
           </div>
         </div>
       ) : (
-        <ProductTable products={products} />
+        <>
+          <ProductTable products={products} />
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+          />
+        </>
       )}
-
-      <AddProductDialog
-        open={isAddProductDialogOpen}
-        onOpenChange={setIsAddProductDialogOpen}
-      />
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[calc(100vh-300px)] items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Spinner size="3xl" className="text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">
+              Loading...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }
 

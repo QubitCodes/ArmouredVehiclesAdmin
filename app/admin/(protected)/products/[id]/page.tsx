@@ -4,23 +4,24 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { ArrowLeft, Package, Calendar, Edit, Settings, ShoppingCart, Image as ImageIcon, Shield, Trash2, Eye } from "lucide-react";
+import Image from "next/image";
+import {
+  ArrowLeft,
+  Package,
+  Calendar,
+  Edit,
+  Settings,
+  ShoppingCart,
+  Image as ImageIcon,
+  Shield,
+  Eye,
+} from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
-import { useDeleteProduct } from "@/hooks/admin/product-management/use-products";
+import { normalizeImageUrl } from "@/lib/utils";
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
@@ -29,7 +30,6 @@ const formatFieldName = (fieldName: string): string => {
     .replace(/^./, (str) => str.toUpperCase())
     .trim();
 };
-
 
 // Helper function to format field value
 const formatFieldValue = (value: unknown, fieldName: string): string => {
@@ -49,13 +49,21 @@ const formatFieldValue = (value: unknown, fieldName: string): string => {
   }
 
   if (typeof value === "object" && value !== null) {
-      // Handle Category objects (main_category, category, sub_category)
-    if ("name" in value && typeof (value as { name: string }).name === "string") {
-        return (value as { name: string }).name;
+    // Handle Category objects (main_category, category, sub_category)
+    if (
+      "name" in value &&
+      typeof (value as { name: string }).name === "string"
+    ) {
+      return (value as { name: string }).name;
     }
 
     // Handle date objects
-    if (fieldName === "signatureDate" && "day" in value && "month" in value && "year" in value) {
+    if (
+      fieldName === "signatureDate" &&
+      "day" in value &&
+      "month" in value &&
+      "year" in value
+    ) {
       const dateObj = value as { day?: number; month?: number; year?: number };
       if (dateObj.day && dateObj.month && dateObj.year) {
         return `${dateObj.day}/${dateObj.month}/${dateObj.year}`;
@@ -73,19 +81,34 @@ const formatFieldValue = (value: unknown, fieldName: string): string => {
   }
 
   if (typeof value === "string") {
-      // Check if it's a JSON array string for specific fields
-      if (["vehicle_fitment", "specifications", "features", "materials", "performance", "drive_types", "sizes", "thickness", "colors", "pricing_terms"].includes(fieldName)) {
-          try {
-              const parsed = JSON.parse(value);
-              if (Array.isArray(parsed)) {
-                  if (parsed.length === 0) return "—";
-                  return parsed.filter((item) => item !== "" && item !== null).join(", ");
-              }
-          } catch (e) {
-              // Not valid JSON, treat as normal string
-          }
+    // Check if it's a JSON array string for specific fields
+    if (
+      [
+        "vehicle_fitment",
+        "specifications",
+        "features",
+        "materials",
+        "performance",
+        "drive_types",
+        "sizes",
+        "thickness",
+        "colors",
+        "pricing_terms",
+      ].includes(fieldName)
+    ) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 0) return "—";
+          return parsed
+            .filter((item) => item !== "" && item !== null)
+            .join(", ");
+        }
+      } catch (e) {
+        // Not valid JSON, treat as normal string
       }
-      return value;
+    }
+    return value;
   }
 
   return String(value);
@@ -127,7 +150,7 @@ const SECTIONS = [
       "performance",
       "specifications",
       "technical_description",
-      "vehicle_fitment", 
+      "vehicle_fitment",
       "sizes",
       "thickness",
       "colors",
@@ -140,7 +163,7 @@ const SECTIONS = [
       "packing_weight",
       "packing_weight_unit",
       "min_order_quantity",
-      "drive_types"
+      "drive_types",
     ],
   },
   {
@@ -189,31 +212,28 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const productId = params.id as string;
-  const fromVendor = searchParams.get('from') === 'vendor';
+  const fromVendor = searchParams.get("from") === "vendor";
 
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const {
-    data: product,
-    isLoading,
-    error,
-  } = useProduct(productId, !isDeleting);
-
-  const deleteProductMutation = useDeleteProduct();
+  const { data: product, isLoading, error } = useProduct(productId);
 
   const [activeTab, setActiveTab] = useState(SECTIONS[0].id);
 
   // Handle 404 errors - redirect to listing page if product doesn't exist
   useEffect(() => {
     if (error) {
-      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      const axiosError = error as AxiosError<{
+        message?: string;
+        error?: string;
+      }>;
       if (axiosError?.response?.status === 404) {
         // Product doesn't exist, redirect to listing page
-        router.replace("/admin/products/admin");
+        router.replace("/admin/products");
         return;
       }
-      const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Failed to fetch product";
+      const errorMessage =
+        axiosError?.response?.data?.message ||
+        axiosError?.message ||
+        "Failed to fetch product";
       toast.error(errorMessage);
     }
   }, [error, router]);
@@ -258,31 +278,40 @@ export default function ProductDetailPage() {
     const value = productData[fieldName];
 
     // Special handling for pricing_tiers
-    if (fieldName === "pricing_tiers" && Array.isArray(value) && value.length > 0) {
+    if (
+      fieldName === "pricing_tiers" &&
+      Array.isArray(value) &&
+      value.length > 0
+    ) {
       return (
         <div key={fieldName} className="col-span-2">
           <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             Pricing Tiers
           </label>
           <div className="mt-2 border rounded-md overflow-hidden">
-             <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr className="border-b">
-                    <th className="px-3 py-2 text-left font-medium">Min Qty</th>
-                    <th className="px-3 py-2 text-left font-medium">Max Qty</th>
-                    <th className="px-3 py-2 text-left font-medium">Price</th>
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr className="border-b">
+                  <th className="px-3 py-2 text-left font-medium">Min Qty</th>
+                  <th className="px-3 py-2 text-left font-medium">Max Qty</th>
+                  <th className="px-3 py-2 text-left font-medium">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(value as any[]).map((tier, i) => (
+                  <tr
+                    key={i}
+                    className="border-b last:border-0 hover:bg-muted/20"
+                  >
+                    <td className="px-3 py-2">{tier.min_quantity}</td>
+                    <td className="px-3 py-2">{tier.max_quantity || "∞"}</td>
+                    <td className="px-3 py-2">
+                      ${Number(tier.price).toFixed(2)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {(value as any[]).map((tier, i) => (
-                    <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="px-3 py-2">{tier.min_quantity}</td>
-                      <td className="px-3 py-2">{tier.max_quantity || "∞"}</td>
-                      <td className="px-3 py-2">${Number(tier.price).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-             </table>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       );
@@ -295,14 +324,13 @@ export default function ProductDetailPage() {
         <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {formatFieldName(fieldName)}
         </label>
-        <p className="text-foreground mt-2 break-words">
-          {formattedValue}
-        </p>
+        <p className="text-foreground mt-2 break-words">{formattedValue}</p>
       </div>
     );
   };
 
-  const currentSection = SECTIONS.find(s => s.id === activeTab) || SECTIONS[0];
+  const currentSection =
+    SECTIONS.find((s) => s.id === activeTab) || SECTIONS[0];
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -328,7 +356,7 @@ export default function ProductDetailPage() {
         </div>
         {!fromVendor && (
           <div className="flex gap-2">
-            <Button 
+            <Button
               variant="outline"
               onClick={() =>
                 window.open(
@@ -343,17 +371,12 @@ export default function ProductDetailPage() {
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
-            <Button variant="default" onClick={() => router.push(`/admin/products/${product.id}/edit`)}>
+            <Button
+              variant="secondary"
+              onClick={() => router.push(`/admin/products/${product.id}/edit`)}
+            >
               <Edit className="mr-2 h-4 w-4" />
               Edit Product
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={deleteProductMutation.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
             </Button>
           </div>
         )}
@@ -370,9 +393,11 @@ export default function ProductDetailPage() {
               onClick={() => setActiveTab(section.id)}
               className={`
                 flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2
-                ${isActive 
-                  ? "border-primary text-primary" 
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}
+                ${
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
+                }
               `}
             >
               <Icon className="h-4 w-4" />
@@ -396,41 +421,68 @@ export default function ProductDetailPage() {
               {activeTab === 4 ? (
                 // Uploads & Media Special Handling
                 <div className="space-y-6">
-                  {((productData.image as string) || (productData.imageUrl as string)) && (
+                  {((productData.image as string) ||
+                    (productData.imageUrl as string)) && (
                     <div>
-                      <h3 className="text-sm font-semibold mb-2">Cover Image</h3>
-                      <img
-                        src={(productData.image as string) || (productData.imageUrl as string)}
-                        alt={product.name}
-                        className="w-full max-w-md rounded-md border object-cover"
-                      />
-                    </div>
-                  )}
-                  
-                  {Array.isArray(productData.gallery) && productData.gallery.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold mb-2">Gallery Images</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {productData.gallery.map((url: string, index: number) => (
-                          <div key={index} className="relative aspect-square border rounded-md overflow-hidden">
-                            <img
-                              src={url}
-                              alt={`${product.name} gallery ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
+                      <h3 className="text-sm font-semibold mb-2">
+                        Cover Image
+                      </h3>
+                      <div className="relative w-full max-w-md aspect-video rounded-md border overflow-hidden">
+                        <Image
+                          src={
+                            normalizeImageUrl(
+                              (productData.image as string) ||
+                                (productData.imageUrl as string)
+                            ) || ""
+                          }
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
                       </div>
                     </div>
                   )}
 
-                  {(!productData.image && !productData.imageUrl && (!Array.isArray(productData.gallery) || productData.gallery.length === 0)) && (
-                    <p className="text-muted-foreground italic">No media uploaded.</p>
-                  )}
+                  {Array.isArray(productData.gallery) &&
+                    productData.gallery.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold mb-2">
+                          Gallery Images
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                          {productData.gallery.map(
+                            (url: string, index: number) => (
+                              <div
+                                key={index}
+                                className="relative aspect-square border rounded-md overflow-hidden"
+                              >
+                                <Image
+                                  src={normalizeImageUrl(url) || ""}
+                                  alt={`${product.name} gallery ${index + 1}`}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {!productData.image &&
+                    !productData.imageUrl &&
+                    (!Array.isArray(productData.gallery) ||
+                      productData.gallery.length === 0) && (
+                      <p className="text-muted-foreground italic">
+                        No media uploaded.
+                      </p>
+                    )}
                 </div>
               ) : (
                 <div className="grid gap-6 md:grid-cols-2">
-                   {currentSection.fields.map((fieldName) => renderField(fieldName))}
+                  {currentSection.fields.map((fieldName) =>
+                    renderField(fieldName)
+                  )}
                 </div>
               )}
             </CardContent>
@@ -439,7 +491,7 @@ export default function ProductDetailPage() {
 
         {/* Sidebar Info (Timeline / Meta) */}
         <div className="w-full lg:w-80 space-y-6">
-           <Card>
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Calendar className="h-4 w-4" />
@@ -456,11 +508,14 @@ export default function ProductDetailPage() {
                     const dateVal = product.created_at || product.createdAt;
                     if (!dateVal) return "—";
                     const d = new Date(dateVal);
-                    return isNaN(d.getTime()) 
-                      ? "Invalid Date" 
+                    return isNaN(d.getTime())
+                      ? "Invalid Date"
                       : d.toLocaleString("en-GB", {
-                          day: "2-digit", month: "short", year: "numeric",
-                          hour: "2-digit", minute: "2-digit"
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         });
                   })()}
                 </p>
@@ -475,11 +530,14 @@ export default function ProductDetailPage() {
                       const dateVal = product.updated_at || product.updatedAt;
                       if (!dateVal) return "—";
                       const d = new Date(dateVal);
-                      return isNaN(d.getTime()) 
-                        ? "Invalid Date" 
+                      return isNaN(d.getTime())
+                        ? "Invalid Date"
                         : d.toLocaleString("en-GB", {
-                            day: "2-digit", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit"
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
                           });
                     })()}
                   </p>
@@ -489,58 +547,6 @@ export default function ProductDetailPage() {
           </Card>
         </div>
       </div>
-
-       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the product &quot;{product.name}&quot; 
-              and remove all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteProductMutation.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  setShowDeleteDialog(false);
-                  setIsDeleting(true); // Disable product query before deletion
-                  await deleteProductMutation.mutateAsync(productId);
-                  toast.success("Product deleted successfully!");
-                  // Navigate immediately after deletion
-                  router.replace("/admin/products/admin");
-                } catch (error) {
-                  console.error(error);
-                  setIsDeleting(false); // Re-enable query if deletion fails
-                  const axiosError = error as AxiosError<{
-                    message?: string;
-                    error?: string;
-                  }>;
-
-                  let errorMessage = "Failed to delete product. Please try again.";
-                  
-                  if (axiosError?.response?.data?.message) {
-                    errorMessage = axiosError.response.data.message;
-                  } else if (axiosError?.response?.data?.error) {
-                    errorMessage = axiosError.response.data.error;
-                  }
-
-                  toast.error(errorMessage);
-                  setShowDeleteDialog(false);
-                }
-              }}
-              disabled={deleteProductMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteProductMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

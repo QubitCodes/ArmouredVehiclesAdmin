@@ -49,7 +49,7 @@ export default function VendorDetailLayout({
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              {vendor?.userProfile?.companyName || vendor?.name || "Vendor"}
+              {vendor?.profile?.company_name || vendor?.userProfile?.company_name || vendor?.name || "Vendor"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Vendor Details

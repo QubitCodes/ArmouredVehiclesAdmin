@@ -2,20 +2,18 @@ import api from "@/lib/api";
 
 export interface Order {
   id: string;
-  userId: string;
-  orderNumber?: string;
-  trackingNumber?: string | null;
-  customerName?: string;
-  customerEmail?: string;
+  user_id: string;
+  tracking_number?: string | null;
   status?: string;
-  total?: string;
-  totalAmount?: number;
-  estimatedDelivery?: string | null;
-  createdAt: string;
-  updatedAt?: string;
+  total_amount?: number | string | null;
+  currency?: string;
+  payment_status?: string | null;
+  shipment_status?: string | null;
+  created_at?: string | null;
+  updated_at?: string;
   items?: OrderItem[];
-  shippingAddress?: string;
-  paymentMethod?: string;
+  shipping_address?: string;
+  payment_method?: string;
   user?: {
     id: string;
     name: string;
@@ -46,14 +44,17 @@ export interface OrderItem {
 export interface GetOrdersResponse {
   success: boolean;
   data: Order[];
-  total: number;
-  page: number;
-  limit: number;
+  misc?: {
+    total: number;
+    page: number;
+    pages: number;
+  };
 }
 
 export interface GetOrdersParams {
   page?: number;
   limit?: number;
+  search?: string;
   vendorId?: string;
 }
 

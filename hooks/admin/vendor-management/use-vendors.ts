@@ -6,16 +6,36 @@ import {
   GetVendorsParams,
 } from "@/services/admin/vendor.service";
 
+interface VendorsResponse {
+  vendors: Vendor[];
+  pagination: {
+    page: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+}
+
 /**
  * React Query hook for fetching vendors
  */
 export function useVendors(params: GetVendorsParams = {}) {
-  return useQuery<Vendor[], AxiosError>({
+  return useQuery<VendorsResponse, AxiosError>({
     queryKey: ["vendors", params],
     queryFn: async () => {
+      const limit = params.limit || 10;
       const response = await vendorService.getVendors(params);
-      // Response structure: { sellers: [...], total, page, limit }
-      return response.data || [];
+      const vendors = response.data || [];
+      const misc = response.misc;
+      return {
+        vendors,
+        pagination: {
+          page: misc?.page ?? params.page ?? 1,
+          totalPages: misc?.pages ?? Math.ceil((misc?.total ?? vendors.length) / limit),
+          total: misc?.total ?? vendors.length,
+          limit,
+        },
+      };
     },
   });
 }

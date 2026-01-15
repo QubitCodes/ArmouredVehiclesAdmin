@@ -351,11 +351,6 @@ export default function NewProductPage() {
 
       // Console preview of the data
 
-
-
-
-
-
       await createProductMutation.mutateAsync(cleanedData);
       toast.success("Product created successfully!");
       router.push("/admin/products/admin");
@@ -577,8 +572,8 @@ export default function NewProductPage() {
                     <FormItem>
                       <FormLabel>Model</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Land Cruiser" 
+                        <Input
+                          placeholder="Land Cruiser"
                           value={field.value ?? ""}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
@@ -1831,7 +1826,7 @@ export default function NewProductPage() {
       </div>
 
       <Form {...form}>
-        <form 
+        <form
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -1839,7 +1834,11 @@ export default function NewProductPage() {
           onKeyDown={(e) => {
             // Prevent form submission when Enter is pressed in any input field
             // This prevents auto-submit even on the last section
-            if (e.key === "Enter" && (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+            if (
+              e.key === "Enter" &&
+              (e.target instanceof HTMLInputElement ||
+                e.target instanceof HTMLTextAreaElement)
+            ) {
               e.preventDefault();
               e.stopPropagation();
             }
