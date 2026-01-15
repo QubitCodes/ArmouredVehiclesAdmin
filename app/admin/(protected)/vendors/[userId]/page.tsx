@@ -4,16 +4,18 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { ArrowLeft, Building2, User, Mail, Calendar, Shield, FileText, CreditCard, BarChart3 } from "lucide-react";
+import { ArrowLeft, Building2, User, Mail, Calendar, Shield, FileText, CreditCard, BarChart3, ExternalLink, FileCheck, Phone, Globe, Briefcase, MapPin, Hash, CheckCircle2, AlertCircle } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVendor } from "@/hooks/admin/vendor-management/use-vendor";
+import { cn } from "@/lib/utils";
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
   return fieldName
+    .replace(/_/g, " ")
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (str) => str.toUpperCase())
     .trim();
@@ -38,10 +40,9 @@ const getOnboardingStepName = (step: number | null | undefined): string => {
   return stepMap[step as number] || "—";
 };
 
-// Helper function to format field value
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const formatFieldValue = (value: unknown, fieldName: string): string => {
-  if (value === undefined || value === null) {
+// Helper function to robustly parse and format field values
+const formatValue = (value: unknown, fieldName: string): string | string[] => {
+  if (value === undefined || value === null || value === "" || value === "—") {
     return "—";
   }
 
@@ -49,22 +50,133 @@ const formatFieldValue = (value: unknown, fieldName: string): string => {
     return value ? "Yes" : "No";
   }
 
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return "—";
-    }
-    return value.filter((item) => item !== "" && item !== null).join(", ");
-  }
-
-  if (typeof value === "object" && value !== null) {
-    return JSON.stringify(value);
-  }
-
   if (typeof value === "number") {
     return value.toString();
   }
 
-  return String(value);
+  // Fields that should always be displayed as arrays (tags)
+  const listFields = ["selling_categories", "nature_of_business", "license_types", "end_use_markets", "operating_countries"];
+  const isListField = listFields.includes(fieldName);
+
+  // Deep parse function for JSON strings
+  const deepParse = (val: string): string | string[] | Record<string, unknown> => {
+    const trimmed = val.trim();
+    if (!trimmed) return "—";
+
+    // Try normal JSON parse
+    try {
+      const parsed = JSON.parse(trimmed);
+
+      // If parsed result is a string, recursively parse it
+      if (typeof parsed === "string") {
+        return deepParse(parsed);
+      }
+
+      // Handle case: {"[\"Manufacturer\",\"Distributor\"]"} or {"key": "[\"Manufacturer\",\"Distributor\"]"}
+      // Where we get an object with a single property that contains or is a JSON array string
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        const entries = Object.entries(parsed);
+
+        // If object has a single property
+        if (entries.length === 1) {
+          const [key, value] = entries[0];
+          const keyTrimmed = key.trim();
+          const valueTrimmed = typeof value === "string" ? value.trim() : "";
+
+          // Check if the KEY looks like a JSON array/object
+          if ((keyTrimmed.startsWith("[") && keyTrimmed.endsWith("]")) ||
+              (keyTrimmed.startsWith("{") && keyTrimmed.endsWith("}"))) {
+            try {
+              return deepParse(keyTrimmed);
+            } catch {
+              // If parsing the key fails, continue to check value
+            }
+          }
+
+          // Check if the VALUE looks like a JSON array/object
+          if (valueTrimmed &&
+              ((valueTrimmed.startsWith("[") && valueTrimmed.endsWith("]")) ||
+               (valueTrimmed.startsWith("{") && valueTrimmed.endsWith("}")))) {
+            try {
+              return deepParse(valueTrimmed);
+            } catch {
+              // If parsing the value fails, return the original parsed object
+            }
+          }
+        }
+      }
+
+      return parsed;
+    } catch {
+      // If failed, try to handle escaped quotes or wrapped strings
+      try {
+        // Handle case like {"[\"Manufacturer\"]"} or "[\"Manufacturer\"]"
+        let cleaned = trimmed.replace(/\\"/g, '"');
+        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+          cleaned = cleaned.substring(1, cleaned.length - 1);
+        }
+        if ((cleaned.startsWith("[") && cleaned.endsWith("]")) || (cleaned.startsWith("{") && cleaned.endsWith("}"))) {
+            const parsed = JSON.parse(cleaned);
+            return typeof parsed === "string" ? deepParse(parsed) : parsed;
+        }
+
+        // Handle the specific weird case from screenshot: {[\"Manufacturer\"]}
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            const inner = trimmed.substring(1, trimmed.length - 1).replace(/\\"/g, '"');
+            if (inner.startsWith("[") && inner.endsWith("]")) {
+                return JSON.parse(inner);
+            }
+        }
+      } catch {
+        // Still failed
+      }
+    }
+
+    // fallback to comma separation if it's a list field
+    if (isListField && trimmed.includes(",")) {
+      return trimmed.split(",").map(s => s.trim()).filter(s => !!s);
+    }
+
+    return trimmed;
+  };
+
+  let processed: string | string[] | Record<string, unknown> = value as string | string[] | Record<string, unknown>;
+  if (typeof value === "string") {
+    processed = deepParse(value);
+  } else if (Array.isArray(value)) {
+    // Handle case where value is an array containing JSON strings
+    // e.g., ["[\"Military\",\"Government\"]"] or ["[\"\",\"authority_license\",\"eocn\"]"]
+    if (value.length === 1 && typeof value[0] === "string") {
+      const firstElement = value[0].trim();
+      // If the single element is a JSON string, parse it
+      if ((firstElement.startsWith("[") && firstElement.endsWith("]")) ||
+          (firstElement.startsWith("{") && firstElement.endsWith("}"))) {
+        processed = deepParse(firstElement);
+      } else {
+        processed = value.filter(i => i !== "" && i !== null);
+      }
+    } else {
+      // Regular array, just filter empty values
+      processed = value.filter(i => i !== "" && i !== null);
+    }
+  }
+
+  // Ensure list fields are always arrays for tag rendering
+  if (isListField) {
+    if (processed === "—" || processed === null || processed === undefined) return "—";
+    if (!Array.isArray(processed)) return [String(processed)];
+    const filtered = processed.filter(i => !!i);
+    return filtered.length > 0 ? filtered : "—";
+  }
+
+  // Format objects for standard display
+  if (typeof processed === "object" && processed !== null && !Array.isArray(processed)) {
+    return Object.entries(processed)
+      .map(([key, val]) => `${formatFieldName(key)}: ${val}`)
+      .join(", ");
+  }
+
+  return Array.isArray(processed) ? processed.join(", ") : String(processed);
 };
 
 export default function VendorDetailPage() {
@@ -125,32 +237,67 @@ export default function VendorDetailPage() {
     );
   }
 
-  const vendorProfileData = vendor.userProfile as unknown as Record<string, unknown> | null;
+  const vendorProfileData = (vendor.userProfile || vendor.profile) as unknown as Record<string, unknown> | null;
 
   // Render field in section (from userProfile)
-  const renderField = (fieldName: string) => {
+  const renderField = (fieldName: string, customLabel?: string) => {
     const value = vendorProfileData?.[fieldName];
-    const formattedValue = formatFieldValue(value, fieldName);
+    const formattedValue = formatValue(value, fieldName);
 
     const isEmail = fieldName.toLowerCase().includes("email") && value;
     const isPhone = (fieldName.toLowerCase().includes("phone") || fieldName.toLowerCase().includes("mobile")) && value;
+    const isUrl = (fieldName.toLowerCase().endsWith("_url") || fieldName.toLowerCase().includes("website") || fieldName.toLowerCase().includes("link")) && value;
+    const isList = Array.isArray(formattedValue);
 
     return (
       <div key={fieldName}>
         <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          {formatFieldName(fieldName)}
+          {customLabel || formatFieldName(fieldName)}
         </label>
         <div className="text-foreground mt-2">
           {isEmail ? (
-            <a href={`mailto:${value}`} className="text-primary hover:underline">
-              {formattedValue}
+            <a href={`mailto:${value}`} className="text-primary hover:underline flex items-center gap-2 font-medium">
+              <Mail className="h-4 w-4" />
+              {typeof formattedValue === "string" ? formattedValue : String(value)}
             </a>
           ) : isPhone ? (
-            <a href={`tel:${value}`} className="text-primary hover:underline">
-              {formattedValue}
+            <a href={`tel:${value}`} className="text-primary hover:underline flex items-center gap-2 font-medium">
+              <Phone className="h-4 w-4" />
+              {typeof formattedValue === "string" ? formattedValue : String(value)}
             </a>
+          ) : isUrl && typeof value === "string" ? (
+            <a
+              href={value.startsWith("http") ? value : `https://${value}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "hover:underline flex items-center gap-2 font-medium transition-colors",
+                fieldName.endsWith("_url") 
+                  ? "text-secondary" 
+                  : "text-primary"
+              )}
+            >
+              {fieldName.endsWith("_url") ? (
+                <FileText className="h-4 w-4" />
+              ) : (
+                <Globe className="h-4 w-4" />
+              )}
+              {fieldName.endsWith("_url") ? `View ${customLabel || formatFieldName(fieldName)}` : formattedValue}
+              <ExternalLink className="h-3 w-3 opacity-70" />
+            </a>
+          ) : isList ? (
+            <div className="flex flex-wrap gap-2 mt-1">
+              {formattedValue.map((item: string, index: number) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
           ) : (
-            formattedValue
+            <span className="break-all">{typeof formattedValue === "string" ? formattedValue : String(formattedValue)}</span>
           )}
         </div>
       </div>
@@ -251,56 +398,8 @@ export default function VendorDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Stats Section */}
-      {vendor.stats && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Statistics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Products
-                </label>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {vendor.stats.products || 0}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Orders
-                </label>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {vendor.stats.orders || 0}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Revenue
-                </label>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  ${(vendor.stats.revenue || 0).toFixed(2)}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Customers
-                </label>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {vendor.stats.customers || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Company Information Section */}
-      {vendor.userProfile && (
+      {/* Company Information */}
+      {vendorProfileData && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -310,54 +409,45 @@ export default function VendorDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {renderField("companyName")}
-              {renderField("companyEmail")}
-              {renderField("companyPhone")}
-              {renderField("country")}
-              {renderField("countryOfRegistration")}
-              {renderField("registeredCompanyName")}
-              {renderField("tradeBrandName")}
-              {renderField("yearOfEstablishment")}
-              {renderField("entityType")}
-              {renderField("officialWebsite")}
-              {renderField("cityOfficeAddress")}
-              {renderField("dunsNumber")}
+              {renderField("company_name")}
+              {renderField("company_email")}
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Company Phone
+                </label>
+                <div className="text-foreground mt-2">
+                  {vendorProfileData?.company_phone ? (
+                    <a 
+                      href={`tel:${vendorProfileData.company_phone as string}`} 
+                      className="text-primary hover:underline flex items-center gap-2"
+                    >
+                      <Phone className="h-4 w-4" />
+                      {vendorProfileData.company_phone_country_code as string || ""} {vendorProfileData.company_phone as string}
+                    </a>
+                  ) : "—"}
+                </div>
+              </div>
+              {renderField("country_of_registration")}
+              {renderField("registered_company_name")}
+              {renderField("trade_brand_name")}
+              {renderField("year_of_establishment")}
+              {renderField("entity_type")}
+              {renderField("official_website")}
+              {renderField("city_office_address")}
+              {renderField("duns_number")}
+              {renderField("tax_vat_number")}
+              {renderField("tax_issuing_date")}
+              {renderField("tax_expiry_date")}
+              {renderField("sponsor_content", "Sponsor Content")}
+              {renderField("selling_categories")}
+              {renderField("vat_certificate_url", "VAT Certificate")}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Legal & Compliance Section */}
-      {vendor.userProfile && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Legal & Compliance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {renderField("legalEntityId")}
-              {renderField("legalEntityIssueDate")}
-              {renderField("legalEntityExpiryDate")}
-              {renderField("taxVatNumber")}
-              {renderField("taxIssuingDate")}
-              {renderField("taxExpiryDate")}
-              {renderField("complianceRegistration")}
-              {renderField("isOnSanctionsList")}
-              {renderField("controlledDualUseItems")}
-              {renderField("licenseTypes")}
-              {renderField("natureOfBusiness")}
-              {renderField("endUseMarkets")}
-              {renderField("operatingCountries")}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Contact Information Section */}
-      {vendor.userProfile && (
+      {/* Contact Information */}
+      {vendorProfileData && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -367,39 +457,55 @@ export default function VendorDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {renderField("contactFullName")}
-              {renderField("contactJobTitle")}
-              {renderField("contactWorkEmail")}
-              {renderField("contactMobile")}
+              {renderField("contact_full_name")}
+              {renderField("contact_job_title")}
+              {renderField("contact_work_email")}
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Contact Mobile
+                </label>
+                <div className="text-foreground mt-2">
+                  {vendorProfileData?.contact_mobile ? (
+                    <a 
+                      href={`tel:${vendorProfileData.contact_mobile as string}`} 
+                      className="text-primary hover:underline flex items-center gap-2"
+                    >
+                      <Phone className="h-4 w-4" />
+                      {vendorProfileData.contact_mobile_country_code as string || ""} {vendorProfileData.contact_mobile as string}
+                    </a>
+                  ) : "—"}
+                </div>
+              </div>
+              {renderField("contact_id_document_url", "ID Document")}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Business Details Section */}
-      {vendor.userProfile && (
+      {/* Legal & Compliance */}
+      {vendorProfileData && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Business Details
+              <Shield className="h-5 w-5" />
+              Legal & Compliance
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {renderField("registerAs")}
-              {renderField("typeOfBuyer")}
-              {renderField("sellingCategories")}
-              {renderField("preferredCurrency")}
-              {renderField("sponsorContent")}
-              {renderField("commissionPercent")}
+              {renderField("nature_of_business")}
+              {renderField("license_types")}
+              {renderField("end_use_markets")}
+              {renderField("operating_countries")}
+              {renderField("business_license_url", "Business License")}
+              {renderField("company_profile_url", "Company Profile")}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Payment Information Section */}
-      {vendor.userProfile && (
+      {/* Payment Information */}
+      {vendorProfileData && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -409,103 +515,17 @@ export default function VendorDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {renderField("paymentMethod")}
-              {renderField("bankCountry")}
-              {renderField("financialInstitution")}
-              {renderField("swiftCode")}
-              {renderField("bankAccountNumber")}
-              {renderField("proofType")}
-              {renderField("verificationMethod")}
+              {renderField("preferred_currency")}
+              {renderField("bank_country")}
+              {renderField("financial_institution")}
+              {renderField("swift_code")}
+              {renderField("bank_account_number")}
+              {renderField("proof_type")}
+              {renderField("bank_proof_url", "Bank Proof")}
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Onboarding Status Section */}
-      {vendor.userProfile && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Onboarding Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Onboarding Status
-                </label>
-                <p className="text-foreground mt-2">
-                  <span
-                    className={`text-sm font-medium capitalize ${
-                      vendor.userProfile?.onboarding_status === "approved"
-                        ? "text-green-600 dark:text-green-500"
-                        : vendor.userProfile?.onboarding_status === "under_review"
-                        ? "text-yellow-600 dark:text-yellow-500"
-                        : vendor.userProfile?.onboarding_status === "rejected"
-                        ? "text-red-600 dark:text-red-500"
-                        : "text-gray-600 dark:text-gray-500"
-                    }`}
-                  >
-                    {vendor.userProfile?.onboarding_status?.replace("_", " ") || "N/A"}
-                  </span>
-                </p>
-              </div>
-              {renderField("currentStep")}
-              {renderField("submittedForApproval")}
-              {renderField("submittedAt")}
-              {renderField("completedAt")}
-              {renderField("reviewedBy")}
-              {renderField("reviewedAt")}
-              {renderField("reviewNote")}
-              {renderField("rejectionReason")}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Timeline Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Created At
-            </label>
-            <p className="text-foreground mt-2">
-              {new Date(vendor.created_at).toLocaleString("en-GB", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-          </div>
-          {vendor.userProfile?.updated_at && (
-            <div>
-              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Last Updated
-              </label>
-              <p className="text-foreground mt-2">
-                {new Date(vendor.userProfile.updated_at).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
