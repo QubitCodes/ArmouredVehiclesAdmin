@@ -1,15 +1,39 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { ArrowLeft, Building2, User, Mail, Calendar, Shield, FileText, CreditCard, BarChart3, ExternalLink, FileCheck, Phone, Globe, Briefcase, MapPin, Hash, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  User,
+  Mail,
+  Calendar,
+  Shield,
+  FileText,
+  CreditCard,
+  BarChart3,
+  ExternalLink,
+  FileCheck,
+  Phone,
+  Globe,
+  Briefcase,
+  MapPin,
+  Hash,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+} from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useVendor } from "@/hooks/admin/vendor-management/use-vendor";
+import { useVendorActions } from "@/hooks/admin/vendor-management/use-vendor-actions";
 import { cn } from "@/lib/utils";
 
 // Helper function to format field names (camelCase to Title Case)
@@ -55,11 +79,19 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
   }
 
   // Fields that should always be displayed as arrays (tags)
-  const listFields = ["selling_categories", "nature_of_business", "license_types", "end_use_markets", "operating_countries"];
+  const listFields = [
+    "selling_categories",
+    "nature_of_business",
+    "license_types",
+    "end_use_markets",
+    "operating_countries",
+  ];
   const isListField = listFields.includes(fieldName);
 
   // Deep parse function for JSON strings
-  const deepParse = (val: string): string | string[] | Record<string, unknown> => {
+  const deepParse = (
+    val: string
+  ): string | string[] | Record<string, unknown> => {
     const trimmed = val.trim();
     if (!trimmed) return "—";
 
@@ -74,7 +106,11 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
 
       // Handle case: {"[\"Manufacturer\",\"Distributor\"]"} or {"key": "[\"Manufacturer\",\"Distributor\"]"}
       // Where we get an object with a single property that contains or is a JSON array string
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        !Array.isArray(parsed)
+      ) {
         const entries = Object.entries(parsed);
 
         // If object has a single property
@@ -84,8 +120,10 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
           const valueTrimmed = typeof value === "string" ? value.trim() : "";
 
           // Check if the KEY looks like a JSON array/object
-          if ((keyTrimmed.startsWith("[") && keyTrimmed.endsWith("]")) ||
-              (keyTrimmed.startsWith("{") && keyTrimmed.endsWith("}"))) {
+          if (
+            (keyTrimmed.startsWith("[") && keyTrimmed.endsWith("]")) ||
+            (keyTrimmed.startsWith("{") && keyTrimmed.endsWith("}"))
+          ) {
             try {
               return deepParse(keyTrimmed);
             } catch {
@@ -94,9 +132,11 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
           }
 
           // Check if the VALUE looks like a JSON array/object
-          if (valueTrimmed &&
-              ((valueTrimmed.startsWith("[") && valueTrimmed.endsWith("]")) ||
-               (valueTrimmed.startsWith("{") && valueTrimmed.endsWith("}")))) {
+          if (
+            valueTrimmed &&
+            ((valueTrimmed.startsWith("[") && valueTrimmed.endsWith("]")) ||
+              (valueTrimmed.startsWith("{") && valueTrimmed.endsWith("}")))
+          ) {
             try {
               return deepParse(valueTrimmed);
             } catch {
@@ -115,17 +155,22 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
         if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
           cleaned = cleaned.substring(1, cleaned.length - 1);
         }
-        if ((cleaned.startsWith("[") && cleaned.endsWith("]")) || (cleaned.startsWith("{") && cleaned.endsWith("}"))) {
-            const parsed = JSON.parse(cleaned);
-            return typeof parsed === "string" ? deepParse(parsed) : parsed;
+        if (
+          (cleaned.startsWith("[") && cleaned.endsWith("]")) ||
+          (cleaned.startsWith("{") && cleaned.endsWith("}"))
+        ) {
+          const parsed = JSON.parse(cleaned);
+          return typeof parsed === "string" ? deepParse(parsed) : parsed;
         }
 
         // Handle the specific weird case from screenshot: {[\"Manufacturer\"]}
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-            const inner = trimmed.substring(1, trimmed.length - 1).replace(/\\"/g, '"');
-            if (inner.startsWith("[") && inner.endsWith("]")) {
-                return JSON.parse(inner);
-            }
+          const inner = trimmed
+            .substring(1, trimmed.length - 1)
+            .replace(/\\"/g, '"');
+          if (inner.startsWith("[") && inner.endsWith("]")) {
+            return JSON.parse(inner);
+          }
         }
       } catch {
         // Still failed
@@ -134,13 +179,19 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
 
     // fallback to comma separation if it's a list field
     if (isListField && trimmed.includes(",")) {
-      return trimmed.split(",").map(s => s.trim()).filter(s => !!s);
+      return trimmed
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => !!s);
     }
 
     return trimmed;
   };
 
-  let processed: string | string[] | Record<string, unknown> = value as string | string[] | Record<string, unknown>;
+  let processed: string | string[] | Record<string, unknown> = value as
+    | string
+    | string[]
+    | Record<string, unknown>;
   if (typeof value === "string") {
     processed = deepParse(value);
   } else if (Array.isArray(value)) {
@@ -149,28 +200,35 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
     if (value.length === 1 && typeof value[0] === "string") {
       const firstElement = value[0].trim();
       // If the single element is a JSON string, parse it
-      if ((firstElement.startsWith("[") && firstElement.endsWith("]")) ||
-          (firstElement.startsWith("{") && firstElement.endsWith("}"))) {
+      if (
+        (firstElement.startsWith("[") && firstElement.endsWith("]")) ||
+        (firstElement.startsWith("{") && firstElement.endsWith("}"))
+      ) {
         processed = deepParse(firstElement);
       } else {
-        processed = value.filter(i => i !== "" && i !== null);
+        processed = value.filter((i) => i !== "" && i !== null);
       }
     } else {
       // Regular array, just filter empty values
-      processed = value.filter(i => i !== "" && i !== null);
+      processed = value.filter((i) => i !== "" && i !== null);
     }
   }
 
   // Ensure list fields are always arrays for tag rendering
   if (isListField) {
-    if (processed === "—" || processed === null || processed === undefined) return "—";
+    if (processed === "—" || processed === null || processed === undefined)
+      return "—";
     if (!Array.isArray(processed)) return [String(processed)];
-    const filtered = processed.filter(i => !!i);
+    const filtered = processed.filter((i) => !!i);
     return filtered.length > 0 ? filtered : "—";
   }
 
   // Format objects for standard display
-  if (typeof processed === "object" && processed !== null && !Array.isArray(processed)) {
+  if (
+    typeof processed === "object" &&
+    processed !== null &&
+    !Array.isArray(processed)
+  ) {
     return Object.entries(processed)
       .map(([key, val]) => `${formatFieldName(key)}: ${val}`)
       .join(", ");
@@ -184,22 +242,24 @@ export default function VendorDetailPage() {
   const router = useRouter();
   const userId = params.userId as string;
 
-  const {
-    data: vendor,
-    isLoading,
-    error,
-  } = useVendor(userId);
+  const { data: vendor, isLoading, error } = useVendor(userId);
 
   // Handle 404 errors - redirect to listing page if vendor doesn't exist
   useEffect(() => {
     if (error) {
-      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      const axiosError = error as AxiosError<{
+        message?: string;
+        error?: string;
+      }>;
       if (axiosError?.response?.status === 404) {
         // Vendor doesn't exist, redirect to listing page
         router.replace("/admin/vendors");
         return;
       }
-      const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Failed to fetch vendor";
+      const errorMessage =
+        axiosError?.response?.data?.message ||
+        axiosError?.message ||
+        "Failed to fetch vendor";
       toast.error(errorMessage);
     }
   }, [error, router]);
@@ -237,7 +297,8 @@ export default function VendorDetailPage() {
     );
   }
 
-  const vendorProfileData = (vendor.userProfile || vendor.profile) as unknown as Record<string, unknown> | null;
+  const vendorProfileData = (vendor.userProfile ||
+    vendor.profile) as unknown as Record<string, unknown> | null;
 
   // Render field in section (from userProfile)
   const renderField = (fieldName: string, customLabel?: string) => {
@@ -245,8 +306,15 @@ export default function VendorDetailPage() {
     const formattedValue = formatValue(value, fieldName);
 
     const isEmail = fieldName.toLowerCase().includes("email") && value;
-    const isPhone = (fieldName.toLowerCase().includes("phone") || fieldName.toLowerCase().includes("mobile")) && value;
-    const isUrl = (fieldName.toLowerCase().endsWith("_url") || fieldName.toLowerCase().includes("website") || fieldName.toLowerCase().includes("link")) && value;
+    const isPhone =
+      (fieldName.toLowerCase().includes("phone") ||
+        fieldName.toLowerCase().includes("mobile")) &&
+      value;
+    const isUrl =
+      (fieldName.toLowerCase().endsWith("_url") ||
+        fieldName.toLowerCase().includes("website") ||
+        fieldName.toLowerCase().includes("link")) &&
+      value;
     const isList = Array.isArray(formattedValue);
 
     return (
@@ -256,14 +324,24 @@ export default function VendorDetailPage() {
         </label>
         <div className="text-foreground mt-2">
           {isEmail ? (
-            <a href={`mailto:${value}`} className="text-primary hover:underline flex items-center gap-2 font-medium">
+            <a
+              href={`mailto:${value}`}
+              className="text-primary hover:underline flex items-center gap-2 font-medium"
+            >
               <Mail className="h-4 w-4" />
-              {typeof formattedValue === "string" ? formattedValue : String(value)}
+              {typeof formattedValue === "string"
+                ? formattedValue
+                : String(value)}
             </a>
           ) : isPhone ? (
-            <a href={`tel:${value}`} className="text-primary hover:underline flex items-center gap-2 font-medium">
+            <a
+              href={`tel:${value}`}
+              className="text-primary hover:underline flex items-center gap-2 font-medium"
+            >
               <Phone className="h-4 w-4" />
-              {typeof formattedValue === "string" ? formattedValue : String(value)}
+              {typeof formattedValue === "string"
+                ? formattedValue
+                : String(value)}
             </a>
           ) : isUrl && typeof value === "string" ? (
             <a
@@ -272,9 +350,7 @@ export default function VendorDetailPage() {
               rel="noopener noreferrer"
               className={cn(
                 "hover:underline flex items-center gap-2 font-medium transition-colors",
-                fieldName.endsWith("_url") 
-                  ? "text-secondary" 
-                  : "text-primary"
+                fieldName.endsWith("_url") ? "text-secondary" : "text-primary"
               )}
             >
               {fieldName.endsWith("_url") ? (
@@ -282,7 +358,9 @@ export default function VendorDetailPage() {
               ) : (
                 <Globe className="h-4 w-4" />
               )}
-              {fieldName.endsWith("_url") ? `View ${customLabel || formatFieldName(fieldName)}` : formattedValue}
+              {fieldName.endsWith("_url")
+                ? `View ${customLabel || formatFieldName(fieldName)}`
+                : formattedValue}
               <ExternalLink className="h-3 w-3 opacity-70" />
             </a>
           ) : isList ? (
@@ -297,7 +375,11 @@ export default function VendorDetailPage() {
               ))}
             </div>
           ) : (
-            <span className="break-all">{typeof formattedValue === "string" ? formattedValue : String(formattedValue)}</span>
+            <span className="break-all">
+              {typeof formattedValue === "string"
+                ? formattedValue
+                : String(formattedValue)}
+            </span>
           )}
         </div>
       </div>
@@ -320,24 +402,23 @@ export default function VendorDetailPage() {
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Name
               </label>
-              <p className="text-foreground mt-2">
-                {vendor.name}
-              </p>
+              <p className="text-foreground mt-2">{vendor.name}</p>
             </div>
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Username
               </label>
-              <p className="text-foreground mt-2">
-                {vendor.username}
-              </p>
+              <p className="text-foreground mt-2">{vendor.username}</p>
             </div>
             <div>
               <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Email
               </label>
               <div className="text-foreground mt-2">
-                <a href={`mailto:${vendor.email}`} className="text-primary hover:underline">
+                <a
+                  href={`mailto:${vendor.email}`}
+                  className="text-primary hover:underline"
+                >
                   {vendor.email}
                 </a>
               </div>
@@ -348,10 +429,15 @@ export default function VendorDetailPage() {
               </label>
               <div className="text-foreground mt-2">
                 {vendor.phone ? (
-                  <a href={`tel:${vendor.phone}`} className="text-primary hover:underline">
+                  <a
+                    href={`tel:${vendor.phone}`}
+                    className="text-primary hover:underline"
+                  >
                     {vendor.country_code || ""} {vendor.phone}
                   </a>
-                ) : "—"}
+                ) : (
+                  "—"
+                )}
               </div>
             </div>
             <div>
@@ -394,6 +480,41 @@ export default function VendorDetailPage() {
                 {getOnboardingStepName(vendor.onboarding_step)}
               </p>
             </div>
+            <div>
+              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Onboarding Status
+              </label>
+              <p className="text-foreground mt-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide ${
+                    vendorProfileData?.onboarding_status === "approved_controlled" ||
+                    vendorProfileData?.onboarding_status === "approved_general"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : vendorProfileData?.onboarding_status === "under_review"
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      : vendorProfileData?.onboarding_status === "rejected"
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                  }`}
+                >
+                  {vendorProfileData?.onboarding_status === "approved_controlled" && (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  )}
+                  {vendorProfileData?.onboarding_status === "approved_general" && (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  )}
+                  {vendorProfileData?.onboarding_status === "under_review" && (
+                    <AlertCircle className="h-3.5 w-3.5" />
+                  )}
+                  {vendorProfileData?.onboarding_status === "rejected" && (
+                    <XCircle className="h-3.5 w-3.5" />
+                  )}
+                  {vendorProfileData?.onboarding_status
+                    ? String(vendorProfileData.onboarding_status).replace(/_/g, " ")
+                    : "Pending"}
+                </span>
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -417,14 +538,18 @@ export default function VendorDetailPage() {
                 </label>
                 <div className="text-foreground mt-2">
                   {vendorProfileData?.company_phone ? (
-                    <a 
-                      href={`tel:${vendorProfileData.company_phone as string}`} 
+                    <a
+                      href={`tel:${vendorProfileData.company_phone as string}`}
                       className="text-primary hover:underline flex items-center gap-2"
                     >
                       <Phone className="h-4 w-4" />
-                      {vendorProfileData.company_phone_country_code as string || ""} {vendorProfileData.company_phone as string}
+                      {(vendorProfileData.company_phone_country_code as string) ||
+                        ""}{" "}
+                      {vendorProfileData.company_phone as string}
                     </a>
-                  ) : "—"}
+                  ) : (
+                    "—"
+                  )}
                 </div>
               </div>
               {renderField("country_of_registration")}
@@ -466,14 +591,18 @@ export default function VendorDetailPage() {
                 </label>
                 <div className="text-foreground mt-2">
                   {vendorProfileData?.contact_mobile ? (
-                    <a 
-                      href={`tel:${vendorProfileData.contact_mobile as string}`} 
+                    <a
+                      href={`tel:${vendorProfileData.contact_mobile as string}`}
                       className="text-primary hover:underline flex items-center gap-2"
                     >
                       <Phone className="h-4 w-4" />
-                      {vendorProfileData.contact_mobile_country_code as string || ""} {vendorProfileData.contact_mobile as string}
+                      {(vendorProfileData.contact_mobile_country_code as string) ||
+                        ""}{" "}
+                      {vendorProfileData.contact_mobile as string}
                     </a>
-                  ) : "—"}
+                  ) : (
+                    "—"
+                  )}
                 </div>
               </div>
               {renderField("contact_id_document_url", "ID Document")}
@@ -526,7 +655,139 @@ export default function VendorDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Admin Actions */}
+      <VendorApprovalActions vendor={vendor} />
     </div>
   );
 }
 
+function VendorApprovalActions({ vendor }: { vendor: any }) {
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [comment, setComment] = useState("");
+
+  const { approveVendor, isApproving, rejectVendor, isRejecting } =
+    useVendorActions(vendor.id);
+
+  const handleAction = async () => {
+    if (selectedStatus === "rejected") {
+      if (!comment) {
+        toast.error("Please provide a reason for rejection in the comments");
+        return;
+      }
+      try {
+        await rejectVendor(comment);
+        setSelectedStatus("");
+        setComment("");
+      } catch (e) {
+        // Error handled in hook
+      }
+    } else {
+      try {
+        await approveVendor({ status: selectedStatus, note: comment });
+        setSelectedStatus("");
+        setComment("");
+      } catch (e) {
+        // Error handled in hook
+      }
+    }
+  };
+
+  const isPending = isApproving || isRejecting;
+
+  return (
+    <Card className="border-t-4 border-t-primary/20 shadow-lg bg-card/50 backdrop-blur-sm">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
+          Review & Approval
+        </CardTitle>
+        <div className="w-56">
+          <Select
+            placeholder="Change Status..."
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className={cn(
+              "font-semibold bg-primary text-white",
+              selectedStatus === "rejected"
+                ? "bg-destructive border-destructive/50"
+                : ""
+            )}
+          >
+            <option value="approved_controlled">Approved Controlled</option>
+            <option value="approved_general">Approved General</option>
+            <option value="rejected">Rejected</option>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {selectedStatus && (
+          <div className="grid gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="space-y-2">
+              <Label
+                htmlFor="comment"
+                className="text-base font-semibold flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                {selectedStatus === "rejected"
+                  ? "Rejection Reason (Required)"
+                  : "Notes / Comments"}
+              </Label>
+              <Textarea
+                id="comment"
+                placeholder={
+                  selectedStatus === "rejected"
+                    ? "Explain why the vendor is being rejected..."
+                    : "Add any notes about this approval..."
+                }
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className={cn(
+                  "min-h-[120px]",
+                  selectedStatus === "rejected"
+                    ? "border-destructive/20 focus-visible:ring-destructive/30"
+                    : ""
+                )}
+              />
+            </div>
+            <div className="flex gap-4">
+              <Button
+                size="lg"
+                className={cn(
+                  "px-8 font-semibold shadow-md transition-all min-w-[140px]",
+                  selectedStatus === "rejected"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-primary text-primary-foreground"
+                )}
+                disabled={isPending}
+                onClick={handleAction}
+              >
+                {isPending ? (
+                  <Spinner className="mr-2 h-4 w-4 border-2" />
+                ) : selectedStatus === "rejected" ? (
+                  <XCircle className="mr-2 h-5 w-5" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-5 w-5" />
+                )}
+                Confirm{" "}
+                {selectedStatus === "rejected" ? "Rejection" : "Approval"}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-8 font-semibold border-2 transition-all"
+                disabled={isPending}
+                onClick={() => {
+                  setSelectedStatus("");
+                  setComment("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
