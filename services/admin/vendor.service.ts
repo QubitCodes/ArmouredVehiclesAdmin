@@ -184,9 +184,13 @@ class VendorService {
   async getVendorOrders(vendorId: string, params: GetVendorsParams & { vendorId?: string } = {}) {
     try {
       // Exclude vendorId from query params as it is in the path
-      const { vendorId: _, ...queryParams } = params;
-      const response = await api.get<{ success: boolean; data: any[]; total: number }>(`/admin/vendors/${vendorId}/orders`, {
-        params: queryParams,
+      const { search, ...queryParams } = params;
+      const response = await api.get<{ success: boolean; data: any[]; total: number }>(`/admin/orders`, {
+        params: {
+          ...queryParams,
+          search,
+          vendor_id: vendorId,
+        },
       });
       return response.data; // Expected { success: true, data: [], total... }
     } catch (error) {
@@ -195,18 +199,6 @@ class VendorService {
     }
   }
 
-  /**
-   * Fetch single order for a specific vendor
-   */
-  async getVendorOrder(vendorId: string, orderId: string) {
-    try {
-      const response = await api.get<{ success: boolean; data: any }>(`/admin/vendors/${vendorId}/orders/${orderId}`);
-      return response.data.data;
-    } catch (error) {
-      console.error("Error fetching vendor order:", error);
-      throw error;
-    }
-  }
 }
 
 export const vendorService = new VendorService();

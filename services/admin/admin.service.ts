@@ -48,6 +48,14 @@ export interface CreateAdminRequest {
   userType?: string;
 }
 
+export interface UpdateAdminRequest {
+  name: string;
+  email: string;
+  phone: string;
+  country_code: string;
+  is_active?: boolean;
+}
+
 class AdminService {
   /**
    * Fetch list of admins
@@ -73,6 +81,32 @@ class AdminService {
       return response.data;
     } catch (error) {
       console.error("Error creating admin:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing admin
+   */
+  async updateAdmin(id: string, data: UpdateAdminRequest) {
+    try {
+      const response = await api.put(`/admin/admins/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating admin:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an admin
+   */
+  async deleteAdmin(id: string) {
+    try {
+      const response = await api.delete(`/admin/admins/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting admin:", error);
       throw error;
     }
   }

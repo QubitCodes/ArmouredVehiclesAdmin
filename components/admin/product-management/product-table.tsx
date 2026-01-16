@@ -3,11 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Package, Trash2 } from "lucide-react";
+import { Package, Trash2, Check, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Product } from "@/services/admin/product.service";
-import { normalizeImageUrl } from "@/lib/utils";
+import { normalizeImageUrl, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -19,7 +19,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useDeleteProduct } from "@/hooks/admin/product-management/use-products";
+import { useDeleteProduct, useUpdateProductStatus } from "@/hooks/admin/product-management/use-products";
+import { Select } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface ProductTableProps {
   products: Product[];
@@ -31,6 +42,8 @@ export function ProductTable({
   fromVendor = false,
 }: ProductTableProps) {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [productToReject, setProductToReject] = useState<Product | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const deleteProductMutation = useDeleteProduct();
 
   const handleDelete = async () => {
@@ -55,6 +68,60 @@ export function ProductTable({
       }
 
       toast.error(errorMessage);
+    }
+  };
+  const updateStatusMutation = useUpdateProductStatus();
+
+  const handleStatusChange = async (productId: string, newStatus: string, reason?: string) => {
+    try {
+      await updateStatusMutation.mutateAsync({ 
+        id: productId, 
+        approval_status: newStatus,
+        rejection_reason: reason 
+      });
+      toast.success(`Product ${newStatus} successfully!`);
+      setProductToReject(null);
+      setRejectionReason("");
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update product status.");
+    }
+  };
+
+  const handleApprove = (productId: string) => {
+    handleStatusChange(productId, "approved");
+  };
+
+  const handleRejectConfirm = () => {
+    if (!productToReject || !rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason.");
+      return;
+    }
+    handleStatusChange(productToReject.id, "rejected", rejectionReason);
+  };
+
+  const statusOptions = [
+    { value: "approved", label: "Approved" },
+    { value: "rejected", label: "Rejected" },
+    { value: "pending", label: "Pending" },
+  ];
+
+  const getStatusDisplay = (status?: string) => {
+    if (!status) return "—";
+    if (status === "pending_review" || status === "pending") return "Pending";
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case "approved":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "rejected":
+        return "bg-red-100 text-red-700 border-red-200";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
 
@@ -84,13 +151,20 @@ export function ProductTable({
     <>
       <div className="w-full">
         <div className="w-full overflow-hidden mb-1">
-          <div className="grid items-center grid-cols-[60px_2fr_120px_80px_130px_80px] gap-4 px-4 py-3 bg-transparent">
+          <div className={cn(
+            "grid items-center gap-4 px-4 py-3 bg-transparent",
+            fromVendor 
+              ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
+              : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
+          )}>
             <div className="text-sm font-semibold text-black">Image</div>
             <div className="text-sm font-semibold text-black">Name</div>
             <div className="text-sm font-semibold text-black">SKU</div>
             <div className="text-sm font-semibold text-black">Stock</div>
             <div className="text-sm font-semibold text-black">Base Price</div>
-            {!fromVendor && (
+            {fromVendor ? (
+              <div className="text-sm font-semibold text-black">Approval Status</div>
+            ) : (
               <div className="text-sm text-center font-semibold text-black">Actions</div>
             )}
           </div>
@@ -108,7 +182,12 @@ export function ProductTable({
                 key={product.id}
                 className="w-full overflow-hidden bg-bg-light transition-all hover:bg-muted/50 hover:shadow-sm"
               >
-                <div className="grid items-center grid-cols-[60px_2fr_120px_80px_130px_80px] gap-4 px-4 py-3">
+                <div className={cn(
+                  "grid items-center gap-4 px-4 py-3",
+                  fromVendor 
+                    ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
+                    : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
+                )}>
                   <Link href={productLink} className="block">
                     {imageUrl ? (
                       <Image
@@ -144,14 +223,37 @@ export function ProductTable({
                       ? product.stock
                       : "—"}
                   </Link>
-                  <Link
-                    href={productLink}
-                    className="text-sm text-foreground cursor-pointer hover:underline"
-                  >
+                  <div className="text-sm text-foreground cursor-pointer hover:underline">
                     {getPrice(product)}
-                  </Link>
-                  {!fromVendor && (
-                    <div className="flex items-center justify-center ">
+                  </div>
+                  
+                  {fromVendor ? (
+                    <div className="flex items-center justify-start">
+                      <Select
+                        value={product.approval_status === "pending_review" ? "pending" : (product.approval_status || "pending")}
+                        onChange={(e) => {
+                          const newStatus = e.target.value;
+                          if (newStatus === "rejected") {
+                            setProductToReject(product);
+                          } else if (newStatus === "approved") {
+                            handleApprove(product.id);
+                          }
+                        }}
+                        className={cn(
+                          "h-8 text-xs w-32 font-semibold border px-2",
+                          getStatusColor(product.approval_status || "pending")
+                        )}
+                        disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id}
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option.value} value={option.value} className="bg-background text-foreground">
+                            {option.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -197,6 +299,55 @@ export function ProductTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rejection Modal */}
+      <Dialog open={!!productToReject} onOpenChange={(open) => !open && setProductToReject(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Product</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting &quot;{productToReject?.name}&quot;. 
+              This reason will be visible to the vendor.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason">Rejection Reason</Label>
+              <Textarea
+                id="reason"
+                placeholder="Enter rejection reason..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setProductToReject(null)}
+              disabled={updateStatusMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectConfirm}
+              disabled={updateStatusMutation.isPending || !rejectionReason.trim()}
+            >
+              {updateStatusMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                "Confirm Rejection"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

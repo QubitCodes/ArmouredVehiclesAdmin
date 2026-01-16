@@ -69,3 +69,42 @@ export function useCreateAdmin() {
   });
 }
 
+/**
+ * React Query hook for updating an existing admin
+ */
+export function useUpdateAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Admin,
+    AxiosError,
+    { id: string; data: any }
+  >({
+    mutationFn: async ({ id, data }) => {
+      const response = await adminService.updateAdmin(id, data);
+      return response.data || response;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch admins list after successful update
+      queryClient.invalidateQueries({ queryKey: ["admins"] });
+    },
+  });
+}
+
+/**
+ * React Query hook for deleting an admin
+ */
+export function useDeleteAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, AxiosError, string>({
+    mutationFn: async (id: string) => {
+      await adminService.deleteAdmin(id);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch admins list after successful deletion
+      queryClient.invalidateQueries({ queryKey: ["admins"] });
+    },
+  });
+}
+

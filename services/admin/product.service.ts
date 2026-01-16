@@ -9,6 +9,7 @@ export interface Product {
   base_price?: number;
   currency?: string;
   status?: string;
+  approval_status?: string;
   category?: string;
   mainCategory?: string;
   createdAt?: string;
@@ -100,6 +101,7 @@ export interface GetProductsParams {
   page?: number;
   limit?: number;
   search?: string;
+  approval_status?: string;
   vendorId?: string;
   vendor_id?: string; // Add support for backend param style
 }
@@ -114,7 +116,8 @@ class ProductService {
       const response = await api.get<GetProductsResponse>("/admin/products", {
         params: {
           ...rest,
-          search: search, // API expects 'name' for search
+          search: search,
+          approval_status: params.approval_status,
         },
       });
       return response.data;
@@ -177,6 +180,37 @@ class ProductService {
   }
 
   /**
+   * Update product status (Admin - New Flow)
+   */
+  async adminApproveRejectProduct(id: string, approval_status: string, rejection_reason?: string) {
+    try {
+      const response = await api.patch(`/admin/products/${id}/approval`, {
+        status: approval_status,
+        rejection_reason,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error approving/rejecting product:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update product status (Admin)
+   */
+  async adminUpdateProductStatus(id: string, approval_status: string) {
+    try {
+      const response = await api.patch(`/admin/products/${id}`, { 
+        approval_status 
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating product status (admin):", error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete a product
    */
   async deleteProduct(id: string) {
@@ -194,9 +228,12 @@ class ProductService {
    */
   async getVendorProducts(vendorId: string, params: GetProductsParams = {}) {
     try {
+      const { search, ...rest } = params;
       const response = await api.get<GetProductsResponse>("/admin/products", {
         params: {
-          ...params,
+          ...rest,
+          search,
+          approval_status: params.approval_status,
           vendor_id: vendorId, // Backend expects vendor_id
         },
       });

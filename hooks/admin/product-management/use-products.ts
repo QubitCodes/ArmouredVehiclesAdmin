@@ -102,8 +102,30 @@ export function useDeleteProduct() {
         queryKey: ["products"],
         refetchType: "all",
       });
-      // Ensure the product query is removed
       queryClient.removeQueries({ queryKey: ["product", id] });
+    },
+  });
+}
+
+/**
+ * React Query hook for updating product status (Admin)
+ */
+export function useUpdateProductStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { success: boolean; data: Product },
+    AxiosError,
+    { id: string; approval_status: string; rejection_reason?: string }
+  >({
+    mutationFn: async ({ id, approval_status, rejection_reason }) => {
+      return productService.adminApproveRejectProduct(id, approval_status, rejection_reason);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch products list after successful status update
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      // Also invalidate vendor-products if needed, but "products" might be general enough
+      queryClient.invalidateQueries({ queryKey: ["vendor-products"] });
     },
   });
 }
