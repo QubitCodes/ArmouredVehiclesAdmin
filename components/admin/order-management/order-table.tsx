@@ -108,6 +108,9 @@ export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTablePro
             className="w-full overflow-hidden bg-bg-light transition-all hover:shadow-sm cursor-pointer"
           >
             <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)] gap-4 px-4 py-3">
+              <div className="text-foreground font-mono text-xs">
+                {order.order_id || order.id.slice(0, 8)}
+              </div>
               <div className="font-medium text-foreground">
                 {order.user?.name || "—"}
               </div>
