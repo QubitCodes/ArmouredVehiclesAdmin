@@ -7,7 +7,7 @@ import { Package, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Product } from "@/services/admin/product.service";
-import { normalizeImageUrl } from "@/lib/utils";
+import { normalizeImageUrl, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -19,7 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useDeleteProduct } from "@/hooks/admin/product-management/use-products";
+import { useDeleteProduct, useUpdateProductStatus } from "@/hooks/admin/product-management/use-products";
+import { Select } from "@/components/ui/select";
 
 interface ProductTableProps {
   products: Product[];
@@ -57,6 +58,42 @@ export function ProductTable({
       toast.error(errorMessage);
     }
   };
+  const updateStatusMutation = useUpdateProductStatus();
+
+  const handleStatusChange = async (productId: string, newStatus: string) => {
+    try {
+      await updateStatusMutation.mutateAsync({ id: productId, approval_status: newStatus });
+      toast.success("Product status updated successfully!");
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update product status.");
+    }
+  };
+
+  const statusOptions = [
+    { value: "approved", label: "Approved" },
+    { value: "rejected", label: "Rejected" },
+    { value: "pending", label: "Pending" },
+  ];
+
+  const getStatusDisplay = (status?: string) => {
+    if (!status) return "—";
+    if (status === "pending_review" || status === "pending") return "Pending";
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case "approved":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "rejected":
+        return "bg-red-100 text-red-700 border-red-200";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
 
   if (products.length === 0) {
     return (
@@ -84,12 +121,18 @@ export function ProductTable({
     <>
       <div className="w-full">
         <div className="w-full overflow-hidden mb-1">
-          <div className="grid items-center grid-cols-[60px_2fr_120px_80px_130px_80px] gap-4 px-4 py-3 bg-transparent">
+          <div className={cn(
+            "grid items-center gap-4 px-4 py-3 bg-transparent",
+            fromVendor 
+              ? "grid-cols-[60px_2fr_100px_80px_110px_130px]" 
+              : "grid-cols-[60px_2fr_100px_80px_110px_130px_80px]"
+          )}>
             <div className="text-sm font-semibold text-black">Image</div>
             <div className="text-sm font-semibold text-black">Name</div>
             <div className="text-sm font-semibold text-black">SKU</div>
             <div className="text-sm font-semibold text-black">Stock</div>
             <div className="text-sm font-semibold text-black">Base Price</div>
+            <div className="text-sm font-semibold text-black">Approval Status</div>
             {!fromVendor && (
               <div className="text-sm text-center font-semibold text-black">Actions</div>
             )}
@@ -108,7 +151,12 @@ export function ProductTable({
                 key={product.id}
                 className="w-full overflow-hidden bg-bg-light transition-all hover:bg-muted/50 hover:shadow-sm"
               >
-                <div className="grid items-center grid-cols-[60px_2fr_120px_80px_130px_80px] gap-4 px-4 py-3">
+                <div className={cn(
+                  "grid items-center gap-4 px-4 py-3",
+                  fromVendor 
+                    ? "grid-cols-[60px_2fr_100px_80px_110px_130px]" 
+                    : "grid-cols-[60px_2fr_100px_80px_110px_130px_80px]"
+                )}>
                   <Link href={productLink} className="block">
                     {imageUrl ? (
                       <Image
@@ -150,8 +198,27 @@ export function ProductTable({
                   >
                     {getPrice(product)}
                   </Link>
+                  
+                  <div className="flex items-center">
+                    <Select
+                      value={product.approval_status === "pending_review" ? "pending" : (product.approval_status || "pending")}
+                      onChange={(e) => handleStatusChange(product.id, e.target.value)}
+                      className={cn(
+                        "h-8 text-xs w-30 font-semibold border px-2",
+                        getStatusColor(product.approval_status || "pending")
+                      )}
+                      disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id}
+                    >
+                      {statusOptions.map((option) => (
+                        <option key={option.value} value={option.value} className="bg-background text-foreground">
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
                   {!fromVendor && (
-                    <div className="flex items-center justify-center ">
+                    <div className="flex items-center justify-center">
                       <Button
                         variant="ghost"
                         size="icon"

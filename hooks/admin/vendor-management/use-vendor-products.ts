@@ -6,16 +6,34 @@ import {
   GetProductsParams,
 } from "@/services/admin/product.service";
 
+interface ProductsResponse {
+  products: Product[];
+  pagination: {
+    page: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+}
+
 /**
  * React Query hook for fetching vendor products
  */
 export function useVendorProducts(userId: string, params: GetProductsParams = {}) {
-  return useQuery<Product[], AxiosError>({
+  return useQuery<ProductsResponse, AxiosError>({
     queryKey: ["vendor-products", userId, params],
     queryFn: async () => {
       const response = await productService.getVendorProducts(userId, params);
-      // Response structure: { status: true, data: [...], misc: {...} }
-      return response.data || [];
+      const misc = response.misc || { total: 0, page: 1, limit: 10, pages: 1 };
+      return {
+        products: response.data || [],
+        pagination: {
+          page: misc.page,
+          totalPages: misc.pages,
+          total: misc.total,
+          limit: misc.limit,
+        },
+      };
     },
     enabled: !!userId,
   });
