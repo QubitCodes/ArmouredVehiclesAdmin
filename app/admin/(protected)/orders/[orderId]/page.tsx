@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrder } from "@/hooks/admin/order-management/use-order";
 import { Select } from "@/components/ui/select";
 import { useUpdateOrder } from "@/hooks/admin/order-management/use-update-order";
+import { normalizeImageUrl } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -166,6 +167,15 @@ export default function OrderDetailPage() {
     );
   }
 
+  const formatOrderId = (id?: string) => {
+    if (!id) return "—";
+    const cleaned = id.replace(/^#/, "");
+    if (cleaned.length === 8) {
+      return `#${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
+    }
+    return `#${cleaned}`;
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -235,7 +245,7 @@ export default function OrderDetailPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              Order {order.tracking_number || `#${order.id.slice(0, 8)}`}
+              Order {order.order_id ? formatOrderId(order.order_id) : (order.tracking_number || `#${order.id.slice(0, 8)}`)}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">Order Details</p>
           </div>
@@ -384,17 +394,27 @@ export default function OrderDetailPage() {
                 >
                   {/* Product Image */}
                   <div className="relative h-24 w-24 flex-shrink-0 rounded-xl overflow-hidden bg-muted border">
-                    {item.product?.featured_image ? (
+                    {item.product?.media && item.product.media.length > 0 ? (
                       <Image
-                        src={item.product.featured_image}
-                        alt={item.productName}
+                        src={normalizeImageUrl(item.product.media[0].url) || ""}
+                        alt={item.productName || item.product?.name || "Product Image"}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : item.product?.featured_image ? (
+                      <Image
+                        src={normalizeImageUrl(item.product.featured_image) || ""}
+                        alt={item.productName || item.product?.name || "Product Image"}
                         fill
                         className="object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                        <Package className="h-10 w-10 text-primary/20" />
-                      </div>
+                      <Image
+                        src="/images/placeholder.jpg"
+                        alt="Placeholder"
+                        fill
+                        className="object-cover opacity-50"
+                      />
                     )}
                   </div>
 

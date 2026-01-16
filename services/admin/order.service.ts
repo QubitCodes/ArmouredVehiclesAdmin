@@ -2,6 +2,7 @@ import api from "@/lib/api";
 
 export interface Order {
   id: string;
+  order_id?: string;
   user_id: string;
   tracking_number?: string | null;
   order_status?: string;
@@ -48,6 +49,7 @@ export interface OrderItem {
     sku: string;
     featured_image?: string | null;
     base_price?: number | string | null;
+    media?: { url: string }[];
   };
 }
 
