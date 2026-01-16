@@ -147,34 +147,35 @@ class VendorService {
   }
 
   /**
-   * Approve a vendor
+   * Update vendor onboarding status (approve or reject)
    */
-  async approveVendor(userId: string) {
+  async updateOnboardingStatus(userId: string, status: string, note?: string) {
     try {
-      const response = await api.post(`/admin/vendors/${userId}/approve`, {
-        status: "approved",
+      const response = await api.put(`/admin/vendors/${userId}/onboarding`, {
+        status,
+        note: note || "",
       });
       return response.data;
     } catch (error) {
-      console.error("Error approving vendor:", error);
+      console.error("Error updating vendor onboarding status:", error);
       throw error;
     }
   }
 
   /**
+   * Approve a vendor with a specific status variant
+   * @deprecated Use updateOnboardingStatus instead
+   */
+  async approveVendor(userId: string, status: string = "approved", note?: string) {
+    return this.updateOnboardingStatus(userId, status, note);
+  }
+
+  /**
    * Reject a vendor
+   * @deprecated Use updateOnboardingStatus instead
    */
   async rejectVendor(userId: string, reason: string, note: string) {
-    try {
-      const response = await api.post(`/admin/vendors/${userId}/reject`, {
-        reason,
-        note,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error rejecting vendor:", error);
-      throw error;
-    }
+    return this.updateOnboardingStatus(userId, "rejected", note || reason);
   }
 
   /**

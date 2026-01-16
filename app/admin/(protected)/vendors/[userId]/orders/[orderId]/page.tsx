@@ -128,9 +128,9 @@ export default function VendorOrderDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-lg font-semibold ${getStatusColor(order.order_status)}`}>
+           <p className={`text-lg font-semibold ${getStatusColor(order.order_status)}`}>
               {order.order_status
-                ? order.order_status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                ? order.order_status.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
                 : "Pending"}
             </p>
           </CardContent>
