@@ -27,6 +27,8 @@ export function useCountries() {
       );
       
       // Map REST Countries API response to our Country format
+      if (!Array.isArray(response.data)) return [];
+
       const countries = response.data
         .map((country) => ({
           value: country.cca2.toLowerCase(), // Convert to lowercase for consistency

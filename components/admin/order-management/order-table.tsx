@@ -116,8 +116,8 @@ export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTablePro
                 {formatAmount(order.total_amount, order.currency)}
               </div>
               <div className="text-foreground">
-                <span className={`text-sm capitalize ${getStatusColor(order.status, "order")}`}>
-                  {formatStatusLabel(order.status)}
+                <span className={`text-sm capitalize ${getStatusColor(order.order_status, "order")}`}>
+                  {formatStatusLabel(order.order_status)}
                 </span>
               </div>
               <div className="text-foreground">
