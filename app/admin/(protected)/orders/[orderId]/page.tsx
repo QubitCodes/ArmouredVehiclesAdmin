@@ -4,7 +4,21 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { ArrowLeft, Package, Calendar, User, DollarSign } from "lucide-react";
+import {
+  ArrowLeft,
+  Package,
+  Calendar,
+  User,
+  DollarSign,
+  Mail,
+  Phone,
+  Shield,
+  UserCircle,
+  FileText,
+  Tag,
+  ShoppingBag,
+} from "lucide-react";
+import Image from "next/image";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -16,21 +30,23 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const orderId = params.orderId as string;
 
-  const {
-    data: order,
-    isLoading,
-    error,
-  } = useOrder(orderId);
+  const { data: order, isLoading, error } = useOrder(orderId);
 
   // Handle errors
   useEffect(() => {
     if (error) {
-      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      const axiosError = error as AxiosError<{
+        message?: string;
+        error?: string;
+      }>;
       if (axiosError?.response?.status === 404) {
         router.replace("/admin/orders");
         return;
       }
-      const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Failed to fetch order";
+      const errorMessage =
+        axiosError?.response?.data?.message ||
+        axiosError?.message ||
+        "Failed to fetch order";
       toast.error(errorMessage);
     }
   }, [error, router]);
@@ -110,9 +126,7 @@ export default function OrderDetailPage() {
             <h1 className="text-3xl font-bold tracking-tight">
               Order {order.tracking_number || `#${order.id.slice(0, 8)}`}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Order Details
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Order Details</p>
           </div>
         </div>
       </div>
@@ -127,9 +141,16 @@ export default function OrderDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-lg font-semibold ${getStatusColor(order.order_status)}`}>
+            <p
+              className={`text-lg font-semibold ${getStatusColor(
+                order.order_status
+              )}`}
+            >
               {order.order_status
-                ? order.order_status.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
+                ? order.order_status
+                    .split("_")
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(" ")
                 : "Pending"}
             </p>
           </CardContent>
@@ -145,106 +166,194 @@ export default function OrderDetailPage() {
           <CardContent>
             <p className="text-lg font-semibold text-foreground">
               {order.total_amount
-                ? `${parseFloat(String(order.total_amount)).toFixed(2)} ${order.currency || 'AED'}`
-                : '—'}
+                ? `${parseFloat(String(order.total_amount)).toFixed(2)} ${
+                    order.currency || "AED"
+                  }`
+                : "—"}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Customer Information */}
-      {order.user && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Customer Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Customer ID
-                </label>
-                <p className="text-foreground mt-2 font-mono text-sm">
-                  {order.user.id}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Name
-                </label>
-                <p className="text-foreground mt-2">
-                  {order.user.name || "—"}
-                </p>
-              </div>
-              {order.user.username && (
-                <div>
-                  <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Username
-                  </label>
-                  <p className="text-foreground mt-2">
-                    {order.user.username}
-                  </p>
-                </div>
-              )}
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Email
-                </label>
-                <p className="text-foreground mt-2">
-                  {order.user.email || "—"}
-                </p>
-              </div>
-              {order.user.phone && (
-                <div>
-                  <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Phone
-                  </label>
-                  <p className="text-foreground mt-2">
-                    {order.user.phone}
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Order Items */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
+      <Card className="border-none shadow-md gap-0 overflow-hidden">
+        <CardHeader className="bg-muted/30">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold">
+            <ShoppingBag className="h-6 w-6 text-primary" />
             Order Items
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {order.items && order.items.length > 0 ? (
-            <div className="space-y-4">
+            <div className="divide-y divide-border">
               {order.items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
+                  className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 hover:bg-muted/5 transition-colors"
                 >
-                  <div>
-                    <p className="font-medium text-foreground">{item.productName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      SKU: {item.productId} • Qty: {item.quantity}
-                    </p>
+                  {/* Product Image */}
+                  <div className="relative h-24 w-24 flex-shrink-0 rounded-xl overflow-hidden bg-muted border">
+                    {item.product?.featured_image ? (
+                      <Image
+                        src={item.product.featured_image}
+                        alt={item.productName}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary/5">
+                        <Package className="h-10 w-10 text-primary/20" />
+                      </div>
+                    )}
                   </div>
-                  <p className="font-medium text-foreground">
-                    ${typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(String(item.price)).toFixed(2)}
-                  </p>
+
+                  {/* Product Info */}
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-base font-bold text-foreground line-clamp-1">
+                          {item.product?.name || item.productName}
+                        </h3>
+                        <div className="flex items-center gap-3 mt-1">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-xs font-mono font-medium">
+                            <Tag className="h-3 w-3" />
+                            {item.product?.sku || item.productId}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Base Price
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {order.currency || "AED"} {item.product?.base_price ? parseFloat(String(item.product.base_price)).toFixed(2) : parseFloat(String(item.price)).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Quantity
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          × {item.quantity}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Total
+                        </span>
+                        <span className="text-base font-bold text-primary">
+                          {order.currency || "AED"} {(parseFloat(String(item.price)) * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">No items in this order.</p>
+            <div className="p-12 text-center">
+              <Package className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+              <p className="text-muted-foreground font-medium">No items in this order.</p>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Customer Information */}
+      {order.user && (
+        <Card className="overflow-hidden border-none shadow-md bg-bg-light">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <UserCircle className="h-6 w-6 text-primary" />
+              Customer Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 p-2 rounded-lg bg-primary/10">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Full Name
+                  </p>
+                  <p className="text-base font-semibold text-foreground mt-0.5">
+                    {order.user.name || "—"}
+                  </p>
+                </div>
+              </div>
+
+              {order.user.username && (
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 p-2 rounded-lg bg-orange-500/10">
+                    <UserCircle className="h-4 w-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Username
+                    </p>
+                    <p className="text-base font-semibold text-foreground mt-0.5">
+                      {order.user.username}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-start gap-3">
+                <div className="mt-1 p-2 rounded-lg bg-purple-500/10">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    User Type
+                  </p>
+                  <p className="text-base font-semibold text-foreground mt-0.5">
+                    {order.user.user_type || "Customer"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="mt-1 p-2 rounded-lg bg-blue-500/10">
+                  <Mail className="h-4 w-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Email Address
+                  </p>
+                  <a
+                    href={`mailto:${order.user.email}`}
+                    className="text-base font-semibold text-primary hover:underline mt-0.5 block"
+                  >
+                    {order.user.email || "—"}
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="mt-1 p-2 rounded-lg bg-green-500/10">
+                  <Phone className="h-4 w-4 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Phone Number
+                  </p>
+                  <p className="text-base font-semibold text-foreground mt-0.5">
+                    {order.user.country_code
+                      ? `${order.user.country_code} `
+                      : ""}
+                    {order.user.phone || "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Status History */}
       {order.statusHistory && order.statusHistory.length > 0 && (
@@ -258,18 +367,33 @@ export default function OrderDetailPage() {
           <CardContent>
             <div className="space-y-4">
               {order.statusHistory
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .sort(
+                  (a, b) =>
+                    new Date(b.createdAt).getTime() -
+                    new Date(a.createdAt).getTime()
+                )
                 .map((historyItem, index) => (
-                  <div key={historyItem.id} className="relative pl-6 pb-4 last:pb-0">
+                  <div
+                    key={historyItem.id}
+                    className="relative pl-6 pb-4 last:pb-0"
+                  >
                     {index < order.statusHistory!.length - 1 && (
                       <div className="absolute left-2 top-6 bottom-0 w-0.5 bg-border" />
                     )}
                     <div className="relative">
-                      <div className="absolute left-[-22px] top-1 h-3 w-3 border-2 border-background bg-primary" style={{ borderRadius: '50%' }} />
+                      <div
+                        className="absolute left-[-22px] top-1 h-3 w-3 border-2 border-background bg-primary"
+                        style={{ borderRadius: "50%" }}
+                      />
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className={`font-semibold ${getStatusColor(historyItem.status)}`}>
-                            {historyItem.status.charAt(0).toUpperCase() + historyItem.status.slice(1)}
+                          <p
+                            className={`font-semibold ${getStatusColor(
+                              historyItem.status
+                            )}`}
+                          >
+                            {historyItem.status.charAt(0).toUpperCase() +
+                              historyItem.status.slice(1)}
                           </p>
                           {historyItem.note && (
                             <p className="text-sm text-muted-foreground mt-1">
@@ -288,37 +412,6 @@ export default function OrderDetailPage() {
           </CardContent>
         </Card>
       )}
-
-      {/* Order Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Created At
-            </label>
-            <p className="text-foreground mt-2">
-              {order.created_at ? formatDate(order.created_at) : '—'}
-            </p>
-          </div>
-          {order.updated_at && (
-            <div>
-              <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Last Updated
-              </label>
-              <p className="text-foreground mt-2">
-                {formatDate(order.updated_at)}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
-

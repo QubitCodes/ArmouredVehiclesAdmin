@@ -20,6 +20,8 @@ export interface Order {
     username?: string;
     email: string;
     phone?: string;
+    country_code?: string;
+    user_type?: string;
   };
   statusHistory?: StatusHistoryItem[];
 }
@@ -39,6 +41,12 @@ export interface OrderItem {
   productName: string;
   quantity: number;
   price: number;
+  product?: {
+    name: string;
+    sku: string;
+    featured_image?: string | null;
+    base_price?: number | string | null;
+  };
 }
 
 export interface GetOrdersResponse {
