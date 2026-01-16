@@ -80,11 +80,12 @@ export default function OrderDetailPage() {
 
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case "completed":
-      case "delivered":
+      case "approved":
         return "text-green-600 dark:text-green-500";
-      case "pending":
+      case "pending_review":
+      case "pending_approval":
         return "text-yellow-600 dark:text-yellow-500";
+      case "rejected":
       case "cancelled":
         return "text-red-600 dark:text-red-500";
       default:
@@ -126,9 +127,9 @@ export default function OrderDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-lg font-semibold ${getStatusColor(order.status)}`}>
-              {order.status
-                ? order.status.charAt(0).toUpperCase() + order.status.slice(1)
+            <p className={`text-lg font-semibold ${getStatusColor(order.order_status)}`}>
+              {order.order_status
+                ? order.order_status.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
                 : "Pending"}
             </p>
           </CardContent>
