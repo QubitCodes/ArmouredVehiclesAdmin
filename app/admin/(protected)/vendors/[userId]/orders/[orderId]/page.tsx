@@ -109,7 +109,7 @@ export default function VendorOrderDetailPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              Order {order.tracking_number || `#${order.id.slice(0, 8)}`}
+              Order {order.order_id || order.tracking_number || `#${order.id.slice(0, 8)}`}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Order Details for Vendor
@@ -229,11 +229,26 @@ export default function VendorOrderDetailPage() {
                   key={item.id}
                   className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
                 >
-                  <div>
-                    <p className="font-medium text-foreground">{item.productName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      SKU: {item.productId} • Qty: {item.quantity}
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 overflow-hidden rounded-md border bg-muted">
+                      {item.product?.media?.[0]?.url ? (
+                        <img
+                          src={item.product?.media?.[0]?.url}
+                          alt={item.productName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                         <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
+                            <Package className="h-6 w-6" />
+                         </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{item.productName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        SKU: {item.productId} • Qty: {item.quantity}
+                      </p>
+                    </div>
                   </div>
                   <p className="font-medium text-foreground">
                     ${Number(item.price).toFixed(2)}
