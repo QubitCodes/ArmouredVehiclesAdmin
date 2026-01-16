@@ -216,7 +216,7 @@ class ProductService {
       const response = await api.get<GetProductsResponse>("/admin/products", {
         params: {
           ...rest,
-          name: search, // API expects 'name' for search
+          search,
           approval_status: params.approval_status,
           vendor_id: vendorId, // Backend expects vendor_id
         },
