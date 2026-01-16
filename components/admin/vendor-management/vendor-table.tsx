@@ -42,7 +42,8 @@ export function VendorTable({ vendors }: VendorTableProps) {
   const getStatusColor = (status?: string | null): string => {
     if (!status) return "text-foreground";
     const s = status.toLowerCase();
-    if (s === "approved") return "text-green-600 dark:text-green-500";
+    if (s === "approved_general") return "text-green-600 dark:text-green-500";
+    if (s === "approved_controlled") return "text-green-500 dark:text-green-500";
     if (s === "pending_verification") return "text-yellow-600 dark:text-yellow-500";
     if (s === "rejected") return "text-red-600 dark:text-red-500";
     if (s === "not_started") return "text-gray-600 dark:text-gray-500";
