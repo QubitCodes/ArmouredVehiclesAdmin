@@ -125,15 +125,16 @@ export function ProductTable({
             "grid items-center gap-4 px-4 py-3 bg-transparent",
             fromVendor 
               ? "grid-cols-[60px_2fr_100px_80px_110px_130px]" 
-              : "grid-cols-[60px_2fr_100px_80px_110px_130px_80px]"
+              : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
           )}>
             <div className="text-sm font-semibold text-black">Image</div>
             <div className="text-sm font-semibold text-black">Name</div>
             <div className="text-sm font-semibold text-black">SKU</div>
             <div className="text-sm font-semibold text-black">Stock</div>
             <div className="text-sm font-semibold text-black">Base Price</div>
-            <div className="text-sm font-semibold text-black">Approval Status</div>
-            {!fromVendor && (
+            {fromVendor ? (
+              <div className="text-sm font-semibold text-black">Approval Status</div>
+            ) : (
               <div className="text-sm text-center font-semibold text-black">Actions</div>
             )}
           </div>
@@ -155,7 +156,7 @@ export function ProductTable({
                   "grid items-center gap-4 px-4 py-3",
                   fromVendor 
                     ? "grid-cols-[60px_2fr_100px_80px_110px_130px]" 
-                    : "grid-cols-[60px_2fr_100px_80px_110px_130px_80px]"
+                    : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
                 )}>
                   <Link href={productLink} className="block">
                     {imageUrl ? (
@@ -199,25 +200,25 @@ export function ProductTable({
                     {getPrice(product)}
                   </Link>
                   
-                  <div className="flex items-center">
-                    <Select
-                      value={product.approval_status === "pending_review" ? "pending" : (product.approval_status || "pending")}
-                      onChange={(e) => handleStatusChange(product.id, e.target.value)}
-                      className={cn(
-                        "h-8 text-xs w-30 font-semibold border px-2",
-                        getStatusColor(product.approval_status || "pending")
-                      )}
-                      disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id}
-                    >
-                      {statusOptions.map((option) => (
-                        <option key={option.value} value={option.value} className="bg-background text-foreground">
-                          {option.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  {!fromVendor && (
+                  {fromVendor ? (
+                    <div className="flex items-center">
+                      <Select
+                        value={product.approval_status === "pending_review" ? "pending" : (product.approval_status || "pending")}
+                        onChange={(e) => handleStatusChange(product.id, e.target.value)}
+                        className={cn(
+                          "h-8 text-xs w-30 font-semibold border px-2",
+                          getStatusColor(product.approval_status || "pending")
+                        )}
+                        disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id}
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option.value} value={option.value} className="bg-background text-foreground">
+                            {option.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  ) : (
                     <div className="flex items-center justify-center">
                       <Button
                         variant="ghost"
