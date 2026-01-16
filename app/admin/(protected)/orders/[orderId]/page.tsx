@@ -17,6 +17,11 @@ import {
   FileText,
   Tag,
   ShoppingBag,
+  History,
+  CheckCircle2,
+  Clock,
+  UserCog,
+  Info
 } from "lucide-react";
 import Image from "next/image";
 
@@ -577,53 +582,87 @@ export default function OrderDetailPage() {
       )}
 
       {/* Status History */}
-      {order.statusHistory && order.statusHistory.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Status History
+      {order.status_history && order.status_history.length > 0 && (
+        <Card className="border-none shadow-md overflow-hidden bg-bg-light">
+          <CardHeader className="bg-muted/30 border-b">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <History className="h-5 w-5 text-primary" />
+              Order Status History
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {order.statusHistory
+          <CardContent className="p-6">
+            <div className="relative space-y-0">
+              {/* Vertical line that spans all items except the last one */}
+              <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border lg:left-[11px]" />
+              
+              {order.status_history
                 .sort(
-                  (a: any, b: any) =>
-                    new Date(b.createdAt).getTime() -
-                    new Date(a.createdAt).getTime()
+                  (a, b) =>
+                    new Date(b.timestamp).getTime() -
+                    new Date(a.timestamp).getTime()
                 )
-                .map((historyItem: any, index: number) => (
+                .map((historyItem, index) => (
                   <div
-                    key={historyItem.id}
-                    className="relative pl-6 pb-4 last:pb-0"
+                    key={`${historyItem.timestamp}-${index}`}
+                    className="relative pl-10 pb-10 last:pb-0"
                   >
-                    {index < order.statusHistory!.length - 1 && (
-                      <div className="absolute left-2 top-6 bottom-0 w-0.5 bg-border" />
-                    )}
-                    <div className="relative">
-                      <div
-                        className="absolute left-[-22px] top-1 h-3 w-3 border-2 border-background bg-primary"
-                        style={{ borderRadius: "50%" }}
-                      />
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p
-                            className={`font-semibold ${getStatusColor(
-                              historyItem.status
-                            )}`}
-                          >
-                            {historyItem.status.charAt(0).toUpperCase() +
-                              historyItem.status.slice(1)}
+                    {/* Timeline dot */}
+                    <div className="absolute left-0 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background border-2 border-primary">
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      {/* Header: Note and Timestamp */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-1">
+                          <p className="text-base font-bold text-foreground flex items-center gap-2">
+                            <Info className="h-4 w-4 text-muted-foreground" />
+                            {historyItem.note || "Order updated"}
                           </p>
-                          {historyItem.note && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {historyItem.note}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {formatDate(historyItem.createdAt)}
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formatDate(historyItem.timestamp)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border text-xs font-semibold text-muted-foreground">
+                          <UserCog className="h-3.5 w-3.5" />
+                          By: {historyItem.updated_by?.slice(0, 8) || "System"}
+                        </div>
+                      </div>
+
+                      {/* Status Badges Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* Order Status */}
+                        <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <Package className="h-3 w-3" />
+                            Order Status
+                          </span>
+                          <span className={`${getStatusColor(historyItem.status)} text-sm font-bold capitalize`}>
+                            {historyItem.status.replace("_", " ")}
+                          </span>
+                        </div>
+
+                        {/* Payment Status */}
+                        <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <DollarSign className="h-3 w-3" />
+                            Payment Status
+                          </span>
+                          <span className={`${getPaymentStatusColor(historyItem.payment_status || "pending")} text-sm font-bold capitalize`}>
+                            {historyItem.payment_status || "Pending"}
+                          </span>
+                        </div>
+
+                        {/* Shipment Status */}
+                        <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <ShoppingBag className="h-3 w-3" />
+                            Shipment Status
+                          </span>
+                          <span className={`${getShipmentStatusColor(historyItem.shipment_status || "pending")} text-sm font-bold capitalize`}>
+                            {historyItem.shipment_status || "Pending"}
+                          </span>
                         </div>
                       </div>
                     </div>

@@ -26,16 +26,16 @@ export interface Order {
     country_code?: string;
     user_type?: string;
   };
-  statusHistory?: StatusHistoryItem[];
+  status_history?: OrderStatusHistory[];
 }
 
-export interface StatusHistoryItem {
-  id: number;
-  orderId: string;
+export interface OrderStatusHistory {
+  note: string;
   status: string;
-  changedBy: string;
-  note?: string | null;
-  createdAt: string;
+  timestamp: string;
+  updated_by: string;
+  payment_status: string | null;
+  shipment_status: string | null;
 }
 
 export interface OrderItem {
