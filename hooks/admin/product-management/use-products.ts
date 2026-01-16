@@ -113,9 +113,13 @@ export function useDeleteProduct() {
 export function useUpdateProductStatus() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ success: boolean; data: Product }, AxiosError, { id: string; approval_status: string }>({
-    mutationFn: async ({ id, approval_status }) => {
-      return productService.adminUpdateProductStatus(id, approval_status);
+  return useMutation<
+    { success: boolean; data: Product },
+    AxiosError,
+    { id: string; approval_status: string; rejection_reason?: string }
+  >({
+    mutationFn: async ({ id, approval_status, rejection_reason }) => {
+      return productService.adminApproveRejectProduct(id, approval_status, rejection_reason);
     },
     onSuccess: () => {
       // Invalidate and refetch products list after successful status update

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Package, Trash2 } from "lucide-react";
+import { Package, Trash2, Check, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Product } from "@/services/admin/product.service";
@@ -21,6 +21,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteProduct, useUpdateProductStatus } from "@/hooks/admin/product-management/use-products";
 import { Select } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface ProductTableProps {
   products: Product[];
@@ -32,6 +42,8 @@ export function ProductTable({
   fromVendor = false,
 }: ProductTableProps) {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [productToReject, setProductToReject] = useState<Product | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const deleteProductMutation = useDeleteProduct();
 
   const handleDelete = async () => {
@@ -60,14 +72,32 @@ export function ProductTable({
   };
   const updateStatusMutation = useUpdateProductStatus();
 
-  const handleStatusChange = async (productId: string, newStatus: string) => {
+  const handleStatusChange = async (productId: string, newStatus: string, reason?: string) => {
     try {
-      await updateStatusMutation.mutateAsync({ id: productId, approval_status: newStatus });
-      toast.success("Product status updated successfully!");
+      await updateStatusMutation.mutateAsync({ 
+        id: productId, 
+        approval_status: newStatus,
+        rejection_reason: reason 
+      });
+      toast.success(`Product ${newStatus} successfully!`);
+      setProductToReject(null);
+      setRejectionReason("");
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Failed to update product status.");
     }
+  };
+
+  const handleApprove = (productId: string) => {
+    handleStatusChange(productId, "approved");
+  };
+
+  const handleRejectConfirm = () => {
+    if (!productToReject || !rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason.");
+      return;
+    }
+    handleStatusChange(productToReject.id, "rejected", rejectionReason);
   };
 
   const statusOptions = [
@@ -124,7 +154,7 @@ export function ProductTable({
           <div className={cn(
             "grid items-center gap-4 px-4 py-3 bg-transparent",
             fromVendor 
-              ? "grid-cols-[60px_2fr_100px_80px_110px_130px]" 
+              ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
               : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
           )}>
             <div className="text-sm font-semibold text-black">Image</div>
@@ -155,7 +185,7 @@ export function ProductTable({
                 <div className={cn(
                   "grid items-center gap-4 px-4 py-3",
                   fromVendor 
-                    ? "grid-cols-[60px_2fr_100px_80px_110px_130px]" 
+                    ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
                     : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
                 )}>
                   <Link href={productLink} className="block">
@@ -193,20 +223,24 @@ export function ProductTable({
                       ? product.stock
                       : "—"}
                   </Link>
-                  <Link
-                    href={productLink}
-                    className="text-sm text-foreground cursor-pointer hover:underline"
-                  >
+                  <div className="text-sm text-foreground cursor-pointer hover:underline">
                     {getPrice(product)}
-                  </Link>
+                  </div>
                   
                   {fromVendor ? (
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-start">
                       <Select
                         value={product.approval_status === "pending_review" ? "pending" : (product.approval_status || "pending")}
-                        onChange={(e) => handleStatusChange(product.id, e.target.value)}
+                        onChange={(e) => {
+                          const newStatus = e.target.value;
+                          if (newStatus === "rejected") {
+                            setProductToReject(product);
+                          } else if (newStatus === "approved") {
+                            handleApprove(product.id);
+                          }
+                        }}
                         className={cn(
-                          "h-8 text-xs w-30 font-semibold border px-2",
+                          "h-8 text-xs w-32 font-semibold border px-2",
                           getStatusColor(product.approval_status || "pending")
                         )}
                         disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id}
@@ -265,6 +299,55 @@ export function ProductTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rejection Modal */}
+      <Dialog open={!!productToReject} onOpenChange={(open) => !open && setProductToReject(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Product</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting &quot;{productToReject?.name}&quot;. 
+              This reason will be visible to the vendor.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason">Rejection Reason</Label>
+              <Textarea
+                id="reason"
+                placeholder="Enter rejection reason..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setProductToReject(null)}
+              disabled={updateStatusMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectConfirm}
+              disabled={updateStatusMutation.isPending || !rejectionReason.trim()}
+            >
+              {updateStatusMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                "Confirm Rejection"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

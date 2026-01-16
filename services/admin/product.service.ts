@@ -180,6 +180,22 @@ class ProductService {
   }
 
   /**
+   * Update product status (Admin - New Flow)
+   */
+  async adminApproveRejectProduct(id: string, approval_status: string, rejection_reason?: string) {
+    try {
+      const response = await api.patch(`/admin/products/${id}/approval`, {
+        status: approval_status,
+        rejection_reason,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error approving/rejecting product:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Update product status (Admin)
    */
   async adminUpdateProductStatus(id: string, approval_status: string) {
