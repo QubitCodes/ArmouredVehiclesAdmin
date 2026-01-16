@@ -2,6 +2,7 @@ import api from "@/lib/api";
 
 export interface Order {
   id: string;
+  order_id?: string;
   user_id: string;
   tracking_number?: string | null;
   order_status?: string;
@@ -14,23 +15,27 @@ export interface Order {
   items?: OrderItem[];
   shipping_address?: string;
   payment_method?: string;
+  transaction_details?: string | null;
+  shipment_details?: string | null;
   user?: {
     id: string;
     name: string;
     username?: string;
     email: string;
     phone?: string;
+    country_code?: string;
+    user_type?: string;
   };
-  statusHistory?: StatusHistoryItem[];
+  status_history?: OrderStatusHistory[];
 }
 
-export interface StatusHistoryItem {
-  id: number;
-  orderId: string;
+export interface OrderStatusHistory {
+  note: string;
   status: string;
-  changedBy: string;
-  note?: string | null;
-  createdAt: string;
+  timestamp: string;
+  updated_by: string;
+  payment_status: string | null;
+  shipment_status: string | null;
 }
 
 export interface OrderItem {
@@ -39,6 +44,13 @@ export interface OrderItem {
   productName: string;
   quantity: number;
   price: number;
+  product?: {
+    name: string;
+    sku: string;
+    featured_image?: string | null;
+    base_price?: number | string | null;
+    media?: { url: string }[];
+  };
 }
 
 export interface GetOrdersResponse {
@@ -88,6 +100,23 @@ class OrderService {
       return response.data;
     } catch (error: any) {
       console.error("Error fetching order:", {
+        id: orderId,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+  /**
+   * Update order status, payment status, or shipment status
+   */
+  async updateOrder(orderId: string, data: Partial<Order>) {
+    try {
+      const response = await api.patch<{ success: boolean; data: Order }>(`/admin/orders/${orderId}`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error updating order:", {
         id: orderId,
         message: error.message,
         status: error.response?.status,
