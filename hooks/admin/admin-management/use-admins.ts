@@ -69,3 +69,25 @@ export function useCreateAdmin() {
   });
 }
 
+/**
+ * React Query hook for updating an existing admin
+ */
+export function useUpdateAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Admin,
+    AxiosError,
+    { id: string; data: any }
+  >({
+    mutationFn: async ({ id, data }) => {
+      const response = await adminService.updateAdmin(id, data);
+      return response.data || response;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch admins list after successful update
+      queryClient.invalidateQueries({ queryKey: ["admins"] });
+    },
+  });
+}
+

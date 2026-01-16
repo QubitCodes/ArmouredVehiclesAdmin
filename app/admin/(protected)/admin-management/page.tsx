@@ -9,10 +9,12 @@ import { Pagination } from "@/components/ui/pagination";
 import { useAdmins } from "@/hooks/admin/admin-management/use-admins";
 import { AdminTable } from "@/components/admin/admin-management/admin-table";
 import { AdminActions } from "@/components/admin/admin-management/admin-actions";
-import { AddAdminDialog } from "@/components/admin/admin-management/add-admin-dialog";
+import { AdminDialog } from "@/components/admin/admin-management/admin-dialog";
+import { Admin } from "@/services/admin/admin.service";
 
 function AdminManagementContent() {
-  const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false);
+  const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
@@ -36,7 +38,13 @@ function AdminManagementContent() {
   }, [error]);
 
   const handleAddAdmin = () => {
-    setIsAddAdminDialogOpen(true);
+    setSelectedAdmin(null);
+    setIsAdminDialogOpen(true);
+  };
+
+  const handleEditAdmin = (admin: Admin) => {
+    setSelectedAdmin(admin);
+    setIsAdminDialogOpen(true);
   };
 
   return (
@@ -63,7 +71,7 @@ function AdminManagementContent() {
         </div>
       ) : (
         <>
-          <AdminTable admins={admins} />
+          <AdminTable admins={admins} onEditAdmin={handleEditAdmin} />
           <Pagination
             currentPage={pagination.page}
             totalPages={pagination.totalPages}
@@ -71,9 +79,10 @@ function AdminManagementContent() {
         </>
       )}
 
-      <AddAdminDialog
-        open={isAddAdminDialogOpen}
-        onOpenChange={setIsAddAdminDialogOpen}
+      <AdminDialog
+        open={isAdminDialogOpen}
+        onOpenChange={setIsAdminDialogOpen}
+        admin={selectedAdmin}
       />
     </div>
   );

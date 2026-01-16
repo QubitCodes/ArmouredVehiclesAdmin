@@ -26,11 +26,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useCreateAdmin } from "@/hooks/admin/admin-management/use-admins";
+import { useCreateAdmin, useUpdateAdmin } from "@/hooks/admin/admin-management/use-admins";
 import { COUNTRY_LIST } from "@/lib/countries";
 import { cn } from "@/lib/utils";
+import { Admin } from "@/services/admin/admin.service";
+import { Checkbox } from "@/components/ui/checkbox";
 
-const addAdminSchema = z.object({
+const adminSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z
     .string()
@@ -40,22 +42,25 @@ const addAdminSchema = z.object({
   phoneNumber: z.string().min(1, "Phone number is required"),
 });
 
-type AddAdminFormValues = z.infer<typeof addAdminSchema>;
+type AdminFormValues = z.infer<typeof adminSchema>;
 
-interface AddAdminDialogProps {
+interface AdminDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  admin?: Admin | null;
 }
 
-export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
+export function AdminDialog({ open, onOpenChange, admin }: AdminDialogProps) {
+  const isEdit = !!admin;
+  
   // State for searchable country dropdown
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const countryDropdownRef = useRef<HTMLDivElement>(null);
   const countrySearchInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<AddAdminFormValues>({
-    resolver: zodResolver(addAdminSchema),
+  const form = useForm<AdminFormValues>({
+    resolver: zodResolver(adminSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -65,6 +70,28 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
   });
 
   const createAdminMutation = useCreateAdmin();
+  const updateAdminMutation = useUpdateAdmin();
+
+  const isPending = createAdminMutation.isPending || updateAdminMutation.isPending;
+
+  // Initialize form with admin data when editing
+  useEffect(() => {
+    if (admin) {
+      form.reset({
+        name: admin.name || "",
+        email: admin.email || "",
+        phoneCountryCode: admin.country_code || "+971",
+        phoneNumber: admin.phone || "",
+      });
+    } else {
+      form.reset({
+        name: "",
+        email: "",
+        phoneCountryCode: "+971",
+        phoneNumber: "",
+      });
+    }
+  }, [admin, form, open]);
 
   // Filter countries based on search
   const filteredCountries = useMemo(() => {
@@ -116,16 +143,29 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
     setCountrySearch("");
   };
 
-  const onSubmit = async (data: AddAdminFormValues) => {
+  const onSubmit = async (data: AdminFormValues) => {
     try {
-      await createAdminMutation.mutateAsync({
-        name: data.name,
-        email: data.email,
-        phone: data.phoneNumber,
-        country_code: data.phoneCountryCode,
-      });
+      if (isEdit && admin) {
+        await updateAdminMutation.mutateAsync({
+          id: admin.id,
+          data: {
+            name: data.name,
+            email: data.email,
+            phone: data.phoneNumber,
+            country_code: data.phoneCountryCode,
+          },
+        });
+        toast.success("Admin updated successfully!");
+      } else {
+        await createAdminMutation.mutateAsync({
+          name: data.name,
+          email: data.email,
+          phone: data.phoneNumber,
+          country_code: data.phoneCountryCode,
+        });
+        toast.success("Admin created successfully!");
+      }
 
-      toast.success("Admin created successfully!");
       form.reset();
       onOpenChange(false);
     } catch (error) {
@@ -136,10 +176,10 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
         error?: string;
       }>;
 
-      let errorMessage = "Failed to create admin. Please try again.";
+      let errorMessage = `Failed to ${isEdit ? "update" : "create"} admin. Please try again.`;
 
       if (axiosError?.response?.status === 403) {
-        errorMessage = "You don't have permission to create admins.";
+        errorMessage = `You don't have permission to ${isEdit ? "update" : "create"} admins.`;
       } else if (axiosError?.response?.status === 401) {
         errorMessage = "Unauthorized. Please log in again.";
       } else {
@@ -159,10 +199,12 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground uppercase tracking-wide">
-            Add New Admin
+            {isEdit ? "Edit Admin" : "Add New Admin"}
           </DialogTitle>
           <DialogDescription>
-            Enter the details to create a new admin user
+            {isEdit 
+              ? "Update the details of the admin user" 
+              : "Enter the details to create a new admin user"}
           </DialogDescription>
         </DialogHeader>
 
@@ -327,6 +369,7 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
               }}
             />
 
+
             <DialogFooter className="mt-6">
               <Button
                 type="button"
@@ -335,23 +378,23 @@ export function AddAdminDialog({ open, onOpenChange }: AddAdminDialogProps) {
                   form.reset();
                   onOpenChange(false);
                 }}
-                disabled={createAdminMutation.isPending}
+                disabled={isPending}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant="secondary"
-                disabled={createAdminMutation.isPending}
+                disabled={isPending}
                 className="font-bold uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createAdminMutation.isPending ? (
+                {isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
+                    {isEdit ? "Updating..." : "Creating..."}
                   </>
                 ) : (
-                  "Create Admin"
+                  isEdit ? "Update Admin" : "Create Admin"
                 )}
               </Button>
             </DialogFooter>
