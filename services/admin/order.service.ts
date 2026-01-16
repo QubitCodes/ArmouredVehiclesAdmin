@@ -14,6 +14,8 @@ export interface Order {
   items?: OrderItem[];
   shipping_address?: string;
   payment_method?: string;
+  transaction_details?: string | null;
+  shipment_details?: string | null;
   user?: {
     id: string;
     name: string;
@@ -96,6 +98,23 @@ class OrderService {
       return response.data;
     } catch (error: any) {
       console.error("Error fetching order:", {
+        id: orderId,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+  /**
+   * Update order status, payment status, or shipment status
+   */
+  async updateOrder(orderId: string, data: Partial<Order>) {
+    try {
+      const response = await api.patch<{ success: boolean; data: Order }>(`/admin/orders/${orderId}`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error updating order:", {
         id: orderId,
         message: error.message,
         status: error.response?.status,
