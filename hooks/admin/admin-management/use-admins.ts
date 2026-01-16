@@ -91,3 +91,20 @@ export function useUpdateAdmin() {
   });
 }
 
+/**
+ * React Query hook for deleting an admin
+ */
+export function useDeleteAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, AxiosError, string>({
+    mutationFn: async (id: string) => {
+      await adminService.deleteAdmin(id);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch admins list after successful deletion
+      queryClient.invalidateQueries({ queryKey: ["admins"] });
+    },
+  });
+}
+

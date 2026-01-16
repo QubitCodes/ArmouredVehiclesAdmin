@@ -97,6 +97,19 @@ class AdminService {
       throw error;
     }
   }
+
+  /**
+   * Delete an admin
+   */
+  async deleteAdmin(id: string) {
+    try {
+      const response = await api.delete(`/admin/admins/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting admin:", error);
+      throw error;
+    }
+  }
 }
 
 export const adminService = new AdminService();
