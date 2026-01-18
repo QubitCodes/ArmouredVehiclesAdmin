@@ -9,6 +9,7 @@ import { AxiosError } from "axios";
 import { Product } from "@/services/admin/product.service";
 import { normalizeImageUrl, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useDeleteProduct, useUpdateProductStatus } from "@/hooks/admin/product-management/use-products";
+import { useDeleteProduct, useUpdateProductStatus, useUpdateProductAttributes } from "@/hooks/admin/product-management/use-products";
 import { Select } from "@/components/ui/select";
 import {
   Dialog,
@@ -45,6 +46,7 @@ export function ProductTable({
   const [productToReject, setProductToReject] = useState<Product | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const deleteProductMutation = useDeleteProduct();
+  const attributesMutation = useUpdateProductAttributes();
 
   const handleDelete = async () => {
     if (!productToDelete) return;
@@ -85,6 +87,21 @@ export function ProductTable({
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Failed to update product status.");
+    }
+  };
+
+  const handleAttributeToggle = async (product: Product, field: 'is_featured' | 'is_top_selling', checked: boolean) => {
+    try {
+        await attributesMutation.mutateAsync({
+            id: product.id,
+            attributes: { [field]: checked }
+        });
+        toast.success(`Product marked as ${field === 'is_featured' ? 'Featured' : 'Top Selling'} ${checked ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+        const axiosError = error as AxiosError<{ message?: string, error?: string }>;
+        const msg = axiosError?.response?.data?.message || axiosError?.response?.data?.error || axiosError.message || "Failed to update attribute";
+        console.error("Attribute Toggle Error:", axiosError);
+        toast.error(`Error: ${msg}`);
     }
   };
 
@@ -147,15 +164,19 @@ export function ProductTable({
     return normalizeImageUrl(product.image || product.imageUrl);
   };
 
+  // Adjust columns based on whether we are in Vendor view or Admin view
+  // Admin View: Added Featured & Top Selling columns
+  const gridTemplate = fromVendor
+    ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
+    : "grid-cols-[60px_2fr_100px_80px_110px_80px_80px_80px]";
+
   return (
     <>
       <div className="w-full">
         <div className="w-full overflow-hidden mb-1">
           <div className={cn(
             "grid items-center gap-4 px-4 py-3 bg-transparent",
-            fromVendor 
-              ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
-              : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
+            gridTemplate
           )}>
             <div className="text-sm font-semibold text-black">Image</div>
             <div className="text-sm font-semibold text-black">Name</div>
@@ -165,7 +186,11 @@ export function ProductTable({
             {fromVendor ? (
               <div className="text-sm font-semibold text-black">Approval Status</div>
             ) : (
-              <div className="text-sm text-center font-semibold text-black">Actions</div>
+                <>
+                <div className="text-sm text-center font-semibold text-black">Featured</div>
+                <div className="text-sm text-center font-semibold text-black">Top Selling</div>
+                <div className="text-sm text-center font-semibold text-black">Actions</div>
+                </>
             )}
           </div>
         </div>
@@ -180,13 +205,11 @@ export function ProductTable({
             return (
               <div
                 key={product.id}
-                className="w-full overflow-hidden bg-bg-light transition-all hover:bg-muted/50 hover:shadow-sm"
+                className="w-full overflow-hidden bg-card transition-all hover:bg-muted/50 hover:shadow-sm"
               >
                 <div className={cn(
                   "grid items-center gap-4 px-4 py-3",
-                  fromVendor 
-                    ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
-                    : "grid-cols-[60px_2fr_100px_80px_110px_80px]"
+                  gridTemplate
                 )}>
                   <Link href={productLink} className="block">
                     {imageUrl ? (
@@ -253,6 +276,21 @@ export function ProductTable({
                       </Select>
                     </div>
                   ) : (
+                    <>
+                    <div className="flex items-center justify-center">
+                        <Switch 
+                            checked={product.is_featured === true}
+                            onCheckedChange={(checked) => handleAttributeToggle(product, 'is_featured', checked)}
+                            disabled={attributesMutation.isPending}
+                        />
+                    </div>
+                    <div className="flex items-center justify-center">
+                        <Switch 
+                            checked={product.is_top_selling === true}
+                            onCheckedChange={(checked) => handleAttributeToggle(product, 'is_top_selling', checked)}
+                            disabled={attributesMutation.isPending}
+                        />
+                    </div>
                     <div className="flex items-center justify-center">
                       <Button
                         variant="ghost"
@@ -263,6 +301,7 @@ export function ProductTable({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    </>
                   )}
                 </div>
               </div>

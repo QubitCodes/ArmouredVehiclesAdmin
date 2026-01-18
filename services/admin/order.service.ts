@@ -5,13 +5,22 @@ export interface Order {
   order_id?: string;
   user_id: string;
   tracking_number?: string | null;
-  order_status?: string;
-  total_amount?: number | string | null;
-  currency?: string;
-  payment_status?: string | null;
-  shipment_status?: string | null;
-  created_at?: string | null;
+  order_status: "order_received" | "vendor_approved" | "vendor_rejected" | "approved" | "rejected" | "cancelled" | "processing" | "shipped" | "delivered" | "returned" | "Order Received" | "Pending Review" | "Approved" | "pending_review" | "pending_approval";
+  total_amount: number;
+  currency: string;
+  type?: "direct" | "request"; // Added 'type' field, assuming it's optional based on other fields
+  payment_status?: "pending" | "paid" | "failed" | "refunded" | null;
+  shipment_status?: "pending" | "vendor_shipped" | "admin_received" | "processing" | "shipped" | "delivered" | "returned" | "cancelled" | null;
+  comments?: string | null; // Added 'comments' field
+  trackingNumber?: string; // Added 'trackingNumber' field
+  estimatedDelivery?: string; // Added 'estimatedDelivery' field
+  created_at: string | null; // Changed from 'created_at?' to 'created_at' and fixed type
   updated_at?: string;
+  order_group_id?: string | null;
+  vendor_id?: string | null;
+  vat_amount?: number;
+  admin_commission?: number;
+  grouped_orders?: Order[];
   items?: OrderItem[];
   shipping_address?: string;
   payment_method?: string;
@@ -27,6 +36,14 @@ export interface Order {
     user_type?: string;
   };
   status_history?: OrderStatusHistory[];
+  status_summary?: string[]; // Array of statuses for grouped orders
+  sub_order_count?: number;
+  vendor?: {
+    id: string;
+    name: string;
+    email: string;
+    username: string;
+  };
 }
 
 export interface OrderStatusHistory {
@@ -77,7 +94,11 @@ class OrderService {
   async getOrders(params: GetOrdersParams = {}) {
     try {
       const response = await api.get<GetOrdersResponse>("/admin/orders", {
-        params,
+        params: {
+            ...params,
+            vendor_id: params.vendorId, // Map camelCase to snake_case
+            vendorId: undefined // Remove camelCase to avoid duplication
+        },
       });
       return response.data;
     } catch (error: any) {
@@ -122,7 +143,8 @@ class OrderService {
         status: error.response?.status,
         data: error.response?.data
       });
-      throw error;
+      // Throw the actual backend message if available
+      throw new Error(error.response?.data?.message || error.message);
     }
   }
 }

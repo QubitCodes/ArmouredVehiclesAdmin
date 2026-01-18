@@ -43,7 +43,7 @@ export function AdminTable({ admins, onEditAdmin, onDeleteAdmin }: AdminTablePro
         {admins.map((admin) => (
           <div
             key={admin.id}
-            className="w-full overflow-hidden bg-bg-light transition-all hover:shadow-sm"
+            className="w-full overflow-hidden bg-card transition-all hover:shadow-sm"
           >
             <div className="grid items-center grid-cols-[minmax(120px,1fr)_minmax(180px,1.5fr)_minmax(150px,1fr)_minmax(100px,1fr)_100px] gap-4 px-4 py-3">
               <div className="font-medium text-foreground">{admin.name}</div>

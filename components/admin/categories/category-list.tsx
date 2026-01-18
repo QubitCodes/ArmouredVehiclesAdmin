@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Folder, FolderOpen, File } from "lucide-react";
+import { Plus, Pencil, Trash2, Folder, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CustomTable, Column } from "@/components/ui/custom-table";
 import { Category, categoryService } from "@/services/admin/category.service";
+import { authService } from "@/services/admin/auth.service"; // Import authService
 import { CategoryDialog } from "./category-dialog";
 import {
   AlertDialog,
@@ -17,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 export function CategoryList() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -24,41 +26,21 @@ export function CategoryList() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isVendor, setIsVendor] = useState(false);
 
-  const fetchCategories = async () => {
-    setLoading(true);
-    try {
-      // For now, fetching main categories and subcategories separately isn't efficient for a full list.
-      // But we have `getMainCategories` and `getCategoriesByParent`.
-      // Let's assume we want to show Main Categories first, and maybe expandable rows?
-      // CustomTable doesn't support expandable rows yet.
-      // Let's just list Main Categories and offer a "View Subcategories" button?
-      // Or just list ALL categories if we add a getAll endpoint?
-      // The current backend `list` (GET /categories) returns ALL.
-      // Let's use that. But `categoryService` didn't have `getAll`. I'll add `api.get('/categories')` here directly or update service.
-      // Let's stick strictly to `categoryService`. It has `getMainCategories`.
-      // I'll show Main Categories. If you click one, you drill down?
-      // "Categories have a parent_id and can only go upto a max 3 levels."
-      // Let's try to display a flat list with Hierarchy indication (Parent > Child) for simplicity and robustness.
-      // Actually, let's just use `api.get('/categories')` to get everything and build the tree.
-      
-      const allResponse = await categoryService.getMainCategories(); // This is just main.
-      // Wait, let's verify if I can get all. 
-      // Backend `CategoryController.list` is mounted at `GET /api/v1/categories`.
-      // Service `createCategory` calls `POST /categories`.
-      // I can add `getAll` to service or just use `api` here.
-      // Cleanest is to use `getMainCategories`? No, that misses subs.
-      // Let's assume I strictly follow the "Standard" table. 
-      // I'll add a `getAll` method to `CategoryList` via direct API or Service update.
-      // I'll assume for now I can just fetch `/categories` (list all).
-      
-      const response = await fetch('/api/v1/categories', { headers: { 'Authorization': `Bearer ${document.cookie}`}}); 
-      // No, let's use the verifyAuth token properly. `api` lib handles it.
-      // I will implement a quick helper here.
-    } catch (error) {
-       console.error(error);
+  useEffect(() => {
+    // Check role on mount
+    const user = authService.getUserDetails();
+    if (user && user.userType === 'vendor') { // Check userType or user_type? usually userType in stored obj
+         setIsVendor(true);
+    } else if (user && user.user_type === 'vendor') {
+         setIsVendor(true);
     }
-  };
+    
+    // Also if no user, check maybe authService normalized logic?
+    // Let's rely on standard object property check.
+    loadData();
+  }, []);
 
   // Improved fetch strategy utilizing existing endpoints
   const loadData = async () => {
@@ -74,13 +56,12 @@ export function CategoryList() {
       
       // Assign children to parents
       all.forEach(cat => {
-          if (cat.parentId && categoryMap.has(cat.parentId)) { // Use parentId from valid type if available or parent_id
-              const parent = categoryMap.get(cat.parentId || (cat as any).parent_id);
+          // Normalize parentId
+          const pId = cat.parentId ?? cat.parent_id;
+
+          if (pId && categoryMap.has(pId)) { 
+              const parent = categoryMap.get(pId);
               if (parent) parent.children?.push(categoryMap.get(cat.id)!);
-          } else if ((cat as any).parent_id && categoryMap.has((cat as any).parent_id)) { 
-               // Fallback for parent_id if interface uses parentId but API returns parent_id
-               const parent = categoryMap.get((cat as any).parent_id);
-               if (parent) parent.children?.push(categoryMap.get(cat.id)!);
           } else {
               roots.push(categoryMap.get(cat.id)!);
           }
@@ -97,11 +78,6 @@ export function CategoryList() {
           });
       };
       
-      // Sort roots by name?
-      // roots.sort((a, b) => a.name.localeCompare(b.name));
-      // Children sorting should ideally happen too.
-      // But API might return sorted.
-      
       traverse(roots, 0);
       setCategories(flattened);
     } catch (error) {
@@ -111,9 +87,6 @@ export function CategoryList() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const handleEdit = (category: Category) => {
     setSelectedCategory(category);
@@ -142,7 +115,7 @@ export function CategoryList() {
       header: "Name",
       accessorKey: "name",
       render: (item) => (
-        <div className="flex items-center gap-2 font-medium" style={{ paddingLeft: `${(item.level || 0) * 24}px` }}>
+        <div className="flex items-center gap-2 font-medium text-black" style={{ paddingLeft: `${(item.level || 0) * 24}px` }}>
              {(item.level || 0) > 0 ? <div className="border-l-2 border-b-2 w-3 h-3 border-gray-300 -mt-2 mr-1"></div> : null}
              <Folder className="h-4 w-4 text-primary/50" />
              {item.name}
@@ -155,6 +128,22 @@ export function CategoryList() {
         className: "text-muted-foreground text-sm truncate max-w-[300px]"
     },
     {
+        header: "Controlled",
+        accessorKey: "isControlled",
+        render: (item) => (
+            (item.isControlled || item.is_controlled) ? (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                    <ShieldCheck className="w-3 h-3 mr-1" />
+                    Controlled
+                </span>
+            ) : null
+        )
+    }
+  ];
+
+  // Only add Actions column if NOT vendor
+  if (!isVendor) {
+      columns.push({
         header: "Actions",
         render: (item) => (
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -166,8 +155,8 @@ export function CategoryList() {
                 </Button>
             </div>
         )
-    }
-  ];
+      });
+  }
 
   return (
     <>
@@ -176,19 +165,21 @@ export function CategoryList() {
           <h2 className="text-2xl font-bold tracking-tight">Categories</h2>
           <p className="text-muted-foreground">Manage product categories and hierarchy.</p>
         </div>
-        <Button onClick={() => { setSelectedCategory(null); setDialogOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> Add Category
-        </Button>
+        {!isVendor && (
+            <Button onClick={() => { setSelectedCategory(null); setDialogOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" /> Add Category
+            </Button>
+        )}
       </div>
 
       <CustomTable 
         data={categories} 
         columns={columns} 
-        gridCols="2fr 3fr 100px"
+        gridCols={!isVendor ? "2fr 3fr 1fr 100px" : "2fr 3fr 1fr"} // Adjust grid based on columns
         isLoading={loading}
         onRowClick={(item) => {
             // Optional: navigate to subcategories?
-            // router.push(/admin/categories/${item.id})
+            // router.push(`/admin/categories/${item.id}`)
         }} 
       />
 

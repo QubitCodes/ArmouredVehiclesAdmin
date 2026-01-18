@@ -21,8 +21,8 @@ function VendorProductsContent() {
   const userId = params.userId as string;
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
-  const rawStatus = searchParams.get("approval_status") || "pending";
-  const approvalStatus = rawStatus || "pending";
+  const rawStatus = searchParams.get("approval_status") || "all";
+  const approvalStatus = rawStatus || "all";
 
   const handleStatusFilterChange = (newStatus: string) => {
     const nextParams = new URLSearchParams(searchParams.toString());

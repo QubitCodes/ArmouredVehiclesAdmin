@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { authService } from "@/services/admin/auth.service";
 import { AxiosError } from "axios";
 import {
   ArrowLeft,
@@ -21,7 +22,8 @@ import {
   CheckCircle2,
   Clock,
   UserCog,
-  Info
+  Info,
+  Copy
 } from "lucide-react";
 import Image from "next/image";
 
@@ -52,6 +54,18 @@ export default function OrderDetailPage() {
   const { mutate: updateOrder, isPending: isUpdating } =
     useUpdateOrder(orderId);
 
+  // User Role State needed for header display logic
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
+
+  useEffect(() => {
+    const user = authService.getUserDetails();
+    if (user && user.userType) {
+        setUserRole(user.userType.toLowerCase());
+    }
+    setRoleLoading(false);
+  }, []);
+
   // Payment Confirmation Dialog State
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -63,7 +77,7 @@ export default function OrderDetailPage() {
     if (newStatus === "paid") {
       setIsPaymentDialogOpen(true);
     } else {
-      updateOrder({ payment_status: newStatus });
+      updateOrder({ payment_status: newStatus as any });
     }
   };
 
@@ -97,7 +111,7 @@ export default function OrderDetailPage() {
     if (newStatus === "shipped") {
       setIsShipmentDialogOpen(true);
     } else {
-      updateOrder({ shipment_status: newStatus });
+      updateOrder({ shipment_status: newStatus as any });
     }
   };
 
@@ -176,9 +190,14 @@ export default function OrderDetailPage() {
     if (!id) return "—";
     const cleaned = id.replace(/^#/, "");
     if (cleaned.length === 8) {
-      return `#${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
+      return `#${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
     }
     return `#${cleaned}`;
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Order ID copied to clipboard");
   };
 
   const formatDate = (dateString: string) => {
@@ -194,12 +213,15 @@ export default function OrderDetailPage() {
   const getStatusColor = (status?: string) => {
     switch (status) {
       case "approved":
+      case "vendor_approved":
         return "text-green-600 dark:text-green-500";
       case "pending_review":
       case "pending_approval":
+      case "order_received":
         return "text-yellow-600 dark:text-yellow-500";
       case "rejected":
       case "cancelled":
+      case "vendor_rejected":
         return "text-red-600 dark:text-red-500";
       default:
         return "text-orange-600 dark:text-orange-500";
@@ -222,11 +244,14 @@ export default function OrderDetailPage() {
   const getShipmentStatusColor = (status?: string) => {
     switch (status) {
       case "delivered":
+      case "shipped":
         return "text-green-600 dark:text-green-500";
       case "pending":
       case "processing":
-      case "shipped":
+      case "admin_received":
         return "text-yellow-600 dark:text-yellow-500";
+      case "vendor_shipped":
+        return "text-blue-600 dark:text-blue-500";
       case "returned":
       case "cancelled":
         return "text-red-600 dark:text-red-500";
@@ -249,8 +274,24 @@ export default function OrderDetailPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Order {order.order_id ? formatOrderId(order.order_id) : (order.tracking_number || `#${order.id.slice(0, 8)}`)}
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              Order {
+                  userRole === 'vendor' 
+                    ? (order.order_id ? formatOrderId(order.order_id) : (order.tracking_number || `#${order.id.slice(0, 8)}`))
+                    : (order.order_group_id ? formatOrderId(order.order_group_id) : (order.order_id ? formatOrderId(order.order_id) : `#${order.id.slice(0, 8)}`))
+              }
+               <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 ml-1 text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10"
+                  onClick={() => copyToClipboard(
+                      userRole === 'vendor'
+                      ? formatOrderId(order.order_id || order.id.slice(0, 8))
+                      : formatOrderId(order.order_group_id || order.order_id || order.id.slice(0, 8))
+                  )}
+               >
+                   <Copy className="h-4 w-4" />
+               </Button>
             </h1>
             <p className="text-sm text-muted-foreground mt-1">Order Details</p>
           </div>
@@ -302,17 +343,33 @@ export default function OrderDetailPage() {
                     .join(" ")
                 : "Pending"}
             </p>
+            {/* Order Status Select */}
             <Select
               value={order.order_status || "pending_review"}
-              onChange={(e) => updateOrder({ order_status: e.target.value })}
-              disabled={isUpdating}
+              onChange={(e) => updateOrder({ order_status: e.target.value as any })}
+              disabled={isUpdating || roleLoading || (userRole === 'vendor' && !['order_received', 'vendor_approved', 'vendor_rejected', 'pending_review'].includes(order.order_status))}
               className="h-9 text-xs"
             >
-              <option value="pending_review">Pending Review</option>
-              <option value="pending_approval">Pending Approval</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="cancelled">Cancelled</option>
+              {roleLoading ? (
+                  <option disabled>Loading options...</option>
+              ) : userRole === 'vendor' ? (
+                  <>
+                    <option value="order_received">Order Received</option>
+                    <option value="vendor_approved">Approve Order</option>
+                    <option value="vendor_rejected">Reject Order</option>
+                  </>
+              ) : (
+                  <>
+                    <option value="order_received">Order Received</option>
+                    <option value="vendor_approved">Vendor Approved</option>
+                    <option value="vendor_rejected">Vendor Rejected</option>
+                    <option value="pending_review">Pending Review</option>
+                    <option value="pending_approval">Pending Approval</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="cancelled">Cancelled</option>
+                  </>
+              )}
             </Select>
           </CardContent>
         </Card>
@@ -336,7 +393,7 @@ export default function OrderDetailPage() {
             <Select
               value={order.payment_status || "pending"}
               onChange={(e) => handlePaymentStatusChange(e.target.value)}
-              disabled={isUpdating || order.order_status !== "approved"}
+              disabled={isUpdating || userRole === 'vendor' || (order.order_status !== "approved" && userRole !== 'admin')} // Disabled for vendor always
               className="h-9 text-xs"
             >
               <option value="pending">Pending</option>
@@ -362,26 +419,46 @@ export default function OrderDetailPage() {
               )}`}
             >
               {" "}
-              {order.shipment_status || "Pending"}
+              {order.shipment_status ? order.shipment_status.replace('_', ' ') : "Pending"}
             </p>
             <Select
               value={order.shipment_status || "pending"}
               onChange={(e) => handleShipmentStatusChange(e.target.value)}
-              disabled={isUpdating || order.payment_status !== "paid"}
+              disabled={isUpdating || (userRole === 'vendor' && !['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending'))}
               className="h-9 text-xs"
             >
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="returned">Returned</option>
-              <option value="cancelled">Cancelled</option>
+               {userRole === 'vendor' ? (
+                   <>
+                       <option value="pending">Pending</option>
+                       <option value="vendor_shipped">Shipped to Warehouse</option>
+                       {(!['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending')) && (
+                           <>
+                              <option value="admin_received">Received at Warehouse</option>
+                              <option value="processing">Processing</option>
+                              <option value="shipped">Shipped to Customer</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="returned">Returned</option>
+                              <option value="cancelled">Cancelled</option>
+                           </>
+                       )}
+                   </>
+               ) : (
+                   <>
+                      <option value="pending">Pending</option>
+                      <option value="vendor_shipped">Vendor Shipped</option>
+                      <option value="admin_received">Received at Warehouse</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped to Customer</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="returned">Returned</option>
+                      <option value="cancelled">Cancelled</option>
+                   </>
+               )}
             </Select>
           </CardContent>
         </Card>
       </div>
 
-      {/* Order Items */}
       <Card className="border-none shadow-md gap-0 overflow-hidden">
         <CardHeader className="bg-muted/30">
           <CardTitle className="flex items-center gap-2 text-lg font-bold">
@@ -390,106 +467,193 @@ export default function OrderDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {order.items && order.items.length > 0 ? (
-            <div className="divide-y divide-border">
-              {order.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 hover:bg-muted/5 transition-colors"
-                >
-                  {/* Product Image */}
-                  <div className="relative h-24 w-24 flex-shrink-0 rounded-xl overflow-hidden bg-muted border">
-                    {item.product?.media && item.product.media.length > 0 ? (
-                      <Image
-                        src={normalizeImageUrl(item.product.media[0].url) || ""}
-                        alt={item.productName || item.product?.name || "Product Image"}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : item.product?.featured_image ? (
-                      <Image
-                        src={normalizeImageUrl(item.product.featured_image) || ""}
-                        alt={item.productName || item.product?.name || "Product Image"}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <Image
-                        src="/images/placeholder.jpg"
-                        alt="Placeholder"
-                        fill
-                        className="object-cover opacity-50"
-                      />
-                    )}
-                  </div>
+          {(() => {
+             // Determine if we should show grouped views (Admin) or single (Vendor/Legacy)
+             // Check if grouped_orders exists and has items
+             const groupedOrders: any[] = (order as any).grouped_orders || [];
+             const ordersToDisplay = groupedOrders.length > 0 ? groupedOrders : [order];
 
-                  {/* Product Info */}
-                  <div className="flex-grow min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-base font-bold text-foreground line-clamp-1">
-                          {item.product?.name || item.productName}
-                        </h3>
-                        <div className="flex items-center gap-3 mt-1">
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-xs font-mono font-medium">
-                            <Tag className="h-3 w-3" />
-                            {item.product?.sku || item.productId}
-                          </div>
+             return ordersToDisplay.map((subOrder, groupIndex) => (
+                <div key={subOrder.id} className="border-b last:border-b-0">
+                    {/* Sub-Header for Grouped Orders */}
+                    {ordersToDisplay.length > 1 && (
+                        <div className="bg-muted/50 px-6 py-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                                    Sub-Order {formatOrderId(subOrder.order_id || subOrder.id.slice(0, 8))} 
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 ml-1 text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10"
+                                        onClick={() => copyToClipboard(formatOrderId(subOrder.order_id || subOrder.id))}
+                                     >
+                                         <Copy className="h-3 w-3" />
+                                     </Button>
+                                </span>
+                                <span className="text-muted-foreground mx-2">|</span>
+                                {subOrder.vendor ? (
+                                    <a 
+                                      href={`/admin/vendors/${subOrder.vendor.id}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                    >
+                                        <UserCircle className="h-3 w-3" />
+                                        {subOrder.vendor.username || subOrder.vendor.name}
+                                    </a>
+                                ) : (subOrder.vendor_id === 'admin' || !subOrder.vendor_id ? (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Shield className="h-3 w-3" />
+                                        Armoured Vehicles (Admin)
+                                    </span>
+                                ) : (
+                                    <span className="text-xs text-muted-foreground">Vendor ID: {subOrder.vendor_id.slice(0,8)}</span>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                 <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(subOrder.order_status).replace('text-', 'bg-').replace('600', '100')} ${getStatusColor(subOrder.order_status)}`}>
+                                     {subOrder.order_status?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                 </span>
+                            </div>
                         </div>
-                      </div>
-                    </div>
+                    )}
+                    
+                    {/* Items List */}
+                    <div className="divide-y divide-border">
+                        {subOrder.items && subOrder.items.length > 0 ? (
+                            subOrder.items.map((item: any) => (
+                                <div
+                                key={item.id}
+                                className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 hover:bg-muted/5 transition-colors"
+                                >
+                                {/* Product Image */}
+                                <div className="relative h-24 w-24 flex-shrink-0 rounded-xl overflow-hidden bg-muted border">
+                                    {item.product?.media && item.product.media.length > 0 ? (
+                                    <Image
+                                        src={normalizeImageUrl(item.product.media[0].url) || ""}
+                                        alt={item.productName || item.product?.name || "Product Image"}
+                                        fill
+                                        className="object-cover"
+                                    />
+                                    ) : item.product?.featured_image ? (
+                                    <Image
+                                        src={normalizeImageUrl(item.product.featured_image) || ""}
+                                        alt={item.productName || item.product?.name || "Product Image"}
+                                        fill
+                                        className="object-cover"
+                                    />
+                                    ) : (
+                                    <Image
+                                        src="/images/placeholder.jpg"
+                                        alt="Placeholder"
+                                        fill
+                                        className="object-cover opacity-50"
+                                    />
+                                    )}
+                                </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                          Base Price
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {order.currency || "AED"}{" "}
-                          {item.product?.base_price
-                            ? parseFloat(
-                                String(item.product.base_price)
-                              ).toFixed(2)
-                            : parseFloat(String(item.price)).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                          Quantity
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          × {item.quantity}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                          Total
-                        </span>
-                        <span className="text-base font-bold text-primary">
-                          {order.currency || "AED"}{" "}
-                          {(
-                            parseFloat(String(item.price)) * item.quantity
-                          ).toFixed(2)}
-                        </span>
-                      </div>
+                                {/* Product Info */}
+                                <div className="flex-grow min-w-0">
+                                    <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-base font-bold text-foreground line-clamp-1">
+                                        {item.product?.name || item.productName}
+                                        </h3>
+                                        <div className="flex items-center gap-3 mt-1">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-xs font-mono font-medium">
+                                            <Tag className="h-3 w-3" />
+                                            {item.product?.sku || item.productId}
+                                        </div>
+                                        </div>
+                                    </div>
+                                    </div>
+
+                                    <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                        Base Price
+                                        </span>
+                                        <span className="text-sm font-semibold text-foreground">
+                                        {order.currency || "AED"}{" "}
+                                        {item.product?.base_price
+                                            ? parseFloat(
+                                                String(item.product.base_price)
+                                            ).toFixed(2)
+                                            : parseFloat(String(item.price)).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                        Quantity
+                                        </span>
+                                        <span className="text-sm font-semibold text-foreground">
+                                        × {item.quantity}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                        Total
+                                        </span>
+                                        <span className="text-base font-bold text-primary">
+                                        {order.currency || "AED"}{" "}
+                                        {(
+                                            parseFloat(String(item.price)) * item.quantity
+                                        ).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    </div>
+                                </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-12 text-center">
+                            <Package className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                            <p className="text-muted-foreground font-medium">
+                                No items in this sub-order.
+                            </p>
+                            </div>
+                        )}
                     </div>
-                  </div>
+                    
+                    {/* Financial Summary Footer */}
+                    <div className="bg-muted/10 p-4 border-t flex flex-col items-end gap-2">
+                         <div className="w-full max-w-xs space-y-2">
+                             <div className="flex justify-between text-sm text-muted-foreground">
+                                 <span>Subtotal (Base):</span>
+                                 <span className="font-medium">{order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.vat_amount || "0")).toFixed(2)}</span>
+                             </div>
+                             <div className="flex justify-between text-sm text-muted-foreground">
+                                 <span>VAT (5%):</span>
+                                 <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.vat_amount || "0").toFixed(2)}</span>
+                             </div>
+                             <div className="flex justify-between text-sm font-semibold text-foreground border-t pt-2">
+                                 <span>Total Cost (Client Paid):</span>
+                                 <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.total_amount || "0").toFixed(2)}</span>
+                             </div>
+                             
+                             {/* Only show commission and receivable if it is a VENDOR order (has vendor_id and not admin) */}
+                             {subOrder.vendor_id && subOrder.vendor_id !== 'admin' && (
+                                <>
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>Commission to Admin:</span>
+                                        <span className="font-medium text-red-500">- {order.currency || "AED"} {parseFloat(subOrder.admin_commission || "0").toFixed(2)}</span>
+                                    </div>
+                                    <div className="border-t pt-2 mt-2 flex justify-between text-base font-bold text-foreground">
+                                        <span>Total Receivable (Vendor):</span>
+                                        <span className="text-green-600">{order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.admin_commission || "0")).toFixed(2)}</span>
+                                    </div>
+                                </>
+                             )}
+                         </div>
+                    </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-12 text-center">
-              <Package className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-              <p className="text-muted-foreground font-medium">
-                No items in this order.
-              </p>
-            </div>
-          )}
+             ));
+          })()}
         </CardContent>
       </Card>
 
-      {/* Customer Information */}
-      {order.user && (
+      {/* Customer Information - HIDDEN FOR VENDOR */}
+      {userRole !== 'vendor' && order.user && (
         <Card className="overflow-hidden border-none shadow-md bg-bg-light">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg font-bold">
@@ -582,8 +746,9 @@ export default function OrderDetailPage() {
       )}
 
       {/* Status History */}
-      {order.status_history && order.status_history.length > 0 && (
-        <Card className="border-none shadow-md overflow-hidden bg-bg-light">
+      {/* Status History */}
+      {order.status_history && (
+        <Card className="border-none shadow-md overflow-hidden bg-background">
           <CardHeader className="bg-muted/30 border-b">
             <CardTitle className="flex items-center gap-2 text-lg font-bold">
               <History className="h-5 w-5 text-primary" />
@@ -592,82 +757,89 @@ export default function OrderDetailPage() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="relative space-y-0">
-              {/* Vertical line that spans all items except the last one */}
-              <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border lg:left-[11px]" />
-              
-              {order.status_history
-                .sort(
-                  (a, b) =>
-                    new Date(b.timestamp).getTime() -
-                    new Date(a.timestamp).getTime()
-                )
-                .map((historyItem, index) => (
-                  <div
-                    key={`${historyItem.timestamp}-${index}`}
-                    className="relative pl-10 pb-10 last:pb-0"
-                  >
-                    {/* Timeline dot */}
-                    <div className="absolute left-0 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background border-2 border-primary">
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                      {/* Header: Note and Timestamp */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="space-y-1">
-                          <p className="text-base font-bold text-foreground flex items-center gap-2">
-                            <Info className="h-4 w-4 text-muted-foreground" />
-                            {historyItem.note || "Order updated"}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5" />
-                            {formatDate(historyItem.timestamp)}
+               {order.status_history.length === 0 ? (
+                   <p className="text-sm text-muted-foreground italic">No status updates recorded.</p>
+               ) : (
+                   <>
+                      {/* Vertical line that spans all items except the last one */}
+                      <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border lg:left-[11px]" />
+                      
+                      {order.status_history
+                        .sort(
+                          (a, b) =>
+                            new Date(b.timestamp).getTime() -
+                            new Date(a.timestamp).getTime()
+                        )
+                        .map((historyItem, index) => (
+                          <div
+                            key={`${historyItem.timestamp}-${index}`}
+                            className="relative pl-10 pb-10 last:pb-0"
+                          >
+                            {/* Timeline dot */}
+                            <div className="absolute left-0 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background border-2 border-primary">
+                              <div className="h-2 w-2 rounded-full bg-primary" />
+                            </div>
+        
+                            <div className="flex flex-col gap-4">
+                              {/* Header: Note and Timestamp */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="space-y-1">
+                                  <p className="text-base font-bold text-foreground flex items-center gap-2">
+                                    <Info className="h-4 w-4 text-muted-foreground" />
+                                    {historyItem.note || "Order updated"}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    {formatDate(historyItem.timestamp)}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border text-xs font-semibold text-muted-foreground">
+                                  <UserCog className="h-3.5 w-3.5" />
+                                  By: {historyItem.updated_by?.slice(0, 8) || "System"}
+                                </div>
+                              </div>
+        
+                              {/* Status Badges Grid */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {/* Order Status */}
+                                <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
+                                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                    <Package className="h-3 w-3" />
+                                    Order Status
+                                  </span>
+                                  <span className={`${getStatusColor(historyItem.status)} text-sm font-bold capitalize`}>
+                                    {/* Handle various status strings safely */}
+                                    {(historyItem.status || "Unknown").replace(/_/g, " ")}
+                                  </span>
+                                </div>
+        
+                                {/* Payment Status */}
+                                <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
+                                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                    <DollarSign className="h-3 w-3" />
+                                    Payment Status
+                                  </span>
+                                  <span className={`${getPaymentStatusColor(historyItem.payment_status || "pending")} text-sm font-bold capitalize`}>
+                                    {historyItem.payment_status || "Pending"}
+                                  </span>
+                                </div>
+        
+                                {/* Shipment Status */}
+                                <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
+                                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                    <ShoppingBag className="h-3 w-3" />
+                                    Shipment Status
+                                  </span>
+                                  <span className={`${getShipmentStatusColor(historyItem.shipment_status || "pending")} text-sm font-bold capitalize`}>
+                                    {historyItem.shipment_status || "Pending"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border text-xs font-semibold text-muted-foreground">
-                          <UserCog className="h-3.5 w-3.5" />
-                          By: {historyItem.updated_by?.slice(0, 8) || "System"}
-                        </div>
-                      </div>
-
-                      {/* Status Badges Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {/* Order Status */}
-                        <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <Package className="h-3 w-3" />
-                            Order Status
-                          </span>
-                          <span className={`${getStatusColor(historyItem.status)} text-sm font-bold capitalize`}>
-                            {historyItem.status.replace("_", " ")}
-                          </span>
-                        </div>
-
-                        {/* Payment Status */}
-                        <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <DollarSign className="h-3 w-3" />
-                            Payment Status
-                          </span>
-                          <span className={`${getPaymentStatusColor(historyItem.payment_status || "pending")} text-sm font-bold capitalize`}>
-                            {historyItem.payment_status || "Pending"}
-                          </span>
-                        </div>
-
-                        {/* Shipment Status */}
-                        <div className="flex flex-col p-3 rounded-xl bg-background border shadow-sm">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <ShoppingBag className="h-3 w-3" />
-                            Shipment Status
-                          </span>
-                          <span className={`${getShipmentStatusColor(historyItem.shipment_status || "pending")} text-sm font-bold capitalize`}>
-                            {historyItem.shipment_status || "Pending"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        ))}
+                   </>
+               )}
             </div>
           </CardContent>
         </Card>

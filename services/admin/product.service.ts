@@ -20,6 +20,8 @@ export interface Product {
   imageUrl?: string | null;
   stock?: number;
   sku?: string;
+  is_featured?: boolean;
+  is_top_selling?: boolean;
 }
 
 export interface CreateProductRequest {
@@ -240,6 +242,16 @@ class ProductService {
       return response.data;
     } catch (error) {
       console.error("Error fetching vendor products:", error);
+      throw error;
+    }
+  }
+
+  async updateProductAttributes(id: string, attributes: { is_featured?: boolean; is_top_selling?: boolean }) {
+    try {
+      const response = await api.patch(`/admin/products/${id}/attributes`, attributes);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating product attributes:", error);
       throw error;
     }
   }

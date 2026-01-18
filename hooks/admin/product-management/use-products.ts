@@ -129,3 +129,26 @@ export function useUpdateProductStatus() {
     },
   });
 }
+
+/**
+ * React Query hook for updating product attributes (Featured/Top Selling)
+ */
+export function useUpdateProductAttributes() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { success: boolean; data: Product },
+    AxiosError,
+    { id: string; attributes: { is_featured?: boolean; is_top_selling?: boolean } }
+  >({
+    mutationFn: async ({ id, attributes }) => {
+      // @ts-ignore
+      return productService.updateProductAttributes(id, attributes);
+    },
+    onSuccess: () => {
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-products"] });
+    },
+  });
+}
