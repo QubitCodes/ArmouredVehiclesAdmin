@@ -12,7 +12,7 @@ export default function VendorNewProductPage() {
         </p>
       </div>
 
-      <ProductForm />
+      <ProductForm isVendor={true} />
     </div>
   );
 }

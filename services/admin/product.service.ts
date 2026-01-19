@@ -22,6 +22,14 @@ export interface Product {
   sku?: string;
   is_featured?: boolean;
   is_top_selling?: boolean;
+  vendor?: {
+    id: string;
+    name: string;
+    email: string;
+    profile?: {
+      company_name: string;
+    };
+  };
 }
 
 export interface CreateProductRequest {
@@ -105,7 +113,8 @@ export interface GetProductsParams {
   search?: string;
   approval_status?: string;
   vendorId?: string;
-  vendor_id?: string; // Add support for backend param style
+  vendor_id?: string;
+  scope?: 'admin' | 'vendor' | 'all';
 }
 
 class ProductService {
@@ -120,6 +129,7 @@ class ProductService {
           ...rest,
           search: search,
           approval_status: params.approval_status,
+          scope: params.scope,
         },
       });
       return response.data;

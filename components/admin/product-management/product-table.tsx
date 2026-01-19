@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Package, Trash2, Check, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import { Product } from "@/services/admin/product.service";
 import { normalizeImageUrl, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { authService } from "@/services/admin/auth.service";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +50,20 @@ export function ProductTable({
   const deleteProductMutation = useDeleteProduct();
   const attributesMutation = useUpdateProductAttributes();
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const user = authService.getUserDetails();
+    if (user && ["admin", "super_admin"].includes(user.userType)) {
+      setIsAdmin(true);
+    }
+  }, []);
+
+
+  const searchParams = useSearchParams();
+  const showRestricted = isAdmin;
+  const showVendorColumn = isAdmin && searchParams.get("scope") === "all" && !fromVendor;
+
   const handleDelete = async () => {
     if (!productToDelete) return;
 
@@ -76,10 +92,10 @@ export function ProductTable({
 
   const handleStatusChange = async (productId: string, newStatus: string, reason?: string) => {
     try {
-      await updateStatusMutation.mutateAsync({ 
-        id: productId, 
+      await updateStatusMutation.mutateAsync({
+        id: productId,
         approval_status: newStatus,
-        rejection_reason: reason 
+        rejection_reason: reason
       });
       toast.success(`Product ${newStatus} successfully!`);
       setProductToReject(null);
@@ -92,16 +108,16 @@ export function ProductTable({
 
   const handleAttributeToggle = async (product: Product, field: 'is_featured' | 'is_top_selling', checked: boolean) => {
     try {
-        await attributesMutation.mutateAsync({
-            id: product.id,
-            attributes: { [field]: checked }
-        });
-        toast.success(`Product marked as ${field === 'is_featured' ? 'Featured' : 'Top Selling'} ${checked ? 'enabled' : 'disabled'}`);
+      await attributesMutation.mutateAsync({
+        id: product.id,
+        attributes: { [field]: checked }
+      });
+      toast.success(`Product marked as ${field === 'is_featured' ? 'Featured' : 'Top Selling'} ${checked ? 'enabled' : 'disabled'}`);
     } catch (error) {
-        const axiosError = error as AxiosError<{ message?: string, error?: string }>;
-        const msg = axiosError?.response?.data?.message || axiosError?.response?.data?.error || axiosError.message || "Failed to update attribute";
-        console.error("Attribute Toggle Error:", axiosError);
-        toast.error(`Error: ${msg}`);
+      const axiosError = error as AxiosError<{ message?: string, error?: string }>;
+      const msg = axiosError?.response?.data?.message || axiosError?.response?.data?.error || axiosError.message || "Failed to update attribute";
+      console.error("Attribute Toggle Error:", axiosError);
+      toast.error(`Error: ${msg}`);
     }
   };
 
@@ -153,11 +169,10 @@ export function ProductTable({
   const getPrice = (product: Product) => {
     const price = product.base_price ?? product.basePrice ?? product.price ?? 0;
     const currency = product.currency || "AED";
-    return `${currency} ${
-      typeof price === "number"
-        ? price.toFixed(2)
-        : parseFloat(String(price)).toFixed(2)
-    }`;
+    return `${currency} ${typeof price === "number"
+      ? price.toFixed(2)
+      : parseFloat(String(price)).toFixed(2)
+      }`;
   };
 
   const getImageUrl = (product: Product) => {
@@ -166,9 +181,19 @@ export function ProductTable({
 
   // Adjust columns based on whether we are in Vendor view or Admin view
   // Admin View: Added Featured & Top Selling columns
+  // Vendor Column: Added when viewing all products (admin only)
+  // Adjust columns based on whether we are in Vendor view or Admin view
+  // Admin View: Added Featured & Top Selling columns
+  // Vendor Column: Replaces SKU when viewing all products (admin only)
   const gridTemplate = fromVendor
-    ? "grid-cols-[60px_2fr_100px_80px_110px_200px]" 
-    : "grid-cols-[60px_2fr_100px_80px_110px_80px_80px_80px]";
+    ? (showRestricted
+      ? "grid-cols-[60px_2fr_100px_80px_110px_150px_80px_80px_80px]"
+      : "grid-cols-[60px_2fr_100px_80px_110px_150px_80px]")
+    : (showRestricted
+      ? (showVendorColumn
+        ? "grid-cols-[60px_2fr_150px_80px_110px_80px_80px_80px]" // Vendor takes SKU slot, slightly wider
+        : "grid-cols-[60px_2fr_100px_80px_110px_80px_80px_80px]")
+      : "grid-cols-[60px_2fr_100px_80px_110px_80px]");
 
   return (
     <>
@@ -180,27 +205,31 @@ export function ProductTable({
           )}>
             <div className="text-sm font-semibold text-black">Image</div>
             <div className="text-sm font-semibold text-black">Name</div>
-            <div className="text-sm font-semibold text-black">SKU</div>
+            {showVendorColumn ? (
+              <div className="text-sm font-semibold text-black">Vendor</div>
+            ) : (
+              <div className="text-sm font-semibold text-black">SKU</div>
+            )}
             <div className="text-sm font-semibold text-black">Stock</div>
             <div className="text-sm font-semibold text-black">Base Price</div>
             {fromVendor ? (
               <div className="text-sm font-semibold text-black">Approval Status</div>
-            ) : (
-                <>
+            ) : null}
+            {showRestricted && (
+              <>
                 <div className="text-sm text-center font-semibold text-black">Featured</div>
                 <div className="text-sm text-center font-semibold text-black">Top Selling</div>
-                <div className="text-sm text-center font-semibold text-black">Actions</div>
-                </>
+              </>
             )}
+            <div className="text-sm text-center font-semibold text-black">Actions</div>
           </div>
         </div>
 
         <div className="w-full space-y-1">
           {products.map((product) => {
             const imageUrl = getImageUrl(product);
-            const productLink = `/admin/products/${product.id}${
-              fromVendor ? "?from=vendor" : ""
-            }`;
+            const productLink = `/admin/products/${product.id}${fromVendor ? "?from=vendor" : ""
+              }`;
 
             return (
               <div
@@ -232,12 +261,31 @@ export function ProductTable({
                   >
                     {product.name}
                   </Link>
-                  <Link
-                    href={productLink}
-                    className="text-sm text-foreground truncate cursor-pointer hover:underline"
-                  >
-                    {product.sku || "—"}
-                  </Link>
+                  {showVendorColumn ? (
+                    <div
+                      className="text-sm text-foreground truncate max-w-[140px]"
+                      title={product.vendor?.profile?.company_name || product.vendor?.name || "Admin"}
+                    >
+                      {product.vendor ? (
+                        <Link
+                          href={`/admin/vendors/${product.vendor.id}`}
+                          target="_blank"
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {product.vendor.profile?.company_name || product.vendor.name}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground italic">Admin</span>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={productLink}
+                      className="text-sm text-foreground truncate cursor-pointer hover:underline"
+                    >
+                      {product.sku || "—"}
+                    </Link>
+                  )}
                   <Link
                     href={productLink}
                     className="text-sm text-foreground cursor-pointer hover:underline"
@@ -249,8 +297,8 @@ export function ProductTable({
                   <div className="text-sm text-foreground cursor-pointer hover:underline">
                     {getPrice(product)}
                   </div>
-                  
-                  {fromVendor ? (
+
+                  {fromVendor && (
                     <div className="flex items-center justify-start">
                       <Select
                         value={product.approval_status === "pending_review" ? "pending" : (product.approval_status || "pending")}
@@ -266,7 +314,7 @@ export function ProductTable({
                           "h-8 text-xs w-32 font-semibold border px-2",
                           getStatusColor(product.approval_status || "pending")
                         )}
-                        disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id}
+                        disabled={!isAdmin || (updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id)}
                       >
                         {statusOptions.map((option) => (
                           <option key={option.value} value={option.value} className="bg-background text-foreground">
@@ -275,34 +323,36 @@ export function ProductTable({
                         ))}
                       </Select>
                     </div>
-                  ) : (
+                  )}
+
+                  {showRestricted && (
                     <>
-                    <div className="flex items-center justify-center">
-                        <Switch 
-                            checked={product.is_featured === true}
-                            onCheckedChange={(checked) => handleAttributeToggle(product, 'is_featured', checked)}
-                            disabled={attributesMutation.isPending}
+                      <div className="flex items-center justify-center">
+                        <Switch
+                          checked={product.is_featured === true}
+                          onCheckedChange={(checked) => handleAttributeToggle(product, 'is_featured', checked)}
+                          disabled={attributesMutation.isPending}
                         />
-                    </div>
-                    <div className="flex items-center justify-center">
-                        <Switch 
-                            checked={product.is_top_selling === true}
-                            onCheckedChange={(checked) => handleAttributeToggle(product, 'is_top_selling', checked)}
-                            disabled={attributesMutation.isPending}
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <Switch
+                          checked={product.is_top_selling === true}
+                          onCheckedChange={(checked) => handleAttributeToggle(product, 'is_top_selling', checked)}
+                          disabled={attributesMutation.isPending}
                         />
-                    </div>
-                    <div className="flex items-center justify-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setProductToDelete(product)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      </div>
                     </>
                   )}
+                  <div className="flex items-center justify-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setProductToDelete(product)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -345,7 +395,7 @@ export function ProductTable({
           <DialogHeader>
             <DialogTitle>Reject Product</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejecting &quot;{productToReject?.name}&quot;. 
+              Please provide a reason for rejecting &quot;{productToReject?.name}&quot;.
               This reason will be visible to the vendor.
             </DialogDescription>
           </DialogHeader>

@@ -163,7 +163,7 @@ const productSchema = basicInfoSchema
   .merge(pricingSchema)
   .merge(mediaSchema)
   .merge(declarationsSchema);
-  
+
 export type ProductFormValues = z.infer<typeof productSchema>;
 
 // Map tabs to schemas
@@ -271,9 +271,10 @@ const SECTIONS = [
 interface ProductFormProps {
   productId?: string;
   defaultValues?: Partial<ProductFormValues>;
+  isVendor?: boolean;
 }
 
-export default function ProductForm({ productId }: ProductFormProps) {
+export default function ProductForm({ productId, isVendor = false }: ProductFormProps) {
   const router = useRouter();
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
@@ -281,7 +282,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const [currentProductId, setCurrentProductId] = useState<string | null>(
     productId || null
   );
-  
+
   const { data: mainCategories = [] } = useMainCategories();
 
   // File states
@@ -299,9 +300,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
   // This allows validation to default to the current tab's schema
   const form = useForm<ProductFormValues>({
     resolver: ((values: any, context: any, options: any) => {
-       const schema = SCHEMA_MAP[activeTab] || basicInfoSchema;
-       // Cast to any to avoid strict type mismatch between partial schemas and full ProductFormValues
-       return zodResolver(schema)(values, context, options);
+      const schema = SCHEMA_MAP[activeTab] || basicInfoSchema;
+      // Cast to any to avoid strict type mismatch between partial schemas and full ProductFormValues
+      return zodResolver(schema)(values, context, options);
     }) as any,
     defaultValues: {
       name: "",
@@ -317,7 +318,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
       year: undefined,
       countryOfOrigin: "",
       description: "",
-      
+
       // Technical
       dimensionLength: undefined,
       dimensionWidth: undefined,
@@ -353,8 +354,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       stock: undefined,
       condition: "new",
       pricing_tiers: [
-          { min_quantity: undefined, max_quantity: undefined, price: undefined }, // Added max_quantity logic if needed or keep null
-          { min_quantity: undefined, max_quantity: undefined, price: undefined }
+        { min_quantity: undefined, max_quantity: undefined, price: undefined }, // Added max_quantity logic if needed or keep null
+        { min_quantity: undefined, max_quantity: undefined, price: undefined }
       ],
 
       // Declarations
@@ -369,11 +370,11 @@ export default function ProductForm({ productId }: ProductFormProps) {
       complianceConfirmed: true,
       supplierSignature: "",
       signatureDate: {
-          day: undefined,
-          month: undefined,
-          year: undefined
+        day: undefined,
+        month: undefined,
+        year: undefined
       },
-      
+
       // Defaults/Placeholders
       isFeatured: false,
       actionType: "buy_now",
@@ -385,11 +386,11 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
   // Populate form with product data when loaded (Edit Mode)
   useEffect(() => {
-     if (productId && product) {
+    if (productId && product) {
       const productData = product as unknown as Record<string, unknown>;
 
 
-      
+
       // Map basic fields
       // Map basic fields
       // Helper to get value from either camelCase or snake_case
@@ -406,17 +407,17 @@ export default function ProductForm({ productId }: ProductFormProps) {
         packingCharge: (getVal("packingCharge", "packing_charge") as number) || undefined,
         currency: (getVal("currency", "currency") as string) || "AED",
         condition: (getVal("condition", "condition") as string) || "new",
-        
+
         // Dimensions
         dimensionUnit: (getVal("dimensionUnit", "dimension_unit") as string) || "mm",
         dimensionLength: (getVal("dimensionLength", "dimension_length") as number) || undefined,
         dimensionWidth: (getVal("dimensionWidth", "dimension_width") as number) || undefined,
         dimensionHeight: (getVal("dimensionHeight", "dimension_height") as number) || undefined,
-        
+
         // Weight
         weightValue: (getVal("weightValue", "weight_value") as number) || undefined,
         weightUnit: (getVal("weightUnit", "weight_unit") as string) || "kg",
-        
+
         // Packing
         packingLength: (getVal("packingLength", "packing_length") as number) || undefined,
         packingWidth: (getVal("packingWidth", "packing_width") as number) || undefined,
@@ -424,45 +425,45 @@ export default function ProductForm({ productId }: ProductFormProps) {
         packingDimensionUnit: (getVal("packingDimensionUnit", "packing_dimension_unit") as string) || "cm",
         packingWeight: (getVal("packingWeight", "packing_weight") as number) || undefined,
         packingWeightUnit: (getVal("packingWeightUnit", "packing_weight_unit") as string) || "kg",
-        
+
         minOrderQuantity: (getVal("minOrderQuantity", "min_order_quantity") as number) || undefined,
         productionLeadTime: (getVal("productionLeadTime", "production_lead_time") as number) || undefined,
-        
+
         // Declarations
         manufacturingSource: (getVal("manufacturingSource", "manufacturing_source") as string) || "",
         manufacturingSourceName: (getVal("manufacturingSourceName", "manufacturing_source_name") as string) || "",
-        
+
         readyStockAvailable: (getVal("readyStockAvailable", "ready_stock_available") as boolean) ?? false,
         requiresExportLicense: (getVal("requiresExportLicense", "requires_export_license") as boolean) ?? false,
         hasWarranty: (getVal("hasWarranty", "has_warranty") as boolean) ?? false,
         complianceConfirmed: (getVal("complianceConfirmed", "compliance_confirmed") as boolean) ?? false,
-        
+
         warrantyDuration: (getVal("warrantyDuration", "warranty_duration") as number) || undefined,
         warrantyDurationUnit: (getVal("warrantyDurationUnit", "warranty_duration_unit") as string) || "months",
         warrantyTerms: (getVal("warrantyTerms", "warranty_terms") as string) || "",
         supplierSignature: (getVal("supplierSignature", "supplier_signature") as string) || "",
-        
+
         warranty: (productData.warranty as string) || "",
         technicalDescription: (getVal("technicalDescription", "technical_description") as string) || "",
         description: (productData.description as string) || "",
-        
+
         vehicleCompatibility: (getVal("vehicleCompatibility", "vehicle_compatibility") as string) || "",
         certifications: (productData.certifications as string) || "",
         countryOfOrigin: (getVal("countryOfOrigin", "country_of_origin") as string) || "",
         controlledItemType: (getVal("controlledItemType", "controlled_item_type") as string) || "",
-        
+
         make: (productData.make as string) || "",
         model: (productData.model as string) || "",
         year: productData.year as number | undefined,
-        
+
         isFeatured: (productData.isFeatured as boolean) ?? false,
         stock: productData.stock as number | undefined,
-        
+
         image:
           (productData.image as string) ||
           (productData.imageUrl as string) ||
           "",
-          
+
         // Map arrays safely - check both keys
         materials: Array.isArray(getVal("materials", "materials")) ? (getVal("materials", "materials") as string[]) : [],
         features: Array.isArray(getVal("features", "features")) ? (getVal("features", "features") as string[]) : [],
@@ -483,7 +484,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         sizes: Array.isArray(getVal("sizes", "sizes")) ? (getVal("sizes", "sizes") as string[]) : [],
         thickness: Array.isArray(getVal("thickness", "thickness")) ? (getVal("thickness", "thickness") as string[]) : [],
         colors: Array.isArray(getVal("colors", "colors")) ? (getVal("colors", "colors") as string[]) : [],
-        
+
         vehicleFitment: (() => {
           const val = getVal("vehicleFitment", "vehicle_fitment");
           if (Array.isArray(val)) return val as string[];
@@ -497,40 +498,40 @@ export default function ProductForm({ productId }: ProductFormProps) {
           }
           return [];
         })(),
-            
-        pricingTerms: Array.isArray(getVal("pricingTerms", "pricing_terms")) 
-            ? (getVal("pricingTerms", "pricing_terms") as string[]) 
-            : [],
-            
+
+        pricingTerms: Array.isArray(getVal("pricingTerms", "pricing_terms"))
+          ? (getVal("pricingTerms", "pricing_terms") as string[])
+          : [],
+
         gallery: Array.isArray(productData.gallery)
           ? (productData.gallery as string[])
           : [],
-          
+
         pricing_tiers: Array.isArray(productData.pricing_tiers)
-            ? (productData.pricing_tiers as any[]).map(t => ({
-                min_quantity: t.min_quantity,
-                max_quantity: t.max_quantity,
-                price: t.price
-            }))
-            : [],
-            
+          ? (productData.pricing_tiers as any[]).map(t => ({
+            min_quantity: t.min_quantity,
+            max_quantity: t.max_quantity,
+            price: t.price
+          }))
+          : [],
+
         // Date Handling
         signatureDate: (() => {
-             const val = getVal("signatureDate", "submission_date");
-             if (typeof val === 'string') {
-                 // Parse "YYYY-MM-DD"
-                 const parts = val.split('-');
-                 if (parts.length === 3) {
-                     return { 
-                         year: parseInt(parts[0]), 
-                         month: parseInt(parts[1]), 
-                         day: parseInt(parts[2]) 
-                     };
-                 }
-             }
-             return val as { day?: number; month?: number; year?: number } | undefined;
+          const val = getVal("signatureDate", "submission_date");
+          if (typeof val === 'string') {
+            // Parse "YYYY-MM-DD"
+            const parts = val.split('-');
+            if (parts.length === 3) {
+              return {
+                year: parseInt(parts[0]),
+                month: parseInt(parts[1]),
+                day: parseInt(parts[2])
+              };
+            }
+          }
+          return val as { day?: number; month?: number; year?: number } | undefined;
         })(),
-          
+
         // Map Categories (IMPORTANT: Ensure IDs are numbers)
         mainCategoryId: (productData.mainCategoryId as number) || (productData.main_category_id as number) || (productData.main_category as any)?.id || undefined,
         categoryId: (productData.categoryId as number) || (productData.category_id as number) || (productData.category as any)?.id || undefined,
@@ -556,18 +557,18 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
   // Controlled Item Visibility Logic
   const subCategoryId = form.watch("subCategoryId");
-  
+
   const isControlledItemVisible = (() => {
-      const main = mainCategories.find(c => c.id === mainCategoryId);
-      const cat = categories.find(c => c.id === categoryId);
-      const sub = subCategories.find(c => c.id === subCategoryId);
-      
-      // Check both snake_case and camelCase just in case, based on Service interface
-      return (
-          !!main?.is_controlled || !!main?.isControlled ||
-          !!cat?.is_controlled || !!cat?.isControlled ||
-          !!sub?.is_controlled || !!sub?.isControlled
-      );
+    const main = mainCategories.find(c => c.id === mainCategoryId);
+    const cat = categories.find(c => c.id === categoryId);
+    const sub = subCategories.find(c => c.id === subCategoryId);
+
+    // Check both snake_case and camelCase just in case, based on Service interface
+    return (
+      !!main?.is_controlled || !!main?.isControlled ||
+      !!cat?.is_controlled || !!cat?.isControlled ||
+      !!sub?.is_controlled || !!sub?.isControlled
+    );
   })();
 
   const materials = form.watch("materials") || [];
@@ -637,44 +638,44 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
   // Mapping from Form (camelCase) to API (snake_case)
   const FIELD_MAPPING: Record<string, string> = {
-      vehicleFitment: 'vehicle_fitment',
-      dimensionLength: 'dimension_length',
-      dimensionWidth: 'dimension_width',
-      dimensionHeight: 'dimension_height',
-      dimensionUnit: 'dimension_unit',
-      weightValue: 'weight_value',
-      weightUnit: 'weight_unit',
-      packingLength: 'packing_length',
-      packingWidth: 'packing_width',
-      packingHeight: 'packing_height',
-      packingDimensionUnit: 'packing_dimension_unit',
-      packingWeight: 'packing_weight',
-      packingWeightUnit: 'packing_weight_unit',
-      minOrderQuantity: 'min_order_quantity',
-      pricingTerms: 'pricing_terms',
-      productionLeadTime: 'production_lead_time',
-      readyStockAvailable: 'ready_stock_available',
-      manufacturingSource: 'manufacturing_source',
-      manufacturingSourceName: 'manufacturing_source_name',
-      requiresExportLicense: 'requires_export_license',
-      hasWarranty: 'has_warranty',
-      warrantyDuration: 'warranty_duration',
-      warrantyDurationUnit: 'warranty_duration_unit',
-      warrantyTerms: 'warranty_terms',
-      complianceConfirmed: 'compliance_confirmed',
-      supplierSignature: 'supplier_signature',
-      signatureDate: 'submission_date', // Special format handling needed
-      detailDescription: 'description',
-      driveTypes: 'drive_types',
-      technicalDescription: 'technical_description',
-      controlledItemType: 'controlled_item_type',
-      countryOfOrigin: 'country_of_origin',
-      mainCategoryId: 'main_category_id',
-      categoryId: 'category_id',
-      subCategoryId: 'sub_category_id',
-      basePrice: 'base_price',
-      shippingCharge: 'shipping_charge',
-      packingCharge: 'packing_charge'
+    vehicleFitment: 'vehicle_fitment',
+    dimensionLength: 'dimension_length',
+    dimensionWidth: 'dimension_width',
+    dimensionHeight: 'dimension_height',
+    dimensionUnit: 'dimension_unit',
+    weightValue: 'weight_value',
+    weightUnit: 'weight_unit',
+    packingLength: 'packing_length',
+    packingWidth: 'packing_width',
+    packingHeight: 'packing_height',
+    packingDimensionUnit: 'packing_dimension_unit',
+    packingWeight: 'packing_weight',
+    packingWeightUnit: 'packing_weight_unit',
+    minOrderQuantity: 'min_order_quantity',
+    pricingTerms: 'pricing_terms',
+    productionLeadTime: 'production_lead_time',
+    readyStockAvailable: 'ready_stock_available',
+    manufacturingSource: 'manufacturing_source',
+    manufacturingSourceName: 'manufacturing_source_name',
+    requiresExportLicense: 'requires_export_license',
+    hasWarranty: 'has_warranty',
+    warrantyDuration: 'warranty_duration',
+    warrantyDurationUnit: 'warranty_duration_unit',
+    warrantyTerms: 'warranty_terms',
+    complianceConfirmed: 'compliance_confirmed',
+    supplierSignature: 'supplier_signature',
+    signatureDate: 'submission_date', // Special format handling needed
+    detailDescription: 'description',
+    driveTypes: 'drive_types',
+    technicalDescription: 'technical_description',
+    controlledItemType: 'controlled_item_type',
+    countryOfOrigin: 'country_of_origin',
+    mainCategoryId: 'main_category_id',
+    categoryId: 'category_id',
+    subCategoryId: 'sub_category_id',
+    basePrice: 'base_price',
+    shippingCharge: 'shipping_charge',
+    packingCharge: 'packing_charge'
   };
 
   const cleanDataForApi = (
@@ -695,16 +696,16 @@ export default function ProductForm({ productId }: ProductFormProps) {
             year?: number;
           };
           if (dateValue.day && dateValue.month && dateValue.year) {
-             // Create ISO date string YYYY-MM-DD
-             const dateStr = `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
-             cleanedData[apiField] = dateStr;
+            // Create ISO date string YYYY-MM-DD
+            const dateStr = `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
+            cleanedData[apiField] = dateStr;
           }
         }
       } else if (field === "pricing_tiers") {
-           // Pass through pricing tiers
-            if (value) {
-                cleanedData[apiField] = value;
-            }
+        // Pass through pricing tiers
+        if (value) {
+          cleanedData[apiField] = value;
+        }
       } else if (Array.isArray(value)) {
         // Filter empty strings from arrays
         const filtered = value.filter((item) => item !== "");
@@ -714,7 +715,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         if (filtered.length > 0) {
           cleanedData[apiField] = filtered;
         }
-    } else if (value !== "" && value !== undefined && value !== null) {
+      } else if (value !== "" && value !== undefined && value !== null) {
         cleanedData[apiField] = value;
       }
     });
@@ -729,35 +730,35 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
       // Create FormData
       const fd = new FormData();
-      
+
       // Append all data fields
       Object.keys(cleanedData).forEach(key => {
-          const value = cleanedData[key];
-          if (value === undefined || value === null) return;
+        const value = cleanedData[key];
+        if (value === undefined || value === null) return;
 
-          // Arrays and Objects (except File) should be stringified
-          if (Array.isArray(value) || (typeof value === 'object' && !(value instanceof File))) {
-              fd.append(key, JSON.stringify(value));
-          } else {
-              fd.append(key, String(value));
-          }
+        // Arrays and Objects (except File) should be stringified
+        if (Array.isArray(value) || (typeof value === 'object' && !(value instanceof File))) {
+          fd.append(key, JSON.stringify(value));
+        } else {
+          fd.append(key, String(value));
+        }
       });
 
       // Append Files
       if (coverImageFile) {
-          fd.append('files', coverImageFile);
+        fd.append('files', coverImageFile);
       }
-      
+
       // Append Gallery Files
       galleryFiles.forEach(file => {
-          fd.append('files', file);
+        fd.append('files', file);
       });
 
       if (!currentProductId) {
         // CREATE
         // Only validate Step 1 fields
         // Note: The form validation already happened via handleSubmit, but we should ensure we are on step 1
-        
+
         const response = await createProductMutation.mutateAsync(
           fd as unknown as CreateProductRequest
         );
@@ -804,8 +805,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
   // Helper to sync local state back to parent if needed, but here we just handle it internally
   // But wait, the component might be used in different contexts.
   function setProductId(id: string) {
-      // If we were passed a way to set ID, we could use it.
-      // But for now local state `currentProductId` is sufficient for the wizard flow.
+    // If we were passed a way to set ID, we could use it.
+    // But for now local state `currentProductId` is sufficient for the wizard flow.
   }
 
   const renderStepContent = (stepId: number) => {
@@ -929,7 +930,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 />
               </div>
               {/* Additional fields for Step 1 would be here (sku, certifications, etc) - keeping concise for now based on original file structure, ensuring all fields are present */}
-                <FormField
+              <FormField
                 control={form.control}
                 name="sku"
                 render={({ field }) => (
@@ -950,98 +951,98 @@ export default function ProductForm({ productId }: ProductFormProps) {
               />
 
               <div className="grid gap-4 md:grid-cols-2">
-                 <FormField
-                    control={form.control}
-                    name="certifications"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Certifications / Standards</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., CEN BR6" {...field} />
-                        </FormControl>
-                         <FormMessage />
-                      </FormItem>
-                    )}
-                 />
-                 {isControlledItemVisible && (
-                     <FormField
-                        control={form.control}
-                        name="controlledItemType"
-                        render={({ field }) => (
-                           <FormItem>
-                            <FormLabel className="text-destructive font-medium">Controlled Item Type *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g. ITAR / Dual-Use" {...field} />
-                            </FormControl>
-                             <FormMessage />
-                          </FormItem>
-                        )}
-                     />
-                 )}
-              </div>
-
-               <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="certifications"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Certifications / Standards</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., CEN BR6" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {isControlledItemVisible && (
                   <FormField
                     control={form.control}
-                    name="vehicleCompatibility"
-                    render={({ field }) => (
-                       <FormItem>
-                        <FormLabel>Vehicle Compatibility</FormLabel>
-                         <FormControl>
-                          <Input placeholder="Toyota Land Cruiser" {...field} />
-                        </FormControl>
-                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={form.control}
-                    name="countryOfOrigin"
+                    name="controlledItemType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Country of Origin</FormLabel>
+                        <FormLabel className="text-destructive font-medium">Controlled Item Type *</FormLabel>
                         <FormControl>
-                           <Select value={field.value || ""} onChange={field.onChange} placeholder="Select Country">
-                             <option value="USA">USA</option>
-                             <option value="UAE">UAE</option>
-                           </Select>
+                          <Input placeholder="e.g. ITAR / Dual-Use" {...field} />
                         </FormControl>
-                         <FormMessage />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-               </div>
+                )}
+              </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                   <FormField
-                      control={form.control}
-                      name="make"
-                      render={({ field }) => (<FormItem><FormLabel>Make</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}
-                   />
-                   <FormField
-                      control={form.control}
-                      name="model"
-                      render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}
-                   />
-                   <FormField
-                      control={form.control}
-                      name="year"
-                      render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormControl></FormItem>)}
-                   />
-                </div>
-
+              <div className="grid gap-4 md:grid-cols-2">
                 <FormField
-                   control={form.control}
-                   name="description"
-                   render={({ field }) => (
-                      <FormItem>
-                         <FormLabel>Description</FormLabel>
-                         <FormControl>
-                            <textarea className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border" {...field} />
-                         </FormControl>
-                      </FormItem>
-                   )}
+                  control={form.control}
+                  name="vehicleCompatibility"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vehicle Compatibility</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Toyota Land Cruiser" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
+                <FormField
+                  control={form.control}
+                  name="countryOfOrigin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country of Origin</FormLabel>
+                      <FormControl>
+                        <Select value={field.value || ""} onChange={field.onChange} placeholder="Select Country">
+                          <option value="USA">USA</option>
+                          <option value="UAE">UAE</option>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="make"
+                  render={({ field }) => (<FormItem><FormLabel>Make</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}
+                />
+                <FormField
+                  control={form.control}
+                  name="model"
+                  render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}
+                />
+                <FormField
+                  control={form.control}
+                  name="year"
+                  render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormControl></FormItem>)}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <textarea className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
             </CardContent>
           </Card>
@@ -1055,93 +1056,93 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 <CardTitle>TECHNICAL SPECIFICATIONS:</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                 {/* Simplified sections for brevity, assume full implementation matches original */}
-                 <div className="grid gap-4 md:grid-cols-3">
-                    <FormField 
-                        control={form.control}
-                        name="dimensionLength"
-                        render={({field}) => (
-                            <FormItem><FormLabel>Length</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl></FormItem>
-                        )}
-                    />
-                      <FormField 
-                        control={form.control}
-                        name="dimensionWidth"
-                        render={({field}) => (
-                            <FormItem><FormLabel>Width</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl></FormItem>
-                        )}
-                    />
-                      <FormField 
-                        control={form.control}
-                        name="dimensionHeight"
-                        render={({field}) => (
-                            <FormItem><FormLabel>Height</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl></FormItem>
-                        )}
-                    />
-                 </div>
-                 
-                 {/* Array fields using helpers */}
-                 {['materials', 'features', 'performance', 'specifications'].map(key => (
-                     <div key={key}>
-                        <Label className="capitalize mb-2 block">{key}</Label>
-                        {(form.watch(key as any) || []).map((item: string, index: number) => (
-                            <div key={index} className="flex gap-2 mb-2">
-                                <Input value={item} onChange={e => updateArrayItem(key, index, e.target.value)} />
-                                <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem(key, index)}><X className="h-4 w-4"/></Button>
-                            </div>
-                        ))}
-                         <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem(key as any)}><Plus className="mr-2 h-4 w-4"/> Add {key.slice(0, -1)}</Button>
-                     </div>
-                 ))}
-                 
+                {/* Simplified sections for brevity, assume full implementation matches original */}
+                <div className="grid gap-4 md:grid-cols-3">
                   <FormField
-                   control={form.control}
-                   name="technicalDescription"
-                   render={({ field }) => (
-                      <FormItem>
-                         <FormLabel>Technical Description</FormLabel>
-                         <FormControl>
-                            <textarea className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border" {...field} />
-                         </FormControl>
-                      </FormItem>
-                   )}
+                    control={form.control}
+                    name="dimensionLength"
+                    render={({ field }) => (
+                      <FormItem><FormLabel>Length</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl></FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dimensionWidth"
+                    render={({ field }) => (
+                      <FormItem><FormLabel>Width</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl></FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dimensionHeight"
+                    render={({ field }) => (
+                      <FormItem><FormLabel>Height</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl></FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Array fields using helpers */}
+                {['materials', 'features', 'performance', 'specifications'].map(key => (
+                  <div key={key}>
+                    <Label className="capitalize mb-2 block">{key}</Label>
+                    {(form.watch(key as any) || []).map((item: string, index: number) => (
+                      <div key={index} className="flex gap-2 mb-2">
+                        <Input value={item} onChange={e => updateArrayItem(key, index, e.target.value)} />
+                        <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem(key, index)}><X className="h-4 w-4" /></Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem(key as any)}><Plus className="mr-2 h-4 w-4" /> Add {key.slice(0, -1)}</Button>
+                  </div>
+                ))}
+
+                <FormField
+                  control={form.control}
+                  name="technicalDescription"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Technical Description</FormLabel>
+                      <FormControl>
+                        <textarea className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
                 />
               </CardContent>
             </Card>
-            
-             <Card>
+
+            <Card>
               <CardHeader>
                 <CardTitle>AVAILABLE VARIANTS</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                  {['vehicleFitment', 'sizes', 'thickness', 'colors'].map(key => (
-                     <div key={key}>
-                        <Label className="capitalize mb-2 block">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
-                        {(form.watch(key as any) || []).map((item: string, index: number) => (
-                            <div key={index} className="flex gap-2 mb-2">
-                                <Input value={item} onChange={e => updateArrayItem(key, index, e.target.value)} />
-                                <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem(key, index)}><X className="h-4 w-4"/></Button>
-                            </div>
-                        ))}
-                         <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem(key as any)}><Plus className="mr-2 h-4 w-4"/> Add Item</Button>
-                     </div>
-                 ))}
-                 </CardContent>
-                 </Card>
+                {['vehicleFitment', 'sizes', 'thickness', 'colors'].map(key => (
+                  <div key={key}>
+                    <Label className="capitalize mb-2 block">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                    {(form.watch(key as any) || []).map((item: string, index: number) => (
+                      <div key={index} className="flex gap-2 mb-2">
+                        <Input value={item} onChange={e => updateArrayItem(key, index, e.target.value)} />
+                        <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem(key, index)}><X className="h-4 w-4" /></Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem(key as any)}><Plus className="mr-2 h-4 w-4" /> Add Item</Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
 
             <Card>
-                <CardHeader><CardTitle>Weight and Dimensions</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                     <div className="grid gap-4 md:grid-cols-2">
-                         <FormField control={form.control} name="weightValue" render={({field}) => <FormItem><FormLabel>Weight</FormLabel><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}/></FormItem>} />
-                         <FormField control={form.control} name="weightUnit" render={({field}) => <FormItem><FormLabel>Unit</FormLabel><Select value={field.value || "kg"} onChange={field.onChange}><option value="kg">kg</option><option value="lb">lb</option></Select></FormItem>} />
-                     </div>
-                     <div className="grid gap-4 md:grid-cols-2">
-                         <FormField control={form.control} name="packingWeight" render={({field}) => <FormItem><FormLabel>Packing Weight</FormLabel><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}/></FormItem>} />
-                         <FormField control={form.control} name="packingWeightUnit" render={({field}) => <FormItem><FormLabel>Unit</FormLabel><Select value={field.value || "kg"} onChange={field.onChange}><option value="kg">kg</option><option value="lb">lb</option></Select></FormItem>} />
-                     </div>
-                     <FormField control={form.control} name="minOrderQuantity" render={({field}) => <FormItem><FormLabel>MOQ</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}/></FormItem>} />
-                </CardContent>
+              <CardHeader><CardTitle>Weight and Dimensions</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField control={form.control} name="weightValue" render={({ field }) => <FormItem><FormLabel>Weight</FormLabel><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormItem>} />
+                  <FormField control={form.control} name="weightUnit" render={({ field }) => <FormItem><FormLabel>Unit</FormLabel><Select value={field.value || "kg"} onChange={field.onChange}><option value="kg">kg</option><option value="lb">lb</option></Select></FormItem>} />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField control={form.control} name="packingWeight" render={({ field }) => <FormItem><FormLabel>Packing Weight</FormLabel><Input type="number" step="0.1" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormItem>} />
+                  <FormField control={form.control} name="packingWeightUnit" render={({ field }) => <FormItem><FormLabel>Unit</FormLabel><Select value={field.value || "kg"} onChange={field.onChange}><option value="kg">kg</option><option value="lb">lb</option></Select></FormItem>} />
+                </div>
+                <FormField control={form.control} name="minOrderQuantity" render={({ field }) => <FormItem><FormLabel>MOQ</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
+              </CardContent>
             </Card>
           </div>
         );
@@ -1154,16 +1155,16 @@ export default function ProductForm({ productId }: ProductFormProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                 <FormField control={form.control} name="basePrice" render={({field}) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}/></FormItem>} />
-                 <FormField control={form.control} name="currency" render={({field}) => <FormItem><FormLabel>Currency</FormLabel>
-                 <Select value={field.value || "AED"} onChange={field.onChange}>
-                  <option value="AED">AED</option>
-                  <option value="USD">USD</option>
+                <FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormItem>} />
+                <FormField control={form.control} name="currency" render={({ field }) => <FormItem><FormLabel>Currency</FormLabel>
+                  <Select value={field.value || "AED"} onChange={field.onChange}>
+                    <option value="AED">AED</option>
+                    <option value="USD">USD</option>
                   </Select>
-                 </FormItem>} />
+                </FormItem>} />
               </div>
 
-               {/* Pricing Tiers Section */}
+              {/* Pricing Tiers Section */}
               <div className="border p-4 rounded-md bg-muted/20">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-lg">Wholesale Pricing Tiers</h3>
@@ -1171,7 +1172,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                     <Plus className="h-4 w-4 mr-2" /> Add Tier
                   </Button>
                 </div>
-                
+
                 {pricingTiers.map((tier, index) => (
                   <div key={index} className="flex gap-4 items-end mb-4 border-b pb-4 last:border-0 last:pb-0">
                     <FormField
@@ -1181,10 +1182,10 @@ export default function ProductForm({ productId }: ProductFormProps) {
                         <FormItem className="flex-1">
                           <FormLabel className="text-xs">Min Qty</FormLabel>
                           <FormControl>
-                            <Input 
-                                type="number" 
-                                {...field} 
-                                onChange={e => field.onChange(parseInt(e.target.value || "0"))}
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={e => field.onChange(parseInt(e.target.value || "0"))}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1198,11 +1199,11 @@ export default function ProductForm({ productId }: ProductFormProps) {
                         <FormItem className="flex-1">
                           <FormLabel className="text-xs">Max Qty (Optional)</FormLabel>
                           <FormControl>
-                            <Input 
-                                type="number" 
-                                value={field.value ?? ""} 
-                                onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
-                                placeholder="∞"
+                            <Input
+                              type="number"
+                              value={field.value ?? ""}
+                              onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
+                              placeholder="∞"
                             />
                           </FormControl>
                           <FormMessage />
@@ -1216,11 +1217,11 @@ export default function ProductForm({ productId }: ProductFormProps) {
                         <FormItem className="flex-1">
                           <FormLabel className="text-xs">Price</FormLabel>
                           <FormControl>
-                            <Input 
-                                type="number" 
-                                step="0.01"
-                                {...field} 
-                                onChange={e => field.onChange(parseFloat(e.target.value || "0"))} 
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              onChange={e => field.onChange(parseFloat(e.target.value || "0"))}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1239,285 +1240,285 @@ export default function ProductForm({ productId }: ProductFormProps) {
                   </div>
                 ))}
                 {pricingTiers.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No pricing tiers added.</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No pricing tiers added.</p>
                 )}
               </div>
 
-                {/* Shipping & Packing Charges */}
-                <div className="grid gap-4 md:grid-cols-2 py-4">
-                  <FormField
-                       control={form.control}
-                       name="shippingCharge"
-                       render={({ field }) => (
-                         <FormItem>
-                           <FormLabel>Shipping Charge ({form.watch("currency")})</FormLabel>
-                           <FormControl>
-                             <Input type="number" step="0.01" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} />
-                           </FormControl>
-                           <FormMessage />
-                         </FormItem>
-                       )}
-                     />
-                     <FormField
-                       control={form.control}
-                       name="packingCharge"
-                       render={({ field }) => (
-                         <FormItem>
-                           <FormLabel>Packing Charge ({form.watch("currency")})</FormLabel>
-                           <FormControl>
-                             <Input type="number" step="0.01" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} />
-                           </FormControl>
-                           <FormMessage />
-                         </FormItem>
-                       )}
-                     />
-               </div>
-
-               <div className="py-2">
-                 <Label>Pricing Terms</Label>
-                 {(form.watch('pricingTerms') || []).map((item, index) => (
-                    <div key={index} className="flex gap-2 mb-2">
-                        <Input value={item} onChange={e => updateArrayItem('pricingTerms', index, e.target.value)} />
-                        <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem('pricingTerms', index)}><X className="h-4 w-4"/></Button>
-                    </div>
-                 ))}
-                 <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('pricingTerms')}><Plus className="mr-2 h-4 w-4"/> Add Term</Button>
-               </div>
-
-               <div className="grid gap-4 md:grid-cols-2">
-                 <FormField control={form.control} name="stock" render={({field}) => <FormItem><FormLabel>Stock</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}/></FormItem>} />
-                 <FormField control={form.control} name="productionLeadTime" render={({field}) => <FormItem><FormLabel>Lead Time (Days)</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}/></FormItem>} />
-               </div>
-               
-                 <FormField
+              {/* Shipping & Packing Charges */}
+              <div className="grid gap-4 md:grid-cols-2 py-4">
+                <FormField
                   control={form.control}
-                  name="readyStockAvailable"
+                  name="shippingCharge"
                   render={({ field }) => (
-                    <FormItem className="pt-2">
-                      <FormLabel>Ready Stock Available?</FormLabel>
+                    <FormItem>
+                      <FormLabel>Shipping Charge ({form.watch("currency")})</FormLabel>
                       <FormControl>
-                        <RadioGroup
-                          value={field.value ? "yes" : "no"}
-                          onValueChange={(val) => field.onChange(val === "yes")}
-                          className="flex gap-4"
-                        >
-                          <RadioGroupItem value="yes" label="Yes" />
-                          <RadioGroupItem value="no" label="No" />
-                        </RadioGroup>
+                        <Input type="number" step="0.01" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="packingCharge"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Packing Charge ({form.watch("currency")})</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="py-2">
+                <Label>Pricing Terms</Label>
+                {(form.watch('pricingTerms') || []).map((item, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Input value={item} onChange={e => updateArrayItem('pricingTerms', index, e.target.value)} />
+                    <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem('pricingTerms', index)}><X className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('pricingTerms')}><Plus className="mr-2 h-4 w-4" /> Add Term</Button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField control={form.control} name="stock" render={({ field }) => <FormItem><FormLabel>Stock</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
+                <FormField control={form.control} name="productionLeadTime" render={({ field }) => <FormItem><FormLabel>Lead Time (Days)</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="readyStockAvailable"
+                render={({ field }) => (
+                  <FormItem className="pt-2">
+                    <FormLabel>Ready Stock Available?</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        value={field.value ? "yes" : "no"}
+                        onValueChange={(val) => field.onChange(val === "yes")}
+                        className="flex gap-4"
+                      >
+                        <RadioGroupItem value="yes" label="Yes" />
+                        <RadioGroupItem value="no" label="No" />
+                      </RadioGroup>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
         );
 
       case 4:
-         const coverPreview = coverImageFile 
-             ? URL.createObjectURL(coverImageFile) 
-             : (form.watch('image') as string);
-         
-         return (
-             <Card>
-                <CardHeader><CardTitle>Uploads & Media</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                     {/* Cover Image Section */}
-                     <FormField control={form.control} name="image" render={({field}) => (
-                         <FormItem>
-                             <FormLabel className="text-base font-semibold">Cover Image</FormLabel>
-                             <FormControl>
-                                 <div className="space-y-4">
-                                     <div 
-                                         className={`
+        const coverPreview = coverImageFile
+          ? URL.createObjectURL(coverImageFile)
+          : (form.watch('image') as string);
+
+        return (
+          <Card>
+            <CardHeader><CardTitle>Uploads & Media</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              {/* Cover Image Section */}
+              <FormField control={form.control} name="image" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-semibold">Cover Image</FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      <div
+                        className={`
                                              relative border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center 
                                              min-h-[250px] cursor-pointer transition-all duration-200
                                              ${coverPreview ? 'border-primary/50 bg-accent/10' : 'border-border hover:border-primary/50 hover:bg-accent/5'}
                                          `}
-                                         onClick={() => document.getElementById('cover-upload-input')?.click()}
-                                     >
-                                         {coverPreview ? (
-                                             <div className="relative w-full h-full flex items-center justify-center">
-                                                 <img 
-                                                     src={coverPreview} 
-                                                     alt="Cover Preview" 
-                                                     className="max-h-[300px] w-auto object-contain rounded-lg shadow-sm" 
-                                                 />
-                                                 <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white font-medium">
-                                                     Click to Change
-                                                 </div>
-                                             </div>
-                                         ) : (
-                                             <div className="text-center space-y-2">
-                                                 <div className="p-4 bg-background rounded-full shadow-sm mx-auto w-fit">
-                                                    <UploadCloud className="w-8 h-8 text-primary" />
-                                                 </div>
-                                                 <div className="space-y-1">
-                                                     <p className="font-medium">Click to upload cover image</p>
-                                                     <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (max. 800x400px)</p>
-                                                 </div>
-                                             </div>
-                                         )}
-                                         <Input 
-                                             id="cover-upload-input"
-                                             type="file" 
-                                             accept="image/*"
-                                             className="hidden"
-                                             onChange={(e) => {
-                                                 const file = e.target.files?.[0];
-                                                 if (file) {
-                                                     setCoverImageFile(file);
-                                                 }
-                                             }} 
-                                         />
-                                     </div>
-                                 </div>
-                             </FormControl>
-                             <FormMessage/>
-                         </FormItem>
-                     )} />
-                     
-                     {/* Gallery Section */}
-                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <FormLabel className="text-base font-semibold">Gallery Images</FormLabel>
-                            <span className="text-xs text-muted-foreground">{gallery.length + galleryFiles.length} images</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {/* Existing Gallery Items */}
-                            {gallery.map((item, index) => (
-                               <div key={`existing-${index}`} className="group relative aspect-square border rounded-xl overflow-hidden bg-background shadow-sm">
-                                  <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                  <Button 
-                                    type="button" 
-                                    variant="destructive" 
-                                    size="icon" 
-                                    className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                                    onClick={() => removeArrayItem('gallery', index)}
-                                  >
-                                      <X className="h-3.5 w-3.5"/>
-                                  </Button>
-                                  <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                      Existing
-                                  </div>
-                               </div>
-                            ))}
-
-                            {/* New Uploads */}
-                            {galleryFiles.map((file, i) => (
-                                <div key={`new-${i}`} className="group relative aspect-square border-2 border-primary/50 rounded-xl overflow-hidden bg-background shadow-sm">
-                                    <img 
-                                        src={URL.createObjectURL(file)} 
-                                        alt={file.name} 
-                                        className="w-full h-full object-cover"
-                                        onLoad={(e) => URL.revokeObjectURL(e.currentTarget.src)}
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        variant="destructive" 
-                                        size="icon" 
-                                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                                        onClick={() => {
-                                            const newFiles = [...galleryFiles];
-                                            newFiles.splice(i, 1);
-                                            setGalleryFiles(newFiles);
-                                        }}
-                                    >
-                                        <X className="h-3.5 w-3.5"/>
-                                    </Button>
-                                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground rounded text-[10px] font-medium shadow-sm">
-                                        New
-                                    </div>
-                                </div>
-                            ))}
-
-                            {/* Add Button */}
-                            <label className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/5 rounded-xl flex flex-col items-center justify-center aspect-square cursor-pointer transition-all duration-200 group">
-                                <div className="p-3 bg-accent/20 group-hover:bg-primary/10 rounded-full transition-colors mb-2">
-                                    <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                                </div>
-                                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">Add Image</span>
-                                <Input 
-                                    type="file" 
-                                    multiple
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        if (e.target.files) {
-                                            setGalleryFiles(prev => [...prev, ...Array.from(e.target.files || [])]);
-                                        }
-                                        // Reset input logic if needed
-                                    }}
-                                />
-                            </label>
-                        </div>
-                     </div>
-                </CardContent>
-             </Card>
-         );
-      case 5:
-         return (
-             <Card>
-                 <CardHeader><CardTitle>Declarations</CardTitle></CardHeader>
-                 <CardContent className="space-y-4">
-                     <FormField control={form.control} name="manufacturingSource" render={({field}) => <FormItem><FormLabel>Source</FormLabel><Select value={field.value || ""} onChange={field.onChange}><option value="">Select</option><option value="In-House">In-House</option><option value="Sourced">Sourced</option></Select></FormItem>} />
-                     {form.watch("manufacturingSource") === "Sourced" && <FormField control={form.control} name="manufacturingSourceName" render={({field}) => <FormItem><FormLabel>Source Name</FormLabel><Input {...field} /></FormItem>} />}
-                     
-                      {/* Export License, Warranty, etc checkboxes */}
-                      <FormField
-                          control={form.control}
-                          name="requiresExportLicense"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Requires Export License?</FormLabel>
-                              <FormControl>
-                                <RadioGroup value={field.value ? "yes" : "no"} onValueChange={(val) => field.onChange(val === "yes")} className="flex gap-4">
-                                  <RadioGroupItem value="yes" label="Yes" />
-                                  <RadioGroupItem value="no" label="No" />
-                                </RadioGroup>
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                         <FormField
-                          control={form.control}
-                          name="hasWarranty"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Has Warranty?</FormLabel>
-                              <FormControl>
-                                <RadioGroup value={field.value ? "yes" : "no"} onValueChange={(val) => field.onChange(val === "yes")} className="flex gap-4">
-                                  <RadioGroupItem value="yes" label="Yes" />
-                                  <RadioGroupItem value="no" label="No" />
-                                </RadioGroup>
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        {form.watch("hasWarranty") && (
-                            <>
-                                <FormField control={form.control} name="warranty" render={({field}) => <FormItem><FormLabel>Warranty Details</FormLabel><Input {...field}/></FormItem>} />
-                                <div className="grid gap-4 md:grid-cols-2">
-                                     <FormField control={form.control} name="warrantyDuration" render={({field}) => <FormItem><FormLabel>Duration</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}/></FormItem>} />
-                                     <FormField control={form.control} name="warrantyDurationUnit" render={({field}) => <FormItem><FormLabel>Unit</FormLabel><Select value={field.value || "Months"} onChange={field.onChange}><option value="Months">Months</option><option value="Years">Years</option></Select></FormItem>} />
-                                </div>
-                            </>
+                        onClick={() => document.getElementById('cover-upload-input')?.click()}
+                      >
+                        {coverPreview ? (
+                          <div className="relative w-full h-full flex items-center justify-center">
+                            <img
+                              src={coverPreview}
+                              alt="Cover Preview"
+                              className="max-h-[300px] w-auto object-contain rounded-lg shadow-sm"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white font-medium">
+                              Click to Change
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center space-y-2">
+                            <div className="p-4 bg-background rounded-full shadow-sm mx-auto w-fit">
+                              <UploadCloud className="w-8 h-8 text-primary" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-medium">Click to upload cover image</p>
+                              <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (max. 800x400px)</p>
+                            </div>
+                          </div>
                         )}
-                        
-                        <FormField control={form.control} name="supplierSignature" render={({field}) => <FormItem><FormLabel>Supplier Signature</FormLabel><Input {...field}/></FormItem>} />
-                        <FormField control={form.control} name="signatureDate" render={({field}) => <FormItem><FormLabel>Date</FormLabel><DateSelector value={field.value} onChange={field.onChange} /></FormItem>} />
-                        
-                        <FormField control={form.control} name="complianceConfirmed" render={({field}) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4 border rounded-md">
-                                <FormControl><input type="checkbox" checked={field.value || false} onChange={field.onChange} className="h-4 w-4" /></FormControl>
-                                <div className="space-y-1 leading-none"><FormLabel>I confirm compliance</FormLabel></div>
-                            </FormItem>
-                        )} />
+                        <Input
+                          id="cover-upload-input"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setCoverImageFile(file);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
 
-                 </CardContent>
-             </Card>
-         );
+              {/* Gallery Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-base font-semibold">Gallery Images</FormLabel>
+                  <span className="text-xs text-muted-foreground">{gallery.length + galleryFiles.length} images</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {/* Existing Gallery Items */}
+                  {gallery.map((item, index) => (
+                    <div key={`existing-${index}`} className="group relative aspect-square border rounded-xl overflow-hidden bg-background shadow-sm">
+                      <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        onClick={() => removeArrayItem('gallery', index)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                        Existing
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* New Uploads */}
+                  {galleryFiles.map((file, i) => (
+                    <div key={`new-${i}`} className="group relative aspect-square border-2 border-primary/50 rounded-xl overflow-hidden bg-background shadow-sm">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                        onLoad={(e) => URL.revokeObjectURL(e.currentTarget.src)}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        onClick={() => {
+                          const newFiles = [...galleryFiles];
+                          newFiles.splice(i, 1);
+                          setGalleryFiles(newFiles);
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground rounded text-[10px] font-medium shadow-sm">
+                        New
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add Button */}
+                  <label className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/5 rounded-xl flex flex-col items-center justify-center aspect-square cursor-pointer transition-all duration-200 group">
+                    <div className="p-3 bg-accent/20 group-hover:bg-primary/10 rounded-full transition-colors mb-2">
+                      <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">Add Image</span>
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setGalleryFiles(prev => [...prev, ...Array.from(e.target.files || [])]);
+                        }
+                        // Reset input logic if needed
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 5:
+        return (
+          <Card>
+            <CardHeader><CardTitle>Declarations</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <FormField control={form.control} name="manufacturingSource" render={({ field }) => <FormItem><FormLabel>Source</FormLabel><Select value={field.value || ""} onChange={field.onChange}><option value="">Select</option><option value="In-House">In-House</option><option value="Sourced">Sourced</option></Select></FormItem>} />
+              {form.watch("manufacturingSource") === "Sourced" && <FormField control={form.control} name="manufacturingSourceName" render={({ field }) => <FormItem><FormLabel>Source Name</FormLabel><Input {...field} /></FormItem>} />}
+
+              {/* Export License, Warranty, etc checkboxes */}
+              <FormField
+                control={form.control}
+                name="requiresExportLicense"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Requires Export License?</FormLabel>
+                    <FormControl>
+                      <RadioGroup value={field.value ? "yes" : "no"} onValueChange={(val) => field.onChange(val === "yes")} className="flex gap-4">
+                        <RadioGroupItem value="yes" label="Yes" />
+                        <RadioGroupItem value="no" label="No" />
+                      </RadioGroup>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="hasWarranty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Has Warranty?</FormLabel>
+                    <FormControl>
+                      <RadioGroup value={field.value ? "yes" : "no"} onValueChange={(val) => field.onChange(val === "yes")} className="flex gap-4">
+                        <RadioGroupItem value="yes" label="Yes" />
+                        <RadioGroupItem value="no" label="No" />
+                      </RadioGroup>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              {form.watch("hasWarranty") && (
+                <>
+                  <FormField control={form.control} name="warranty" render={({ field }) => <FormItem><FormLabel>Warranty Details</FormLabel><Input {...field} /></FormItem>} />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField control={form.control} name="warrantyDuration" render={({ field }) => <FormItem><FormLabel>Duration</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
+                    <FormField control={form.control} name="warrantyDurationUnit" render={({ field }) => <FormItem><FormLabel>Unit</FormLabel><Select value={field.value || "Months"} onChange={field.onChange}><option value="Months">Months</option><option value="Years">Years</option></Select></FormItem>} />
+                  </div>
+                </>
+              )}
+
+              <FormField control={form.control} name="supplierSignature" render={({ field }) => <FormItem><FormLabel>Supplier Signature</FormLabel><Input {...field} /></FormItem>} />
+              <FormField control={form.control} name="signatureDate" render={({ field }) => <FormItem><FormLabel>Date</FormLabel><DateSelector value={field.value} onChange={field.onChange} /></FormItem>} />
+
+              <FormField control={form.control} name="complianceConfirmed" render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4 border rounded-md">
+                  <FormControl><input type="checkbox" checked={field.value || false} onChange={field.onChange} className="h-4 w-4" /></FormControl>
+                  <div className="space-y-1 leading-none"><FormLabel>I confirm compliance</FormLabel></div>
+                </FormItem>
+              )} />
+
+            </CardContent>
+          </Card>
+        );
       default:
         return null;
     }
@@ -1530,7 +1531,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
       </div>
     );
   }
-  
+
 
 
   return (
@@ -1558,9 +1559,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
             className="ml-auto"
             onClick={() =>
               window.open(
-                `${
-                  process.env.NEXT_PUBLIC_WEBSITE_URL ||
-                  "http://localhost:3000"
+                `${process.env.NEXT_PUBLIC_WEBSITE_URL ||
+                "http://localhost:3000"
                 }/product/${currentProductId}`,
                 "_blank"
               )
@@ -1574,60 +1574,60 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
-            console.error("Form Validation Errors:", errors);
+          console.error("Form Validation Errors:", errors);
 
         })} className="space-y-8">
-            {/* Custom Tab Navigation Matching Product Detail Page */}
-            <div className="flex space-x-1 border-b border-border w-full overflow-x-auto">
-                {SECTIONS.map((section) => {
-                  const Icon = section.icon;
-                  const isActive = activeTab === section.id;
-                  const isDisabled = !currentProductId && section.id !== 1; // Disable other tabs if creating
-                  return (
-                    <button
-                      key={section.id}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => !isDisabled && setActiveTab(section.id)}
-                      className={`
+          {/* Custom Tab Navigation Matching Product Detail Page */}
+          <div className="flex space-x-1 border-b border-border w-full overflow-x-auto">
+            {SECTIONS.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeTab === section.id;
+              const isDisabled = !currentProductId && section.id !== 1; // Disable other tabs if creating
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && setActiveTab(section.id)}
+                  className={`
                         flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2
-                        ${isActive 
-                          ? "border-primary text-primary" 
-                          : isDisabled 
-                            ? "text-muted-foreground/50 cursor-not-allowed" 
-                            : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}
+                        ${isActive
+                      ? "border-primary text-primary"
+                      : isDisabled
+                        ? "text-muted-foreground/50 cursor-not-allowed"
+                        : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}
                       `}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {section.name}
-                    </button>
-                  );
-                })}
-            </div>
+                >
+                  <Icon className="h-4 w-4" />
+                  {section.name}
+                </button>
+              );
+            })}
+          </div>
 
-            <div className="mt-6">
-                {renderStepContent(activeTab)}
-            </div>
+          <div className="mt-6">
+            {renderStepContent(activeTab)}
+          </div>
 
-            <div className="flex justify-end gap-4">
-                 <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => router.back()}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createProductMutation.isPending || updateProductMutation.isPending}
-                  >
-                     {createProductMutation.isPending || updateProductMutation.isPending ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
-                    ) : (
-                      !currentProductId ? "Save & Continue" : "Save Changes"
-                    )}
-                  </Button>
-            </div>
+          <div className="flex justify-end gap-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.back()}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={createProductMutation.isPending || updateProductMutation.isPending}
+            >
+              {createProductMutation.isPending || updateProductMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+              ) : (
+                !currentProductId ? "Save & Continue" : "Save Changes"
+              )}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

@@ -21,7 +21,7 @@ export default function VendorEditProductPage({ params }: PageProps) {
         </p>
       </div>
 
-      <ProductForm productId={resolvedParams.id} />
+      <ProductForm productId={resolvedParams.id} isVendor={true} />
     </div>
   );
 }
