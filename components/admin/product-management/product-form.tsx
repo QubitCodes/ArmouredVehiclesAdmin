@@ -116,6 +116,8 @@ const specificationsSchema = z.object({
 // Tab 3: Pricing & Stock
 const pricingSchema = z.object({
   basePrice: z.coerce.number().min(0, "Base price must be greater than or equal to 0"),
+  shippingCharge: z.coerce.number().min(0).optional(),
+  packingCharge: z.coerce.number().min(0).optional(),
   currency: z.string().optional(),
   stock: z.number().optional(),
   readyStockAvailable: z.boolean().optional(),
@@ -229,6 +231,8 @@ const SECTIONS = [
     icon: ShoppingCart,
     fields: [
       "basePrice",
+      "shippingCharge",
+      "packingCharge",
       "currency",
       "pricingTerms",
       "productionLeadTime",
@@ -340,7 +344,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
       // Pricing
       basePrice: undefined,
-      currency: "USD",
+      shippingCharge: undefined,
+      packingCharge: undefined,
+      currency: "AED",
       pricingTerms: [],
       productionLeadTime: undefined,
       readyStockAvailable: true,
@@ -396,7 +402,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
           (getVal("basePrice", "base_price") as number) ||
           (getVal("price", "price") as number) ||
           0,
-        currency: (getVal("currency", "currency") as string) || "USD",
+        shippingCharge: (getVal("shippingCharge", "shipping_charge") as number) || undefined,
+        packingCharge: (getVal("packingCharge", "packing_charge") as number) || undefined,
+        currency: (getVal("currency", "currency") as string) || "AED",
         condition: (getVal("condition", "condition") as string) || "new",
         
         // Dimensions
@@ -664,7 +672,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
       mainCategoryId: 'main_category_id',
       categoryId: 'category_id',
       subCategoryId: 'sub_category_id',
-      basePrice: 'base_price'
+      basePrice: 'base_price',
+      shippingCharge: 'shipping_charge',
+      packingCharge: 'packing_charge'
   };
 
   const cleanDataForApi = (
@@ -1145,7 +1155,12 @@ export default function ProductForm({ productId }: ProductFormProps) {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                  <FormField control={form.control} name="basePrice" render={({field}) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}/></FormItem>} />
-                 <FormField control={form.control} name="currency" render={({field}) => <FormItem><FormLabel>Currency</FormLabel><Select value={field.value || "USD"} onChange={field.onChange}><option value="USD">USD</option><option value="AED">AED</option></Select></FormItem>} />
+                 <FormField control={form.control} name="currency" render={({field}) => <FormItem><FormLabel>Currency</FormLabel>
+                 <Select value={field.value || "AED"} onChange={field.onChange}>
+                  <option value="AED">AED</option>
+                  <option value="USD">USD</option>
+                  </Select>
+                 </FormItem>} />
               </div>
 
                {/* Pricing Tiers Section */}
@@ -1227,6 +1242,36 @@ export default function ProductForm({ productId }: ProductFormProps) {
                     <p className="text-sm text-muted-foreground text-center py-4">No pricing tiers added.</p>
                 )}
               </div>
+
+                {/* Shipping & Packing Charges */}
+                <div className="grid gap-4 md:grid-cols-2 py-4">
+                  <FormField
+                       control={form.control}
+                       name="shippingCharge"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Shipping Charge ({form.watch("currency")})</FormLabel>
+                           <FormControl>
+                             <Input type="number" step="0.01" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+                     <FormField
+                       control={form.control}
+                       name="packingCharge"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Packing Charge ({form.watch("currency")})</FormLabel>
+                           <FormControl>
+                             <Input type="number" step="0.01" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+               </div>
 
                <div className="py-2">
                  <Label>Pricing Terms</Label>

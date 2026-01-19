@@ -214,7 +214,7 @@ export default function NewProductPage() {
     defaultValues: {
       name: "",
       basePrice: 0,
-      currency: "USD",
+      currency: "AED",
       condition: "new",
       dimensionUnit: "cm",
       weightUnit: "kg",

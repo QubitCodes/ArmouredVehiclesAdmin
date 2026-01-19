@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, LogOut, CreditCard } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { vendorAuthService } from "@/services/vendor/auth.service";
@@ -33,6 +33,11 @@ const navigation = [
     name: "Orders",
     href: "/vendor/orders",
     icon: ShoppingCart,
+  },
+  {
+    name: "Wallet",
+    href: "/vendor/wallet",
+    icon: CreditCard,
   },
 ];
 

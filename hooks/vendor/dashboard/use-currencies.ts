@@ -153,6 +153,7 @@ const CURRENCIES: Currency[] = [
   { code: "TZS", name: "Tanzanian Shilling" },
   { code: "UAH", name: "Ukrainian Hryvnia" },
   { code: "UGX", name: "Ugandan Shilling" },
+  { code: "AED", name: "United Arab Emirates Dirham" },
   { code: "USD", name: "United States Dollar" },
   { code: "UYU", name: "Uruguayan Peso" },
   { code: "UZS", name: "Uzbekistan Som" },

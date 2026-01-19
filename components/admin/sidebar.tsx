@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut, Tag, Database } from "lucide-react";
+import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut, Tag, Database, CreditCard, Monitor } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
 import { cn } from "@/lib/utils";
@@ -33,55 +33,73 @@ export function Sidebar() {
     // Get user details from auth service
     const user = authService.getUserDetails();
     if (user) {
-        setUserDetails(user);
-        if (user.userType) {
-            setUserRole(user.userType.toLowerCase());
-        }
+      setUserDetails(user);
+      if (user.userType) {
+        setUserRole(user.userType.toLowerCase());
+      }
     }
   }, []);
 
   const navigationItems = [
     {
-        name: "Dashboard",
-        href: "/admin",
-        icon: LayoutDashboard,
-        visibility: true,
+      name: "Dashboard",
+      href: "/admin",
+      icon: LayoutDashboard,
+      visibility: true,
     },
     {
-        name: "Admins",
-        href: "/admin/admin-management",
-        icon: Users,
-        visibility: (userRole === "vendor") ? false : true,
+      name: "Admins",
+      href: "/admin/admin-management",
+      icon: Users,
+      visibility: (userRole === "vendor") ? false : true,
     },
     {
-        name: "Products",
-        href: "/admin/products",
-        icon: Package,
-        visibility: true,
+      name: "Vendors",
+      href: "/admin/vendors",
+      icon: Store,
+      visibility: (userRole === "vendor") ? false : true,
     },
     {
-        name: "Categories",
-        href: "/admin/categories",
-        icon: Tag, // Auto-import needed
-        visibility: true,
+      name: "Products",
+      href: "/admin/products",
+      icon: Package,
+      visibility: true,
     },
     {
-        name: "Orders",
-        href: "/admin/orders",
-        icon: ShoppingCart,
-        visibility: true,
+      name: "Orders",
+      href: "/admin/orders",
+      icon: ShoppingCart,
+      visibility: true,
     },
     {
-        name: "Vendors",
-        href: "/admin/vendors",
-        icon: Store,
-        visibility: (userRole === "vendor") ? false : true,
+      name: "Wallet",
+      href: "/admin/wallet",
+      icon: CreditCard,
+      visibility: true,
     },
     {
-        name: "References",
-        href: "/admin/references",
-        icon: Database, // Auto-import needed
-        visibility: (userRole === "vendor") ? false : true,
+      name: "Payouts",
+      href: "/admin/payouts",
+      icon: CreditCard,
+      visibility: (userRole === "vendor") ? false : true,
+    },
+    {
+      name: "Categories",
+      href: "/admin/categories",
+      icon: Tag, // Auto-import needed
+      visibility: true,
+    },
+    {
+      name: "Web Frontend",
+      href: "/admin/web-frontend",
+      icon: Monitor,
+      visibility: (userRole === "vendor") ? false : true,
+    },
+    {
+      name: "References",
+      href: "/admin/references",
+      icon: Database, // Auto-import needed
+      visibility: (userRole === "vendor") ? false : true,
     },
   ];
 
@@ -113,7 +131,7 @@ export function Sidebar() {
         {filteredNavigation.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
-          
+
           return (
             <Link
               key={item.name}
@@ -131,7 +149,7 @@ export function Sidebar() {
           );
         })}
       </nav>
-      
+
       {/* Mini Profile Card & Logout */}
       <div className="border-t border-primary/20 p-4">
         <div className="flex items-center gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10 transition-colors">

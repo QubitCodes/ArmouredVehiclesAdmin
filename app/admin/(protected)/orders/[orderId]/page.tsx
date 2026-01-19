@@ -345,9 +345,9 @@ export default function OrderDetailPage() {
             </p>
             {/* Order Status Select */}
             <Select
-              value={order.order_status || "pending_review"}
+              value={order.order_status || "order_received"}
               onChange={(e) => updateOrder({ order_status: e.target.value as any })}
-              disabled={isUpdating || roleLoading || (userRole === 'vendor' && !['order_received', 'vendor_approved', 'vendor_rejected', 'pending_review'].includes(order.order_status))}
+              disabled={isUpdating || roleLoading || (userRole === 'vendor' && !['order_received', 'vendor_approved', 'vendor_rejected'].includes(order.order_status))}
               className="h-9 text-xs"
             >
               {roleLoading ? (
@@ -363,8 +363,6 @@ export default function OrderDetailPage() {
                     <option value="order_received">Order Received</option>
                     <option value="vendor_approved">Vendor Approved</option>
                     <option value="vendor_rejected">Vendor Rejected</option>
-                    <option value="pending_review">Pending Review</option>
-                    <option value="pending_approval">Pending Approval</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                     <option value="cancelled">Cancelled</option>

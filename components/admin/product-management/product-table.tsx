@@ -152,7 +152,7 @@ export function ProductTable({
 
   const getPrice = (product: Product) => {
     const price = product.base_price ?? product.basePrice ?? product.price ?? 0;
-    const currency = product.currency || "USD";
+    const currency = product.currency || "AED";
     return `${currency} ${
       typeof price === "number"
         ? price.toFixed(2)
