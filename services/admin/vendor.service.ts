@@ -199,6 +199,22 @@ class VendorService {
     }
   }
 
+  /**
+   * Update vendor status (activate/suspend)
+   */
+  async updateStatus(userId: string, action: 'activate' | 'suspend', reason?: string) {
+    try {
+      const response = await api.patch(`/admin/vendors/${userId}/status`, {
+        action,
+        reason,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating vendor status:", error);
+      throw error;
+    }
+  }
+
 }
 
 export const vendorService = new VendorService();

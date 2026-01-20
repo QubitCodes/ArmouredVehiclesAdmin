@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { customerService, Customer } from "@/services/admin/customer.service";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { authService } from "@/services/admin/auth.service";
+import { useEffect } from "react";
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
@@ -548,9 +550,150 @@ export function CustomerProfile({ customer }: CustomerProfileProps) {
                 </Card>
             )}
 
+            {/* Onboarding Review */}
+            <OnboardingReview customer={customer} />
+
             {/* Admin Actions */}
             <CustomerActions customer={customer} />
         </div>
+    );
+}
+
+
+
+function OnboardingReview({ customer }: { customer: Customer }) {
+    const [selectedStatus, setSelectedStatus] = useState<string>("");
+    const [note, setNote] = useState("");
+    const queryClient = useQueryClient();
+    const profile = customer.profile || {};
+    const [canApproveControlled, setCanApproveControlled] = useState(false);
+
+    useEffect(() => {
+        // Check permissions on mount
+        const hasPermission = authService.hasPermission("customer.controlled.approve");
+        setCanApproveControlled(hasPermission);
+    }, []);
+
+    const { mutate: updateOnboarding, isPending } = useMutation({
+        mutationFn: async ({ status, note }: { status: string; note?: string }) => {
+            return customerService.updateOnboardingStatus(customer.id, status, note);
+        },
+        onSuccess: () => {
+            toast.success("Customer onboarding status updated successfully");
+            queryClient.invalidateQueries({ queryKey: ["customer", customer.id] });
+            setSelectedStatus("");
+            setNote("");
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to update onboarding status");
+        }
+    });
+
+    const handleUpdate = () => {
+        if (selectedStatus === 'rejected' && !note) {
+            toast.error("Please provide a reason for rejection");
+            return;
+        }
+        updateOnboarding({ status: selectedStatus, note });
+    };
+
+    // Determine current status label
+    const currentStatus = profile.onboarding_status || 'not_started';
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'approved_general': return 'text-green-600 bg-green-100 dark:bg-green-900/30';
+            case 'approved_controlled': return 'text-purple-600 bg-purple-100 dark:bg-purple-900/30';
+            case 'rejected': return 'text-red-600 bg-red-100 dark:bg-red-900/30';
+            case 'pending_verification': return 'text-orange-600 bg-orange-100 dark:bg-orange-900/30';
+            default: return 'text-gray-600 bg-gray-100 dark:bg-gray-800';
+        }
+    };
+
+    return (
+        <Card className="border-t-4 border-t-secondary/20 shadow-lg bg-card/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-secondary" />
+                    Review & Approval
+                </CardTitle>
+                <div className={cn("px-3 py-1 rounded-full text-xs font-semibold uppercase", getStatusColor(currentStatus))}>
+                    {currentStatus.replace('_', ' ')}
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="flex gap-4 items-end">
+                    <div className="w-64 space-y-2">
+                        <Label>Review Action</Label>
+                        <Select
+                            placeholder="Select Decision..."
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value)}
+                        >
+                            <option value="approved_general">Approve (General)</option>
+                            {canApproveControlled && (
+                                <option value="approved_controlled">Approve (Controlled)</option>
+                            )}
+                            <option value="rejected">Reject Application</option>
+                            <option value="pending_verification">Set to Pending</option>
+                        </Select>
+                    </div>
+                </div>
+
+                {selectedStatus && (
+                    <div className="grid gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="space-y-2">
+                            <Label
+                                htmlFor="review-note"
+                                className="text-base font-semibold flex items-center gap-2"
+                            >
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                {selectedStatus === 'rejected' ? 'Rejection Reason (Required)' : 'Review Note (Optional)'}
+                            </Label>
+                            <Textarea
+                                id="review-note"
+                                placeholder={selectedStatus === 'rejected' ? "Explain why the application is rejected..." : "Add any internal notes about this approval..."}
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                className="min-h-[100px]"
+                            />
+                        </div>
+
+                        <div className="flex gap-4">
+                            <Button
+                                size="lg"
+                                className={cn(
+                                    "px-8 font-semibold shadow-md transition-all min-w-[140px]",
+                                    selectedStatus === "rejected"
+                                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        : "bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                                )}
+                                disabled={isPending}
+                                onClick={handleUpdate}
+                            >
+                                {isPending ? (
+                                    <Spinner className="mr-2 h-4 w-4 border-2" />
+                                ) : (
+                                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                                )}
+                                Confirm Decision
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="px-8 font-semibold border-2 transition-all"
+                                disabled={isPending}
+                                onClick={() => {
+                                    setSelectedStatus("");
+                                    setNote("");
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 

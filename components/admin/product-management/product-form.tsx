@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -155,6 +155,7 @@ const declarationsSchema = z.object({
       year: z.number().optional(),
     })
     .optional(),
+  status: z.string().optional(),
 });
 
 // Combined schema for type inference (optional usage)
@@ -283,6 +284,9 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     productId || null
   );
 
+  // Track initialization to prevent resetting form on re-renders/tab switches
+  const initializedId = useRef<string | null>(null);
+
   const { data: mainCategories = [] } = useMainCategories();
 
   // File states
@@ -299,11 +303,9 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   // Dynamic Resolver based on active tab
   // This allows validation to default to the current tab's schema
   const form = useForm<ProductFormValues>({
-    resolver: ((values: any, context: any, options: any) => {
-      const schema = SCHEMA_MAP[activeTab] || basicInfoSchema;
-      // Cast to any to avoid strict type mismatch between partial schemas and full ProductFormValues
-      return zodResolver(schema)(values, context, options);
-    }) as any,
+    resolver: zodResolver(productSchema) as any, // Use unified schema to prevent field stripping on tab change
+    shouldUnregister: false, // CRITICAL: Keep form values when fields are unmounted (switching tabs)
+    mode: "onChange",
     defaultValues: {
       name: "",
       sku: "",
@@ -377,11 +379,11 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
       // Defaults/Placeholders
       isFeatured: false,
+      status: "draft",
       actionType: "buy_now",
       driveTypes: [],
       gallery: [],
     },
-    shouldUnregister: false, // Keep values even if fields are unmounted (hidden tabs)
   });
 
   // Populate form with product data when loaded (Edit Mode)
@@ -391,7 +393,6 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
 
 
-      // Map basic fields
       // Map basic fields
       // Helper to get value from either camelCase or snake_case
       const getVal = (k1: string, k2: string) => (productData[k1] !== undefined ? productData[k1] : productData[k2]);
@@ -533,15 +534,19 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         })(),
 
         // Map Categories (IMPORTANT: Ensure IDs are numbers)
-        mainCategoryId: (productData.mainCategoryId as number) || (productData.main_category_id as number) || (productData.main_category as any)?.id || undefined,
         categoryId: (productData.categoryId as number) || (productData.category_id as number) || (productData.category as any)?.id || undefined,
         subCategoryId: (productData.subCategoryId as number) || (productData.sub_category_id as number) || (productData.sub_category as any)?.id || undefined,
+
+        // Status
+        status: (productData.status as string) || "draft",
       };
 
-      // Use reset to populate the form fully and correctly set default values
-      // This handles unmounted fields better than setValue loop
-
-      form.reset(formData as ProductFormValues);
+      // Only reset if we haven't initialized this product ID yet
+      // This prevents overwriting user edits if 'product' refetches or component re-renders
+      if (initializedId.current !== productId) {
+        form.reset(formData as ProductFormValues);
+        initializedId.current = productId;
+      }
     }
   }, [productId, product, form]);
 
@@ -571,6 +576,8 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     );
   })();
 
+
+
   const materials = form.watch("materials") || [];
   const features = form.watch("features") || [];
   const performance = form.watch("performance") || [];
@@ -582,6 +589,21 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   const pricingTerms = form.watch("pricingTerms") || [];
   const gallery = form.watch("gallery") || [];
   const pricingTiers = form.watch("pricing_tiers") || [];
+
+  // Publish Validation Logic
+  const watchName = form.watch("name");
+  const watchCategories = form.watch("mainCategoryId"); // At least one category
+  const watchPrice = form.watch("basePrice");
+  const watchStock = form.watch("stock");
+  const watchDesc = form.watch("description");
+
+  const canPublish = !!(
+    watchName &&
+    watchCategories &&
+    (watchPrice !== undefined && watchPrice >= 0) &&
+    (watchStock !== undefined && watchStock >= 0) &&
+    watchDesc
+  );
 
   const addArrayItem = (
     fieldName:
@@ -635,6 +657,30 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   };
 
 
+
+  const generateSku = (name: string) => {
+    return name
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
+      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+  };
+
+  const handleNameKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const currentName = form.getValues("name");
+    const generated = generateSku(currentName);
+
+    // Check if the user has manually touched the SKU field.
+    const currentSku = form.getValues("sku");
+
+    // Update if:
+    // 1. It is a new product (no currentProductId)
+    // 2. OR the SKU field is currently empty
+    // 3. AND we are not in edit mode with an existing valid SKU
+    if (!currentProductId || !currentSku) {
+      form.setValue("sku", generated, { shouldValidate: true });
+    }
+  };
 
   // Mapping from Form (camelCase) to API (snake_case)
   const FIELD_MAPPING: Record<string, string> = {
@@ -725,7 +771,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
   const onSubmit = async (formData: ProductFormValues) => {
     try {
-      const allFields = SECTIONS.flatMap(s => s.fields);
+      const allFields = [...SECTIONS.flatMap(s => s.fields), "status"];
       const cleanedData = cleanDataForApi(formData, allFields);
 
       // Create FormData
@@ -802,13 +848,6 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     }
   };
 
-  // Helper to sync local state back to parent if needed, but here we just handle it internally
-  // But wait, the component might be used in different contexts.
-  function setProductId(id: string) {
-    // If we were passed a way to set ID, we could use it.
-    // But for now local state `currentProductId` is sufficient for the wizard flow.
-  }
-
   const renderStepContent = (stepId: number) => {
     switch (stepId) {
       case 1:
@@ -828,6 +867,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                       <Input
                         placeholder="Clear title (e.g., BR6 Ballistic Glass Kit for Toyota LC300)"
                         {...field}
+                        onKeyUp={handleNameKeyUp}
                       />
                     </FormControl>
                     <FormMessage />
@@ -941,7 +981,6 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                         placeholder="Auto-generated"
                         {...field}
                         readOnly
-                        disabled
                         className="bg-muted text-muted-foreground"
                       />
                     </FormControl>
@@ -1508,6 +1547,40 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
               <FormField control={form.control} name="supplierSignature" render={({ field }) => <FormItem><FormLabel>Supplier Signature</FormLabel><Input {...field} /></FormItem>} />
               <FormField control={form.control} name="signatureDate" render={({ field }) => <FormItem><FormLabel>Date</FormLabel><DateSelector value={field.value} onChange={field.onChange} /></FormItem>} />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem className="space-y-3 p-4 border rounded-md bg-muted/20">
+                    <FormLabel className="text-base font-semibold">Publish Status</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || "draft"}
+                        className="flex flex-col space-y-1"
+                        value={field.value || "draft"}
+                      >
+                        <RadioGroupItem
+                          value="draft"
+                          label="Draft (Hidden from approval)"
+                        />
+                        <RadioGroupItem
+                          value="published"
+                          label="Published (Submit for Approval)"
+                          disabled={!canPublish}
+                        />
+                      </RadioGroup>
+                    </FormControl>
+                    {!canPublish && (
+                      <div className="text-xs text-destructive mt-2">
+                        To publish, please ensure the following are filled:
+                        Name, Category, Description, Price, Quantity (Stock).
+                      </div>
+                    )}
+                  </FormItem>
+                )}
+              />
 
               <FormField control={form.control} name="complianceConfirmed" render={({ field }) => (
                 <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4 border rounded-md">

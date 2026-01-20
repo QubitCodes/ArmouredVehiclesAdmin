@@ -100,6 +100,22 @@ class CustomerService {
     }
   }
 
+  /**
+   * Update customer onboarding status
+   */
+  async updateOnboardingStatus(userId: string, status: string, note?: string) {
+    try {
+      const response = await api.patch(`/admin/customers/${userId}/onboarding`, {
+        status,
+        note,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating customer onboarding status:", error);
+      throw error;
+    }
+  }
+
 }
 
 export const customerService = new CustomerService();

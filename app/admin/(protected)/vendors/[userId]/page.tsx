@@ -35,6 +35,8 @@ import { Label } from "@/components/ui/label";
 import { useVendor } from "@/hooks/admin/vendor-management/use-vendor";
 import { useVendorActions } from "@/hooks/admin/vendor-management/use-vendor-actions";
 import { cn } from "@/lib/utils";
+import { vendorService } from "@/services/admin/vendor.service";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
@@ -462,11 +464,10 @@ export default function VendorDetailPage() {
               </label>
               <p className="text-foreground mt-2">
                 <span
-                  className={`text-sm font-medium ${
-                    vendor.is_active
-                      ? "text-green-600 dark:text-green-500"
-                      : "text-orange-600 dark:text-orange-500"
-                  }`}
+                  className={`text-sm font-medium ${vendor.is_active
+                    ? "text-green-600 dark:text-green-500"
+                    : "text-orange-600 dark:text-orange-500"
+                    }`}
                 >
                   {vendor.is_active ? "Active" : "Inactive"}
                 </span>
@@ -486,16 +487,15 @@ export default function VendorDetailPage() {
               </label>
               <p className="text-foreground mt-2">
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide ${
-                    vendorProfileData?.onboarding_status === "approved_controlled" ||
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide ${vendorProfileData?.onboarding_status === "approved_controlled" ||
                     vendorProfileData?.onboarding_status === "approved_general"
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : vendorProfileData?.onboarding_status === "under_review"
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : vendorProfileData?.onboarding_status === "under_review"
                       ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                       : vendorProfileData?.onboarding_status === "rejected"
-                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                  }`}
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                    }`}
                 >
                   {vendorProfileData?.onboarding_status === "approved_controlled" && (
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -658,13 +658,143 @@ export default function VendorDetailPage() {
 
       {/* Admin Actions */}
       <VendorApprovalActions vendor={vendor} />
+      <VendorActions vendor={vendor} />
     </div>
   );
 }
 
+function VendorActions({ vendor }: { vendor: any }) {
+  const [selectedAction, setSelectedAction] = useState<string>("");
+  const [reason, setReason] = useState("");
+  const queryClient = useQueryClient();
+
+  const { mutate: updateStatus, isPending } = useMutation({
+    mutationFn: async ({ action, reason }: { action: 'activate' | 'suspend'; reason?: string }) => {
+      return vendorService.updateStatus(vendor.id, action, reason);
+    },
+    onSuccess: () => {
+      toast.success("Vendor status updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["vendor", vendor.id] });
+      setSelectedAction("");
+      setReason("");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to update status");
+    }
+  });
+
+  const handleAction = () => {
+    if (selectedAction === 'suspend' && !reason) {
+      toast.error("Please provide a reason for suspension");
+      return;
+    }
+    updateStatus({ action: selectedAction as 'activate' | 'suspend', reason });
+  };
+
+  return (
+    <Card className="border-t-4 border-t-primary/20 shadow-lg bg-card/50 backdrop-blur-sm">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
+          Account Actions
+        </CardTitle>
+        <div className="w-56">
+          <Select
+            placeholder="Change Status..."
+            value={selectedAction}
+            onChange={(e) => setSelectedAction(e.target.value)}
+            className={cn(
+              "font-semibold bg-primary text-white",
+              selectedAction === "suspend"
+                ? "bg-destructive border-destructive/50"
+                : ""
+            )}
+          >
+            {vendor.is_active ? (
+              <option value="suspend">Suspend Account</option>
+            ) : (
+              <option value="activate">Activate Account</option>
+            )}
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {selectedAction && (
+          <div className="grid gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
+            {selectedAction === 'suspend' && (
+              <div className="space-y-2">
+                <Label
+                  htmlFor="reason"
+                  className="text-base font-semibold flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Suspension Reason (Required)
+                </Label>
+                <Textarea
+                  id="reason"
+                  placeholder="Explain why the vendor is being suspended..."
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="min-h-[120px] border-destructive/20 focus-visible:ring-destructive/30"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-4">
+              <Button
+                size="lg"
+                className={cn(
+                  "px-8 font-semibold shadow-md transition-all min-w-[140px]",
+                  selectedAction === "suspend"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-primary text-primary-foreground"
+                )}
+                disabled={isPending}
+                onClick={handleAction}
+              >
+                {isPending ? (
+                  <Spinner className="mr-2 h-4 w-4 border-2" />
+                ) : selectedAction === "suspend" ? (
+                  <XCircle className="mr-2 h-5 w-5" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-5 w-5" />
+                )}
+                Confirm{" "}
+                {selectedAction === "suspend" ? "Suspension" : "Activation"}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-8 font-semibold border-2 transition-all"
+                disabled={isPending}
+                onClick={() => {
+                  setSelectedAction("");
+                  setReason("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+import { authService } from "@/services/admin/auth.service";
+
+// ... existing code ...
+
 function VendorApprovalActions({ vendor }: { vendor: any }) {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [comment, setComment] = useState("");
+  const [canApproveControlled, setCanApproveControlled] = useState(false);
+
+  useEffect(() => {
+    const hasPermission = authService.hasPermission("vendor.controlled.approve");
+    setCanApproveControlled(hasPermission);
+  }, []);
 
   const { approveVendor, isApproving, rejectVendor, isRejecting } =
     useVendorActions(vendor.id);
@@ -714,7 +844,9 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
                 : ""
             )}
           >
-            <option value="approved_controlled">Approved Controlled</option>
+            {canApproveControlled && (
+              <option value="approved_controlled">Approved Controlled</option>
+            )}
             <option value="approved_general">Approved General</option>
             <option value="rejected">Rejected</option>
           </Select>

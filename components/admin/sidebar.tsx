@@ -40,7 +40,7 @@ export function Sidebar() {
     }
   }, []);
 
-  const accessCheck = (requiredPerm: string | null, allowVendor: boolean = false) => {
+  const accessCheck = (requiredPerm: string | string[] | null, allowVendor: boolean = false) => {
     if (!userRole) return false;
 
     // Super Admin has full access
@@ -55,8 +55,16 @@ export function Sidebar() {
     if (userRole === "admin") {
       // If no specific permission is required, allow access
       if (!requiredPerm) return true;
+
+      const permissions = userDetails?.permissions || [];
+
+      if (Array.isArray(requiredPerm)) {
+        // Check if admin has ANY of the required permissions
+        return requiredPerm.some(p => permissions.includes(p));
+      }
+
       // Check if admin has the specific permission
-      return userDetails?.permissions?.includes(requiredPerm) || false;
+      return permissions.includes(requiredPerm);
     }
 
     return false;
@@ -79,25 +87,25 @@ export function Sidebar() {
       name: "Vendors",
       href: "/admin/vendors",
       icon: Store,
-      visibility: accessCheck("vendor.view", false),
+      visibility: accessCheck(["vendor.view", "vendor.controlled.approve"], false),
     },
     {
       name: "Customers",
       href: "/admin/customers",
       icon: Users,
-      visibility: accessCheck("customer.view", false),
+      visibility: accessCheck(["customer.view", "customer.controlled.approve"], false),
     },
     {
       name: "Products",
       href: "/admin/products",
       icon: Package,
-      visibility: accessCheck("product.view", true),
+      visibility: accessCheck(["product.view", "product.controlled.approve"], true),
     },
     {
       name: "Orders",
       href: "/admin/orders",
       icon: ShoppingCart,
-      visibility: accessCheck("order.view", true),
+      visibility: accessCheck(["order.view", "order.controlled.approve"], true),
     },
     {
       name: "Wallet",
