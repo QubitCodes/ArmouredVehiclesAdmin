@@ -151,6 +151,24 @@ class AuthService {
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
+
+  /**
+   * Check if user has a specific permission
+   */
+  hasPermission(permission: string, allowVendor: boolean = false): boolean {
+    const user = this.getUserDetails();
+    if (!user) return false;
+
+    if (user.userType === "super_admin") return true;
+    if (user.userType === "vendor") return allowVendor;
+    
+    // Admin check
+    if (user.userType === "admin") {
+        return user.permissions?.includes(permission) || false;
+    }
+
+    return false;
+  }
 }
 
 export const authService = new AuthService();

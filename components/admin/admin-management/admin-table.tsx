@@ -1,6 +1,7 @@
 import { Edit, Trash2 } from "lucide-react";
 import { Admin } from "@/services/admin/admin.service";
 import { Button } from "@/components/ui/button";
+import { authService } from "@/services/admin/auth.service";
 
 interface AdminTableProps {
   admins: Admin[];
@@ -57,22 +58,26 @@ export function AdminTable({ admins, onEditAdmin, onDeleteAdmin }: AdminTablePro
                 <span className="capitalize">{admin.user_type}</span>
               </div>
               <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEditAdmin(admin)}
-                  className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors hover:bg-white"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDeleteAdmin(admin)}
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors hover:bg-white"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {authService.hasPermission("admin.manage") && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEditAdmin(admin)}
+                      className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors hover:bg-white"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDeleteAdmin(admin)}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors hover:bg-white"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

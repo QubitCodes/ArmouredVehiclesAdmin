@@ -51,11 +51,16 @@ export function ProductTable({
   const attributesMutation = useUpdateProductAttributes();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canManageProducts, setCanManageProducts] = useState(false);
 
   useEffect(() => {
     const user = authService.getUserDetails();
     if (user && ["admin", "super_admin"].includes(user.userType)) {
       setIsAdmin(true);
+      // Check for products.manage permission
+      if (user.userType === 'super_admin' || authService.hasPermission('products.manage')) {
+        setCanManageProducts(true);
+      }
     }
   }, []);
 
@@ -185,15 +190,20 @@ export function ProductTable({
   // Adjust columns based on whether we are in Vendor view or Admin view
   // Admin View: Added Featured & Top Selling columns
   // Vendor Column: Replaces SKU when viewing all products (admin only)
+  // Adjust columns based on permissions
+  const showFeaturedColumns = showRestricted && canManageProducts;
+
   const gridTemplate = fromVendor
-    ? (showRestricted
+    ? (showFeaturedColumns
       ? "grid-cols-[60px_2fr_100px_80px_110px_150px_80px_80px_80px]"
       : "grid-cols-[60px_2fr_100px_80px_110px_150px_80px]")
-    : (showRestricted
+    : (showFeaturedColumns
       ? (showVendorColumn
-        ? "grid-cols-[60px_2fr_150px_80px_110px_80px_80px_80px]" // Vendor takes SKU slot, slightly wider
+        ? "grid-cols-[60px_2fr_150px_80px_110px_80px_80px_80px]"
         : "grid-cols-[60px_2fr_100px_80px_110px_80px_80px_80px]")
-      : "grid-cols-[60px_2fr_100px_80px_110px_80px]");
+      : (showVendorColumn
+        ? "grid-cols-[60px_2fr_150px_80px_110px_80px]"
+        : "grid-cols-[60px_2fr_100px_80px_110px_80px]"));
 
   return (
     <>
@@ -215,7 +225,7 @@ export function ProductTable({
             {fromVendor ? (
               <div className="text-sm font-semibold text-black">Approval Status</div>
             ) : null}
-            {showRestricted && (
+            {showFeaturedColumns && (
               <>
                 <div className="text-sm text-center font-semibold text-black">Featured</div>
                 <div className="text-sm text-center font-semibold text-black">Top Selling</div>
@@ -325,7 +335,7 @@ export function ProductTable({
                     </div>
                   )}
 
-                  {showRestricted && (
+                  {showFeaturedColumns && (
                     <>
                       <div className="flex items-center justify-center">
                         <Switch

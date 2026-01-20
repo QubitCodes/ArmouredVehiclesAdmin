@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut, Tag, Database, CreditCard, Monitor } from "lucide-react";
+import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut, Tag, Database, CreditCard, Monitor, Wallet } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
 import { cn } from "@/lib/utils";
@@ -40,66 +40,94 @@ export function Sidebar() {
     }
   }, []);
 
+  const accessCheck = (requiredPerm: string | null, allowVendor: boolean = false) => {
+    if (!userRole) return false;
+
+    // Super Admin has full access
+    if (userRole === "super_admin") return true;
+
+    // Vendor access check
+    if (userRole === "vendor") {
+      return allowVendor;
+    }
+
+    // Admin access check
+    if (userRole === "admin") {
+      // If no specific permission is required, allow access
+      if (!requiredPerm) return true;
+      // Check if admin has the specific permission
+      return userDetails?.permissions?.includes(requiredPerm) || false;
+    }
+
+    return false;
+  };
+
   const navigationItems = [
     {
       name: "Dashboard",
       href: "/admin",
       icon: LayoutDashboard,
-      visibility: true,
+      visibility: accessCheck(null, true),
     },
     {
       name: "Admins",
       href: "/admin/admin-management",
       icon: Users,
-      visibility: (userRole === "vendor") ? false : true,
+      visibility: accessCheck("admin.view", false),
     },
     {
       name: "Vendors",
       href: "/admin/vendors",
       icon: Store,
-      visibility: (userRole === "vendor") ? false : true,
+      visibility: accessCheck("vendor.view", false),
+    },
+    {
+      name: "Customers",
+      href: "/admin/customers",
+      icon: Users,
+      visibility: accessCheck("customer.view", false),
     },
     {
       name: "Products",
       href: "/admin/products",
       icon: Package,
-      visibility: true,
+      visibility: accessCheck("product.view", true),
     },
     {
       name: "Orders",
       href: "/admin/orders",
       icon: ShoppingCart,
-      visibility: true,
+      visibility: accessCheck("order.view", true),
     },
     {
       name: "Wallet",
       href: "/admin/wallet",
-      icon: CreditCard,
-      visibility: true,
+      icon: Wallet,
+      visibility: accessCheck("wallet.view", true),
     },
     {
       name: "Payouts",
       href: "/admin/payouts",
       icon: CreditCard,
-      visibility: (userRole === "vendor") ? false : true,
+      visibility: accessCheck("payout.view", false),
     },
     {
       name: "Categories",
       href: "/admin/categories",
-      icon: Tag, // Auto-import needed
-      visibility: true,
+      icon: Tag,
+      visibility: accessCheck("category.manage", true),
     },
     {
       name: "Web Frontend",
       href: "/admin/web-frontend",
       icon: Monitor,
-      visibility: (userRole === "vendor") ? false : true,
+      visibility: accessCheck("content.manage", false),
     },
     {
       name: "References",
       href: "/admin/references",
-      icon: Database, // Auto-import needed
-      visibility: (userRole === "vendor") ? false : true,
+      icon: Database,
+      visibility: accessCheck("reference.manage", false),
     },
   ];
 

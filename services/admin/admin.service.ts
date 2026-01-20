@@ -98,6 +98,7 @@ class AdminService {
     }
   }
 
+
   /**
    * Delete an admin
    */
@@ -107,6 +108,49 @@ class AdminService {
       return response.data;
     } catch (error) {
       console.error("Error deleting admin:", error);
+      throw error;
+    }
+  }
+
+  // --- Permission Methods ---
+
+  /**
+   * Get all system permissions
+   */
+  async getPermissions() {
+    try {
+      const response = await api.get("/permissions");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get permissions for a specific admin
+   */
+  async getAdminPermissions(adminId: string) {
+    try {
+      const response = await api.get(`/permissions/user/${adminId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching admin permissions:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Assign permissions to an admin
+   */
+  async assignPermissions(adminId: string, permissionIds: string[]) {
+    try {
+      const response = await api.post(`/permissions/user/${adminId}`, {
+        permissions: permissionIds,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error assigning permissions:", error);
       throw error;
     }
   }
