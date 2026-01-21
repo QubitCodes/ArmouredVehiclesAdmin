@@ -146,7 +146,7 @@ export default function ContactPersonPage() {
         setImagePreview(p.contact_id_document_url);
         const isPdf = p.contact_id_document_url.toLowerCase().endsWith('.pdf');
         setFileType(isPdf ? 'pdf' : 'image');
-        
+
         // Dummy file for validation - we create a File object 
         // Note: In a real scenario handling existing files with RHF and Zod validation requiring proper File objects is tricky.
         // We use a dummy file here to satisfy "required" validation if the user doesn't change it.
@@ -198,12 +198,42 @@ export default function ContactPersonPage() {
 
   const onSubmit = async (data: ContactPersonFormValues) => {
     try {
+      let contactIdDocumentUrl = undefined;
+
+      // Determine file to upload or existing URL
+      if (data.passport instanceof File) {
+        // Check if it's the dummy "existing_file"
+        if (data.passport.name === "existing_file" && imagePreview) {
+          contactIdDocumentUrl = imagePreview;
+        } else {
+          // Real upload
+          const uploadData = new FormData();
+          uploadData.append("files", data.passport);
+          uploadData.append("label", "ONBOARDING_CONTACT_ID");
+          uploadData.append("data", JSON.stringify({}));
+
+          const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/upload/files`, {
+            method: 'POST',
+            body: uploadData,
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+
+          if (!uploadRes.ok) throw new Error("File upload failed");
+          const uploadJson = await uploadRes.json();
+          if (uploadJson.status && uploadJson.data && uploadJson.data.length > 0) {
+            contactIdDocumentUrl = uploadJson.data[0];
+          }
+        }
+      }
+
       // Prepare API payload
       const payload = {
         contactFullName: data.fullName,
         contactJobTitle: data.jobTitle || undefined,
         contactWorkEmail: data.workEmail,
-        contactIdDocumentFile: data.passport as File | undefined,
+        contactIdDocumentUrl: contactIdDocumentUrl, // Send URL
         contactMobile: data.phoneNumber,
         contactMobileCountryCode: data.phoneCountryCode,
         termsAccepted: data.confirmAccuracy,
@@ -248,292 +278,292 @@ export default function ContactPersonPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 
-                {/* Full Name - Full Width */}
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Full Name <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter your full name."
-                          className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs text-gray-500">
-                        Enter your complete name as it appears on your passport or ID.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* Full Name - Full Width */}
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                      Full Name <span className="text-red-500">*</span>
+                      <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter your full name."
+                        className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs text-gray-500">
+                      Enter your complete name as it appears on your passport or ID.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                {/* 2-Column Grid for remaining fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column */}
-                  <div className="space-y-6">
-                    {/* Job Title */}
-                    <FormField
-                      control={form.control}
-                      name="jobTitle"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Job Title
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Type Your Job Title."
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              {...field}
+              {/* 2-Column Grid for remaining fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  {/* Job Title */}
+                  <FormField
+                    control={form.control}
+                    name="jobTitle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Job Title
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Type Your Job Title."
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Upload Passport Copy or Emirates ID */}
+                  <FormField
+                    control={form.control}
+                    name="passport"
+                    render={() => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Upload Passport Copy or Emirates ID{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <div className="space-y-2">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg,application/pdf"
+                              onChange={handleFileSelect}
+                              className="hidden"
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            {imagePreview ? (
+                              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                {fileType === 'image' ? (
+                                  <img
+                                    src={imagePreview}
+                                    alt="Passport/ID Preview"
+                                    className="w-full h-64 object-contain"
+                                  />
+                                ) : fileType === 'pdf' ? (
+                                  <PDFViewer file={imagePreview} />
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveImage}
+                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                                  aria-label="Remove file"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                              >
+                                <Upload className="w-10 h-10 text-secondary mb-3" />
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                  Choose a File
+                                </p>
+                                <p className="text-xs text-gray-500 text-center max-w-md">
+                                  Accepted files: JPEG, PNG and PDF.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                    {/* Upload Passport Copy or Emirates ID */}
-                    <FormField
-                      control={form.control}
-                      name="passport"
-                      render={() => (
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* Work Email Address */}
+                  <FormField
+                    control={form.control}
+                    name="workEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Work Email Address <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="Type Your Work Email Address."
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Phone Number */}
+                  <FormField
+                    control={form.control}
+                    name="phoneCountryCode"
+                    render={({ field }) => {
+                      const phoneCountryCode = field.value;
+                      const selectedCountry = COUNTRY_LIST.find(
+                        (c) => c.value === phoneCountryCode
+                      );
+                      return (
                         <FormItem>
                           <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Upload Passport Copy or Emirates ID{" "}
-                            <span className="text-red-500">*</span>
+                            Phone Number <span className="text-red-500">*</span>
                             <Info className="w-4 h-4 text-gray-400 cursor-help" />
                           </FormLabel>
                           <FormControl>
-                            <div className="space-y-2">
-                              <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/jpeg,image/png,image/jpg,application/pdf"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                              />
-                              {imagePreview ? (
-                                <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                  {fileType === 'image' ? (
-                                    <img
-                                      src={imagePreview}
-                                      alt="Passport/ID Preview"
-                                      className="w-full h-64 object-contain"
-                                    />
-                                  ) : fileType === 'pdf' ? (
-                                    <PDFViewer file={imagePreview} />
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    onClick={handleRemoveImage}
-                                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
-                                    aria-label="Remove file"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div
-                                  onClick={() => fileInputRef.current?.click()}
-                                  className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                            <div className="flex items-center border border-gray-300 focus-within:border-secondary transition-all bg-bg-medium">
+                              {/* Country Code Selector */}
+                              <div
+                                ref={countryDropdownRef}
+                                className="relative flex items-center border-r border-gray-300 bg-bg-medium"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => setIsCountryOpen(!isCountryOpen)}
+                                  className="flex items-center gap-1 bg-bg-medium pl-3 pr-2 py-3 text-sm text-black focus:outline-none cursor-pointer h-11 min-w-[100px]"
                                 >
-                                  <Upload className="w-10 h-10 text-secondary mb-3" />
-                                  <p className="text-sm font-medium text-gray-700 mb-1">
-                                    Choose a File
-                                  </p>
-                                  <p className="text-xs text-gray-500 text-center max-w-md">
-                                    Accepted files: JPEG, PNG and PDF.
-                                  </p>
-                                </div>
-                              )}
+                                  <span>{selectedCountry?.flag}</span>
+                                  <span>{selectedCountry?.value}</span>
+                                  <ChevronDown
+                                    className={cn(
+                                      "h-4 w-4 text-gray-400 transition-transform ml-1",
+                                      isCountryOpen && "rotate-180"
+                                    )}
+                                  />
+                                </button>
+
+                                {/* Searchable Dropdown */}
+                                {isCountryOpen && (
+                                  <div className="absolute top-[calc(100%+4px)] left-0 z-[100] w-72 rounded-md border border-gray-300 bg-white shadow-lg">
+                                    {/* Search Input */}
+                                    <div className="p-2 border-b border-gray-200">
+                                      <div className="relative">
+                                        <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                          ref={countrySearchInputRef}
+                                          type="text"
+                                          value={countrySearch}
+                                          onChange={(e) =>
+                                            setCountrySearch(e.target.value)
+                                          }
+                                          placeholder="Search countries..."
+                                          className="w-full h-9 pl-8 pr-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:border-secondary"
+                                        />
+                                      </div>
+                                    </div>
+                                    {/* Country List */}
+                                    <div className="max-h-60 overflow-y-auto">
+                                      {filteredCountries.length === 0 ? (
+                                        <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                                          No countries found
+                                        </div>
+                                      ) : (
+                                        filteredCountries.map((country) => (
+                                          <button
+                                            key={country.countryCode}
+                                            type="button"
+                                            onClick={() =>
+                                              handleCountrySelect(country)
+                                            }
+                                            className={cn(
+                                              "w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-2 transition-colors",
+                                              selectedCountry?.countryCode ===
+                                              country.countryCode && "bg-gray-100"
+                                            )}
+                                          >
+                                            <span>{country.flag}</span>
+                                            <span className="flex-1 truncate">
+                                              {country.name}
+                                            </span>
+                                            <span className="text-gray-500">
+                                              {country.value}
+                                            </span>
+                                          </button>
+                                        ))
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Phone Number Input */}
+                              <FormField
+                                control={form.control}
+                                name="phoneNumber"
+                                render={({ field: phoneField }) => (
+                                  <Input
+                                    type="tel"
+                                    placeholder="Type Your Phone Number."
+                                    className={cn(
+                                      "border-0 focus:outline-none focus:ring-0 focus:border-0",
+                                      "focus-visible:outline-none focus-visible:ring-0",
+                                      "text-black placeholder:text-gray-400 h-11 text-sm flex-1"
+                                    )}
+                                    {...phoneField}
+                                    onChange={(e) => {
+                                      // Only allow digits
+                                      const value = e.target.value.replace(/\D/g, "");
+                                      // Limit to max 15 digits (ITU-T E.164 standard)
+                                      const limitedValue = value.slice(0, 15);
+                                      phoneField.onChange(limitedValue);
+                                    }}
+                                  />
+                                )}
+                              />
                             </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    {/* Work Email Address */}
-                    <FormField
-                      control={form.control}
-                      name="workEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Work Email Address <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="Type Your Work Email Address."
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Phone Number */}
-                    <FormField
-                      control={form.control}
-                      name="phoneCountryCode"
-                      render={({ field }) => {
-                        const phoneCountryCode = field.value;
-                        const selectedCountry = COUNTRY_LIST.find(
-                          (c) => c.value === phoneCountryCode
-                        );
-                        return (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                              Phone Number <span className="text-red-500">*</span>
-                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                            </FormLabel>
-                            <FormControl>
-                              <div className="flex items-center border border-gray-300 focus-within:border-secondary transition-all bg-bg-medium">
-                                {/* Country Code Selector */}
-                                <div
-                                  ref={countryDropdownRef}
-                                  className="relative flex items-center border-r border-gray-300 bg-bg-medium"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => setIsCountryOpen(!isCountryOpen)}
-                                    className="flex items-center gap-1 bg-bg-medium pl-3 pr-2 py-3 text-sm text-black focus:outline-none cursor-pointer h-11 min-w-[100px]"
-                                  >
-                                    <span>{selectedCountry?.flag}</span>
-                                    <span>{selectedCountry?.value}</span>
-                                    <ChevronDown
-                                      className={cn(
-                                        "h-4 w-4 text-gray-400 transition-transform ml-1",
-                                        isCountryOpen && "rotate-180"
-                                      )}
-                                    />
-                                  </button>
-
-                                  {/* Searchable Dropdown */}
-                                  {isCountryOpen && (
-                                    <div className="absolute top-[calc(100%+4px)] left-0 z-[100] w-72 rounded-md border border-gray-300 bg-white shadow-lg">
-                                      {/* Search Input */}
-                                      <div className="p-2 border-b border-gray-200">
-                                        <div className="relative">
-                                          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                          <input
-                                            ref={countrySearchInputRef}
-                                            type="text"
-                                            value={countrySearch}
-                                            onChange={(e) =>
-                                              setCountrySearch(e.target.value)
-                                            }
-                                            placeholder="Search countries..."
-                                            className="w-full h-9 pl-8 pr-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:border-secondary"
-                                          />
-                                        </div>
-                                      </div>
-                                      {/* Country List */}
-                                      <div className="max-h-60 overflow-y-auto">
-                                        {filteredCountries.length === 0 ? (
-                                          <div className="px-3 py-2 text-sm text-gray-500 text-center">
-                                            No countries found
-                                          </div>
-                                        ) : (
-                                          filteredCountries.map((country) => (
-                                            <button
-                                              key={country.countryCode}
-                                              type="button"
-                                              onClick={() =>
-                                                handleCountrySelect(country)
-                                              }
-                                              className={cn(
-                                                "w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-2 transition-colors",
-                                                selectedCountry?.countryCode ===
-                                                  country.countryCode && "bg-gray-100"
-                                              )}
-                                            >
-                                              <span>{country.flag}</span>
-                                              <span className="flex-1 truncate">
-                                                {country.name}
-                                              </span>
-                                              <span className="text-gray-500">
-                                                {country.value}
-                                              </span>
-                                            </button>
-                                          ))
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Phone Number Input */}
-                                <FormField
-                                  control={form.control}
-                                  name="phoneNumber"
-                                  render={({ field: phoneField }) => (
-                                    <Input
-                                      type="tel"
-                                      placeholder="Type Your Phone Number."
-                                      className={cn(
-                                        "border-0 focus:outline-none focus:ring-0 focus:border-0",
-                                        "focus-visible:outline-none focus-visible:ring-0",
-                                        "text-black placeholder:text-gray-400 h-11 text-sm flex-1"
-                                      )}
-                                      {...phoneField}
-                                      onChange={(e) => {
-                                        // Only allow digits
-                                        const value = e.target.value.replace(/\D/g, "");
-                                        // Limit to max 15 digits (ITU-T E.164 standard)
-                                        const limitedValue = value.slice(0, 15);
-                                        phoneField.onChange(limitedValue);
-                                      }}
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        );
-                      }}
-                    />
-                  </div>
+                      );
+                    }}
+                  />
                 </div>
+              </div>
 
               {/* Confirmation Checkbox */}
               <div className="pt-6 border-t border-gray-300">
-              <FormField
-                control={form.control}
-                name="confirmAccuracy"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        className="bg-bg-light border-border data-[state=checked]:bg-secondary data-[state=checked]:border-secondary"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm font-medium text-black cursor-pointer">
-                        I confirm the accuracy of the information provided and that I am authorized to act on behalf of this company.
-                      </FormLabel>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="confirmAccuracy"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="bg-bg-light border-border data-[state=checked]:bg-secondary data-[state=checked]:border-secondary"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-medium text-black cursor-pointer">
+                          I confirm the accuracy of the information provided and that I am authorized to act on behalf of this company.
+                        </FormLabel>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
               </div>
             </form>
           </Form>

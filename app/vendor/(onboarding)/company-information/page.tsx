@@ -296,7 +296,7 @@ export default function CompanyInformationPage() {
         }
 
         const uploadJson = await uploadRes.json();
-        if (uploadJson.success && uploadJson.data && uploadJson.data.length > 0) {
+        if (uploadJson.status && uploadJson.data && uploadJson.data.length > 0) {
           vatCertificateUrl = uploadJson.data[0];
         } else {
           throw new Error("File upload response invalid");

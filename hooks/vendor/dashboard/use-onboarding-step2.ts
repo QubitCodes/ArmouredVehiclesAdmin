@@ -6,7 +6,7 @@ export interface OnboardingStep2Request {
   contactFullName: string;
   contactJobTitle?: string;
   contactWorkEmail: string;
-  contactIdDocumentFile?: File;
+  contactIdDocumentUrl?: string; // Changed from File to Url
   contactMobile: string;
   contactMobileCountryCode: string;
   termsAccepted: boolean;
@@ -28,24 +28,10 @@ export function useOnboardingStep2() {
     OnboardingStep2Request
   >({
     mutationFn: async (data: OnboardingStep2Request) => {
-      const formData = new FormData();
-
-      // Append all fields to FormData
-      formData.append("contactFullName", data.contactFullName);
-      if (data.contactJobTitle) {
-        formData.append("contactJobTitle", data.contactJobTitle);
-      }
-      formData.append("contactWorkEmail", data.contactWorkEmail);
-      if (data.contactIdDocumentFile) {
-        formData.append("contactIdDocumentFile", data.contactIdDocumentFile);
-      }
-      formData.append("contactMobile", data.contactMobile);
-      formData.append("contactMobileCountryCode", data.contactMobileCountryCode);
-      formData.append("termsAccepted", data.termsAccepted.toString());
-
+      // Send as JSON
       const response = await api.post<OnboardingStep2Response>(
         "/onboarding/step2",
-        formData
+        data
       );
       return response.data;
     },
