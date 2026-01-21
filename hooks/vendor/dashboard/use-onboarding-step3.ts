@@ -5,17 +5,18 @@ import api from "@/lib/api";
 export interface OnboardingStep3Request {
   natureOfBusiness: string[];
   controlledDualUseItems?: string;
+  manufacturingSourceName?: string;
   licenseTypes: string[];
   endUseMarkets: string[];
   operatingCountries: string[];
   isOnSanctionsList: boolean;
   complianceTermsAccepted: boolean;
-  businessLicenseFile?: File;
-  companyProfileFile?: File;
-  modLicenseFile?: File;
-  eocnApprovalFile?: File;
-  itarRegistrationFile?: File;
-  localAuthorityApprovalFile?: File;
+  businessLicenseUrl?: string;
+  companyProfileUrl?: string;
+  modLicenseUrl?: string;
+  eocnApprovalUrl?: string;
+  itarRegistrationUrl?: string;
+  localAuthorityApprovalUrl?: string;
 }
 
 export interface OnboardingStep3Response {
@@ -34,42 +35,10 @@ export function useOnboardingStep3() {
     OnboardingStep3Request
   >({
     mutationFn: async (data: OnboardingStep3Request) => {
-      const formData = new FormData();
-
-      // Append all non-file fields to FormData
-      formData.append("natureOfBusiness", JSON.stringify(data.natureOfBusiness));
-      if (data.controlledDualUseItems) {
-        formData.append("controlledDualUseItems", data.controlledDualUseItems);
-      }
-      formData.append("licenseTypes", JSON.stringify(data.licenseTypes));
-      formData.append("endUseMarkets", JSON.stringify(data.endUseMarkets));
-      formData.append("operatingCountries", JSON.stringify(data.operatingCountries));
-      formData.append("isOnSanctionsList", data.isOnSanctionsList.toString());
-      formData.append("complianceTermsAccepted", data.complianceTermsAccepted.toString());
-
-      // Append file fields only if they exist
-      if (data.businessLicenseFile) {
-        formData.append("businessLicenseFile", data.businessLicenseFile);
-      }
-      if (data.companyProfileFile) {
-        formData.append("companyProfileFile", data.companyProfileFile);
-      }
-      if (data.modLicenseFile) {
-        formData.append("modLicenseFile", data.modLicenseFile);
-      }
-      if (data.eocnApprovalFile) {
-        formData.append("eocnApprovalFile", data.eocnApprovalFile);
-      }
-      if (data.itarRegistrationFile) {
-        formData.append("itarRegistrationFile", data.itarRegistrationFile);
-      }
-      if (data.localAuthorityApprovalFile) {
-        formData.append("localAuthorityApprovalFile", data.localAuthorityApprovalFile);
-      }
-
+      // Send as JSON
       const response = await api.post<OnboardingStep3Response>(
         "/onboarding/step3",
-        formData
+        data
       );
       return response.data;
     },

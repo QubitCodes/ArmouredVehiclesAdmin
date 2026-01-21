@@ -199,10 +199,10 @@ export default function CompanyInformationPage() {
       });
 
       // Handle file preview if URL exists
-      if (p.vat_certificate_url) {
-        setImagePreview(p.vat_certificate_url);
+      if (p.govt_compliance_reg_url) {
+        setImagePreview(p.govt_compliance_reg_url);
         // Determine type based on extension or assume image if no extension
-        const isPdf = p.vat_certificate_url.toLowerCase().endsWith('.pdf');
+        const isPdf = p.govt_compliance_reg_url.toLowerCase().endsWith('.pdf');
         setFileType(isPdf ? 'pdf' : 'image');
 
         // We can't convert URL to File object automatically for the form's file input,

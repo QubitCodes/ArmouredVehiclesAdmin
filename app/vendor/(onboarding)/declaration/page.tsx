@@ -139,16 +139,16 @@ const LICENSE_TO_FILE_FIELD: Record<string, string> = {
 export default function DeclarationPage() {
   const router = useRouter();
   const step3Mutation = useOnboardingStep3();
-  
+
   // Fetch all data - single loading state
   const { data: natureOfBusinessOptions = [], isLoading: isNatureOfBusinessLoading } = useNatureOfBusiness();
   const { data: endUseMarketOptions = [], isLoading: isEndUseMarketsLoading } = useEndUseMarkets();
   const { data: countryOptions = [], isLoading: isCountriesLoading } = useCountries();
   const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
-  
+
   // Single combined loading state
   const isLoading = isNatureOfBusinessLoading || isEndUseMarketsLoading || isCountriesLoading;
-  
+
   const [countrySearch, setCountrySearch] = useState("");
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
 
@@ -210,7 +210,7 @@ export default function DeclarationPage() {
       // Mapping from license type value to URL field in profile is not 1:1 direct property name
       // We need to check if we have separate fields in profile response or if they are generic.
       // Based on previous chats, profile has: defense_approval_url, eocn_approval_url, itar_registration_url, local_authority_approval_url
-      
+
       const licenseUrlMap: Record<string, string | undefined> = {
         "authority_license": p.defense_approval_url,
         "eocn": p.eocn_approval_url,
@@ -219,16 +219,16 @@ export default function DeclarationPage() {
       };
 
       Object.entries(licenseUrlMap).forEach(([licenseType, url]) => {
-          if (url && p.license_types?.includes(licenseType)) {
-             setLicensePreviews(prev => ({ ...prev, [licenseType]: url }));
-             const isPdf = url.toLowerCase().endsWith('.pdf');
-             setLicenseFileTypes(prev => ({ ...prev, [licenseType]: isPdf ? 'pdf' : 'image' }));
-             
-             const fileFieldName = LICENSE_TO_FILE_FIELD[licenseType] as keyof DeclarationFormValues;
-             if (fileFieldName) {
-                 form.setValue(fileFieldName, new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" }));
-             }
+        if (url && p.license_types?.includes(licenseType)) {
+          setLicensePreviews(prev => ({ ...prev, [licenseType]: url }));
+          const isPdf = url.toLowerCase().endsWith('.pdf');
+          setLicenseFileTypes(prev => ({ ...prev, [licenseType]: isPdf ? 'pdf' : 'image' }));
+
+          const fileFieldName = LICENSE_TO_FILE_FIELD[licenseType] as keyof DeclarationFormValues;
+          if (fileFieldName) {
+            form.setValue(fileFieldName, new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" }));
           }
+        }
       });
 
     }
@@ -236,6 +236,52 @@ export default function DeclarationPage() {
 
   const onSubmit = async (data: DeclarationFormValues) => {
     try {
+      // Helper to upload file
+      const uploadFile = async (file: File | undefined, previewUrl: string | null, label: string): Promise<string | undefined> => {
+        if (!file) return undefined;
+        // If it's a dummy existing file, return the preview URL (which is the actual URL)
+        if (file.name === "existing_file" && previewUrl) {
+          return previewUrl;
+        }
+        // New upload
+        const uploadData = new FormData();
+        uploadData.append("files", file);
+        uploadData.append("label", label); // Generic label or specific?
+
+        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/upload/files`, {
+          method: 'POST',
+          body: uploadData,
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!uploadRes.ok) throw new Error("File upload failed");
+        const uploadJson = await uploadRes.json();
+
+        if (uploadJson.status && uploadJson.data && uploadJson.data.length > 0) {
+          return uploadJson.data[0];
+        }
+        return undefined;
+      };
+
+      // Upload all files concurrently
+      const [
+        businessLicenseUrl,
+        companyProfileUrl,
+        modLicenseUrl,
+        eocnApprovalUrl,
+        itarRegistrationUrl,
+        localAuthorityApprovalUrl
+      ] = await Promise.all([
+        uploadFile(data.businessLicenseFile, businessLicensePreview, "CUSTOMER_BUSINESS_LICENSE"),
+        uploadFile(data.companyProfileFile, companyProfilePreview, "COMPANY_PROFILE"),
+        uploadFile(data.modLicenseFile, licensePreviews['authority_license'] || null, "MOD_LICENSE"),
+        uploadFile(data.eocnApprovalFile, licensePreviews['eocn'] || null, "EOCN_APPROVAL"),
+        uploadFile(data.itarRegistrationFile, licensePreviews['itar'] || null, "ITAR_REGISTRATION"),
+        uploadFile(data.localAuthorityApprovalFile, licensePreviews['local'] || null, "LOCAL_AUTHORITY_APPROVAL"),
+      ]);
+
       // Map form data to API schema
       const payload = {
         natureOfBusiness: data.natureOfBusiness,
@@ -246,19 +292,21 @@ export default function DeclarationPage() {
         operatingCountries: data.operatingCountries,
         isOnSanctionsList: data.onSanctionsList === "yes",
         complianceTermsAccepted: data.agreeToCompliance === true,
-        businessLicenseFile: data.businessLicenseFile instanceof File ? data.businessLicenseFile : undefined,
-        companyProfileFile: data.companyProfileFile instanceof File ? data.companyProfileFile : undefined,
-        modLicenseFile: data.modLicenseFile instanceof File ? data.modLicenseFile : undefined,
-        eocnApprovalFile: data.eocnApprovalFile instanceof File ? data.eocnApprovalFile : undefined,
-        itarRegistrationFile: data.itarRegistrationFile instanceof File ? data.itarRegistrationFile : undefined,
-        localAuthorityApprovalFile: data.localAuthorityApprovalFile instanceof File ? data.localAuthorityApprovalFile : undefined,
+
+        businessLicenseUrl,
+        companyProfileUrl,
+        modLicenseUrl,
+        eocnApprovalUrl,
+        itarRegistrationUrl,
+        localAuthorityApprovalUrl
       };
-      
+
       await step3Mutation.mutateAsync(payload);
-      
+
       toast.success("Declaration information saved successfully");
       router.push("/vendor/account-preferences");
     } catch (error) {
+      console.error(error);
       const axiosError = error as AxiosError<{
         message?: string;
         error?: string;
@@ -496,99 +544,99 @@ export default function DeclarationPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             {/* Nature of Business - Separate Container */}
-              <div className="space-y-3 bg-bg-light p-6">
-                <FormLabel className="text-sm font-bold text-black">
-                  Nature of Business:
-                </FormLabel>
+            <div className="space-y-3 bg-bg-light p-6">
+              <FormLabel className="text-sm font-bold text-black">
+                Nature of Business:
+              </FormLabel>
 
-                {/* Input Field with Tags and Count */}
-                <div className="relative">
-                  <div className="min-h-[44px] bg-bg-medium border border-gray-300 p-2 pr-12 flex flex-wrap items-center gap-2">
-                    {/* Selected Tags */}
-                    {selectedNatureOfBusiness.length > 0 && (
-                      <>
-                        {selectedNatureOfBusiness.map((item) => (
-                          <div
-                            key={item}
-                            className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
-                          >
-                            <span className="text-sm text-black">{item}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveNatureOfBusiness(item)}
-                              className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
-                            >
-                              <X className="w-3.5 h-3.5 text-border" />
-                            </button>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                  {/* Count Badge */}
+              {/* Input Field with Tags and Count */}
+              <div className="relative">
+                <div className="min-h-[44px] bg-bg-medium border border-gray-300 p-2 pr-12 flex flex-wrap items-center gap-2">
+                  {/* Selected Tags */}
                   {selectedNatureOfBusiness.length > 0 && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
-                      <span className="text-sm font-medium text-black">
-                        {selectedNatureOfBusiness.length}
-                      </span>
-                    </div>
+                    <>
+                      {selectedNatureOfBusiness.map((item) => (
+                        <div
+                          key={item}
+                          className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
+                        >
+                          <span className="text-sm text-black">{item}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNatureOfBusiness(item)}
+                            className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5 text-border" />
+                          </button>
+                        </div>
+                      ))}
+                    </>
                   )}
                 </div>
-
-                {/* Checkboxes Grid */}
-                <FormField
-                  control={form.control}
-                  name="natureOfBusiness"
-                  render={() => (
-                    <FormItem>
-                      {isLoading ? (
-                        <div className="text-sm text-gray-500">Loading...</div>
-                      ) : (
-                        <div className="grid grid-cols-4 gap-3">
-                          {natureOfBusinessOptions.map((option) => (
-                            <FormField
-                              key={option.id}
-                              control={form.control}
-                              name="natureOfBusiness"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem
-                                    key={option.id}
-                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                  >
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(option.name)}
-                                        onCheckedChange={(checked) => {
-                                          return checked
-                                            ? field.onChange([
-                                                ...field.value,
-                                                option.name,
-                                              ])
-                                            : field.onChange(
-                                                field.value?.filter(
-                                                  (value) => value !== option.name
-                                                )
-                                              );
-                                        }}
-                                        className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                      {option.name}
-                                    </FormLabel>
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Count Badge */}
+                {selectedNatureOfBusiness.length > 0 && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
+                    <span className="text-sm font-medium text-black">
+                      {selectedNatureOfBusiness.length}
+                    </span>
+                  </div>
+                )}
               </div>
+
+              {/* Checkboxes Grid */}
+              <FormField
+                control={form.control}
+                name="natureOfBusiness"
+                render={() => (
+                  <FormItem>
+                    {isLoading ? (
+                      <div className="text-sm text-gray-500">Loading...</div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-3">
+                        {natureOfBusinessOptions.map((option) => (
+                          <FormField
+                            key={option.id}
+                            control={form.control}
+                            name="natureOfBusiness"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={option.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(option.name)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([
+                                            ...field.value,
+                                            option.name,
+                                          ])
+                                          : field.onChange(
+                                            field.value?.filter(
+                                              (value) => value !== option.name
+                                            )
+                                          );
+                                      }}
+                                      className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                    {option.name}
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Controlled/Dual Use Items, End-Use Market, Licenses - Separate Light Container */}
             <div className="bg-bg-light p-6">
@@ -690,14 +738,14 @@ export default function DeclarationPage() {
                                             onCheckedChange={(checked) => {
                                               return checked
                                                 ? field.onChange([
-                                                    ...field.value,
-                                                    option.name,
-                                                  ])
+                                                  ...field.value,
+                                                  option.name,
+                                                ])
                                                 : field.onChange(
-                                                    field.value?.filter(
-                                                      (value) => value !== option.name
-                                                    )
-                                                  );
+                                                  field.value?.filter(
+                                                    (value) => value !== option.name
+                                                  )
+                                                );
                                             }}
                                             className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
                                           />
@@ -791,14 +839,14 @@ export default function DeclarationPage() {
                                         onCheckedChange={(checked) => {
                                           return checked
                                             ? field.onChange([
-                                                ...field.value,
-                                                option.value,
-                                              ])
+                                              ...field.value,
+                                              option.value,
+                                            ])
                                             : field.onChange(
-                                                field.value?.filter(
-                                                  (value) => value !== option.value
-                                                )
-                                              );
+                                              field.value?.filter(
+                                                (value) => value !== option.value
+                                              )
+                                            );
                                         }}
                                         className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
                                       />
@@ -899,7 +947,7 @@ export default function DeclarationPage() {
                             </span>
                           )}
                         </div>
-                        
+
                         {/* Dropdown Arrow */}
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                           {selectedCountries.length > 0 && (
@@ -910,9 +958,8 @@ export default function DeclarationPage() {
                             </div>
                           )}
                           <ChevronDown
-                            className={`h-5 w-5 text-gray-400 transition-transform ${
-                              isCountryDropdownOpen ? "rotate-180" : ""
-                            }`}
+                            className={`h-5 w-5 text-gray-400 transition-transform ${isCountryDropdownOpen ? "rotate-180" : ""
+                              }`}
                           />
                         </div>
 
@@ -1032,11 +1079,10 @@ export default function DeclarationPage() {
                                   className="sr-only"
                                 />
                                 <span
-                                  className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
-                                    field.value === option.value
-                                      ? "border-border"
-                                      : ""
-                                  }`}
+                                  className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${field.value === option.value
+                                    ? "border-border"
+                                    : ""
+                                    }`}
                                 >
                                   {field.value === option.value && (
                                     <span className="h-2 w-2 rounded-full bg-border"></span>
@@ -1206,63 +1252,63 @@ export default function DeclarationPage() {
                               control={form.control}
                               name={fileFieldName}
                               render={() => (
-                                    <FormItem>
-                                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                                        Upload {license.label}{" "}
-                                        <span className="text-red-500">*</span>
-                                      </FormLabel>
-                                      <FormControl>
-                                        <div className="space-y-2">
-                                          <input
-                                            ref={(el) => {
-                                              licenseFileRefs.current[licenseValue] = el;
-                                            }}
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/jpg,application/pdf"
-                                            onChange={(e) => handleLicenseFileSelect(licenseValue, e)}
-                                            className="hidden"
-                                          />
-                                          {preview ? (
-                                            <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
-                                              {licenseFileTypes[licenseValue] === 'image' ? (
-                                                <img
-                                                  src={preview}
-                                                  alt={`${license.label} Preview`}
-                                                  className="w-full h-64 object-contain"
-                                                />
-                                              ) : licenseFileTypes[licenseValue] === 'pdf' ? (
-                                                <PDFViewer file={preview} />
-                                              ) : null}
-                                              <button
-                                                type="button"
-                                                onClick={() => handleRemoveLicenseFile(licenseValue)}
-                                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
-                                                aria-label="Remove file"
-                                              >
-                                                <X className="w-4 h-4" />
-                                              </button>
-                                            </div>
-                                          ) : (
-                                            <div
-                                              onClick={() => licenseFileRefs.current[licenseValue]?.click()}
-                                              className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
-                                            >
-                                              <Upload className="w-10 h-10 text-secondary mb-3" />
-                                              <p className="text-sm font-medium text-gray-700 mb-1">
-                                                Choose a File
-                                              </p>
-                                              <p className="text-xs text-gray-500 text-center max-w-md">
-                                                Accepted files: JPEG, PNG and PDF.
-                                              </p>
-                                            </div>
-                                          )}
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                                    Upload {license.label}{" "}
+                                    <span className="text-red-500">*</span>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <div className="space-y-2">
+                                      <input
+                                        ref={(el) => {
+                                          licenseFileRefs.current[licenseValue] = el;
+                                        }}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/jpg,application/pdf"
+                                        onChange={(e) => handleLicenseFileSelect(licenseValue, e)}
+                                        className="hidden"
+                                      />
+                                      {preview ? (
+                                        <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                                          {licenseFileTypes[licenseValue] === 'image' ? (
+                                            <img
+                                              src={preview}
+                                              alt={`${license.label} Preview`}
+                                              className="w-full h-64 object-contain"
+                                            />
+                                          ) : licenseFileTypes[licenseValue] === 'pdf' ? (
+                                            <PDFViewer file={preview} />
+                                          ) : null}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRemoveLicenseFile(licenseValue)}
+                                            className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                                            aria-label="Remove file"
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </button>
                                         </div>
-                                      </FormControl>
-                                    </FormItem>
-                                  )}
-                                />
-                              );
-                            })}
+                                      ) : (
+                                        <div
+                                          onClick={() => licenseFileRefs.current[licenseValue]?.click()}
+                                          className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                                        >
+                                          <Upload className="w-10 h-10 text-secondary mb-3" />
+                                          <p className="text-sm font-medium text-gray-700 mb-1">
+                                            Choose a File
+                                          </p>
+                                          <p className="text-xs text-gray-500 text-center max-w-md">
+                                            Accepted files: JPEG, PNG and PDF.
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
