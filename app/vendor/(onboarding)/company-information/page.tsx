@@ -169,7 +169,7 @@ export default function CompanyInformationPage() {
   useEffect(() => {
     if (profileData?.profile && !isProfileLoading) {
       const p = profileData.profile;
-      
+
       // Helper to parse ISO date string to { day, month, year }
       const parseDate = (isoString?: string) => {
         if (!isoString) return {};
@@ -204,7 +204,7 @@ export default function CompanyInformationPage() {
         // Determine type based on extension or assume image if no extension
         const isPdf = p.vat_certificate_url.toLowerCase().endsWith('.pdf');
         setFileType(isPdf ? 'pdf' : 'image');
-        
+
         // We can't convert URL to File object automatically for the form's file input,
         // but we can assume it's valid if there's a URL.
         // If the user uploads a new file, it will override this.
@@ -220,15 +220,15 @@ export default function CompanyInformationPage() {
         // For this task scope, let's just show preview. The user might need to re-upload to submit Step 1 again,
         // BUT usually if data is pre-filled, we want them to just click Next.
         // So validation needs to be handled.
-        
+
         // WORKAROUND: Create a dummy file object to pass Zod validation
         // properties: name, lastModified, size, type
         const dummyFile = new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" });
-        form.setValue("vatCertificate", dummyFile); 
+        form.setValue("vatCertificate", dummyFile);
       }
     } else if (profileData?.user && !isProfileLoading && !form.getValues("registeredCompanyName")) {
-        // Fallback for just name if profile doesn't exist yet
-        form.setValue("registeredCompanyName", profileData.user.name);
+      // Fallback for just name if profile doesn't exist yet
+      form.setValue("registeredCompanyName", profileData.user.name);
     }
   }, [profileData, isProfileLoading, form]);
 
@@ -273,6 +273,43 @@ export default function CompanyInformationPage() {
 
   const onSubmit = async (data: CompanyInformationFormValues) => {
     try {
+      let vatCertificateUrl = undefined;
+
+      // Handle File Upload if selected
+      if (data.vatCertificate instanceof File) {
+        const uploadData = new FormData();
+        uploadData.append("files", data.vatCertificate); // Matches generic API expectation
+        uploadData.append("label", "VENDOR_VAT_CERTIFICATE");
+        uploadData.append("data", JSON.stringify({}));
+
+        // Use the same API URL logic as frontend or configure environment
+        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/upload/files`, {
+          method: 'POST',
+          body: uploadData,
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // Ensure token is sent
+          }
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("File upload failed");
+        }
+
+        const uploadJson = await uploadRes.json();
+        if (uploadJson.success && uploadJson.data && uploadJson.data.length > 0) {
+          vatCertificateUrl = uploadJson.data[0];
+        } else {
+          throw new Error("File upload response invalid");
+        }
+      } else if (typeof data.vatCertificate === 'string') {
+        // If it's already a string (existing URL), just use it if it matches our preview
+        if (imagePreview) {
+          vatCertificateUrl = imagePreview;
+        }
+      }
+
+
+
       // Transform form data to API schema format
       const payload = {
         countryOfRegistration: data.countryOfRegistration,
@@ -286,7 +323,7 @@ export default function CompanyInformationPage() {
         officialWebsite: data.officialWebsite || undefined,
         entityType: data.entityType,
         dunsNumber: data.dunsNumber || undefined,
-        vatCertificateFile: data.vatCertificate as File | undefined,
+        vatCertificateUrl: vatCertificateUrl, // Send URL
         taxVatNumber: data.taxVatNumber || undefined,
         taxIssuingDate: data.taxIssueDate ? dateObjectToISOString(data.taxIssueDate) : undefined,
         taxExpiryDate: data.taxExpiryDate ? dateObjectToISOString(data.taxExpiryDate) : undefined,
@@ -325,306 +362,306 @@ export default function CompanyInformationPage() {
         <OnboardingProgressBar currentStep={1} />
 
         {/* COMPANY INFORMATION Heading */}
-          <h2 className="text-2xl pb-3 font-bold text-black uppercase">
-            COMPANY INFORMATION
-          </h2>
+        <h2 className="text-2xl pb-3 font-bold text-black uppercase">
+          COMPANY INFORMATION
+        </h2>
 
         {/* Form Container */}
         <div className="bg-bg-light p-6 shadow-lg">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* Country of Registration - Full Width */}
-                <FormField
-                  control={form.control}
-                  name="countryOfRegistration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                        Country of Registration{" "}
-                        <span className="text-red-500">*</span>
-                        <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <select
-                            {...field}
-                            disabled={isCountriesLoading}
-                            className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isCountriesLoading ? (
-                              <option value="">Loading countries...</option>
-                            ) : (
-                              (countries as Country[]).map((country) => (
-                                <option key={country.value} value={country.label}>
-                                  {country.label}
-                                </option>
-                              ))
-                            )}
-                          </select>
-                          {selectedCountry && !isCountriesLoading && (
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
-                              {selectedCountry.flag}
-                            </span>
+              <FormField
+                control={form.control}
+                name="countryOfRegistration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                      Country of Registration{" "}
+                      <span className="text-red-500">*</span>
+                      <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <select
+                          {...field}
+                          disabled={isCountriesLoading}
+                          className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isCountriesLoading ? (
+                            <option value="">Loading countries...</option>
+                          ) : (
+                            (countries as Country[]).map((country) => (
+                              <option key={country.value} value={country.label}>
+                                {country.label}
+                              </option>
+                            ))
                           )}
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </select>
+                        {selectedCountry && !isCountriesLoading && (
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
+                            {selectedCountry.flag}
+                          </span>
+                        )}
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                {/* Two Column Layout */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column */}
-                  <div className="space-y-6">
-                    {/* Registered Company Name - Read Only */}
-                    <FormField
-                      control={form.control}
-                      name="registeredCompanyName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Registered Company Name{" "}
-                            <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed text-gray-900 pr-10"
-                                {...field}
-                                readOnly
-                                disabled
-                              />
-                              {isProfileLoading && (
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                  <Spinner size="sm" className="text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Year of Establishment */}
-                    <FormField
-                      control={form.control}
-                      name="yearOfEstablishment"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Year of Establishment{" "}
-                            <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
+              {/* Two Column Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  {/* Registered Company Name - Read Only */}
+                  <FormField
+                    control={form.control}
+                    name="registeredCompanyName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Registered Company Name{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
                             <Input
-                              type="number"
-                              placeholder="eg : 1985"
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed text-gray-900 pr-10"
                               {...field}
+                              readOnly
+                              disabled
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            {isProfileLoading && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Spinner size="sm" className="text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                    {/* Issue Date */}
-                    <FormField
-                      control={form.control}
-                      name="issueDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Issue Date <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <DateSelector
-                              value={field.value}
-                              onChange={field.onChange}
-                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Year of Establishment */}
+                  <FormField
+                    control={form.control}
+                    name="yearOfEstablishment"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Year of Establishment{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="eg : 1985"
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                    {/* City & Office Address */}
-                    <FormField
-                      control={form.control}
-                      name="cityOfficeAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            City & Office Address{" "}
-                            <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Office Address / Address Line"
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                  {/* Issue Date */}
+                  <FormField
+                    control={form.control}
+                    name="issueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Issue Date <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <DateSelector
+                            value={field.value}
+                            onChange={field.onChange}
+                            selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* City & Office Address */}
+                  <FormField
+                    control={form.control}
+                    name="cityOfficeAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          City & Office Address{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Office Address / Address Line"
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Entity Type */}
+                  <FormField
+                    control={form.control}
+                    name="entityType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Entity Type <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <select
                               {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Entity Type */}
-                    <FormField
-                      control={form.control}
-                      name="entityType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Entity Type <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <select
-                                {...field}
-                                className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
-                              >
-                                <option value="">Select Entity Type</option>
-                                {entityTypes.map((type) => (
-                                  <option key={type.value} value={type.value}>
-                                    {type.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    {/* Trade/Brand Name */}
-                    <FormField
-                      control={form.control}
-                      name="tradeBrandName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Trade/Brand Name (if different)
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Legal Entity ID / CR No */}
-                    <FormField
-                      control={form.control}
-                      name="legalEntityId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Legal Entity ID / CR No{" "}
-                            <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter Your Trade License Number"
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Expiry Date */}
-                    <FormField
-                      control={form.control}
-                      name="expiryDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Expiry Date
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <DateSelector
-                              value={field.value}
-                              onChange={field.onChange}
-                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              includeFutureYears={true}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Official Website */}
-                    <FormField
-                      control={form.control}
-                      name="officialWebsite"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Official Website
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="url"
-                              placeholder="eg: www.blueweb2.com"
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* DUNS Number */}
-                    <FormField
-                      control={form.control}
-                      name="dunsNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            DUNS Number (if applicable)
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="eg: 65-432-1987"
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                              className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
+                            >
+                              <option value="">Select Entity Type</option>
+                              {entityTypes.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                  {type.label}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* Trade/Brand Name */}
+                  <FormField
+                    control={form.control}
+                    name="tradeBrandName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Trade/Brand Name (if different)
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Legal Entity ID / CR No */}
+                  <FormField
+                    control={form.control}
+                    name="legalEntityId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Legal Entity ID / CR No{" "}
+                          <span className="text-red-500">*</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter Your Trade License Number"
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Expiry Date */}
+                  <FormField
+                    control={form.control}
+                    name="expiryDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Expiry Date
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <DateSelector
+                            value={field.value}
+                            onChange={field.onChange}
+                            selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            includeFutureYears={true}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Official Website */}
+                  <FormField
+                    control={form.control}
+                    name="officialWebsite"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          Official Website
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="url"
+                            placeholder="eg: www.blueweb2.com"
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* DUNS Number */}
+                  <FormField
+                    control={form.control}
+                    name="dunsNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                          DUNS Number (if applicable)
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="eg: 65-432-1987"
+                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
               {/* TAX INFORMATION Section */}
               <div className="space-y-6 pt-6 border-t border-gray-300">
@@ -732,11 +769,11 @@ export default function CompanyInformationPage() {
                               <Info className="w-4 h-4 text-gray-400 cursor-help" />
                             </FormLabel>
                             <FormControl>
-                            <DateSelector
-                              value={field.value || {}}
-                              onChange={field.onChange}
-                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                            />
+                              <DateSelector
+                                value={field.value || {}}
+                                onChange={field.onChange}
+                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -754,12 +791,12 @@ export default function CompanyInformationPage() {
                               <Info className="w-4 h-4 text-gray-400 cursor-help" />
                             </FormLabel>
                             <FormControl>
-                            <DateSelector
-                              value={field.value || {}}
-                              onChange={field.onChange}
-                              selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              includeFutureYears={true}
-                            />
+                              <DateSelector
+                                value={field.value || {}}
+                                onChange={field.onChange}
+                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                                includeFutureYears={true}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

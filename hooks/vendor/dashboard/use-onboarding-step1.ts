@@ -14,7 +14,7 @@ export interface OnboardingStep1Request {
   officialWebsite?: string;
   entityType: string;
   dunsNumber?: string;
-  vatCertificateFile?: File;
+  vatCertificateUrl?: string; // Changed from File to Url
   taxVatNumber?: string;
   taxIssuingDate?: string;
   taxExpiryDate?: string;
@@ -36,42 +36,10 @@ export function useOnboardingStep1() {
     OnboardingStep1Request
   >({
     mutationFn: async (data: OnboardingStep1Request) => {
-      const formData = new FormData();
-
-      // Append all fields to FormData
-      formData.append("countryOfRegistration", data.countryOfRegistration);
-      formData.append("registeredCompanyName", data.registeredCompanyName);
-      if (data.tradeBrandName) {
-        formData.append("tradeBrandName", data.tradeBrandName);
-      }
-      formData.append("yearOfEstablishment", data.yearOfEstablishment.toString());
-      formData.append("legalEntityId", data.legalEntityId);
-      formData.append("legalEntityIssueDate", data.legalEntityIssueDate);
-      formData.append("legalEntityExpiryDate", data.legalEntityExpiryDate);
-      formData.append("cityOfficeAddress", data.cityOfficeAddress);
-      if (data.officialWebsite) {
-        formData.append("officialWebsite", data.officialWebsite);
-      }
-      formData.append("entityType", data.entityType);
-      if (data.dunsNumber) {
-        formData.append("dunsNumber", data.dunsNumber);
-      }
-      if (data.vatCertificateFile) {
-        formData.append("vatCertificateFile", data.vatCertificateFile);
-      }
-      if (data.taxVatNumber) {
-        formData.append("taxVatNumber", data.taxVatNumber);
-      }
-      if (data.taxIssuingDate) {
-        formData.append("taxIssuingDate", data.taxIssuingDate);
-      }
-      if (data.taxExpiryDate) {
-        formData.append("taxExpiryDate", data.taxExpiryDate);
-      }
-
+      // Send as JSON
       const response = await api.post<OnboardingStep1Response>(
         "/onboarding/step1",
-        formData
+        data
       );
       return response.data;
     },
