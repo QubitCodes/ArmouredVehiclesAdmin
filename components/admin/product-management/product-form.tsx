@@ -602,6 +602,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         })(),
 
         // Map Categories (IMPORTANT: Ensure IDs are numbers)
+        mainCategoryId: (productData.mainCategoryId as number) || (productData.main_category_id as number) || (productData.main_category as any)?.id || undefined,
         categoryId: (productData.categoryId as number) || (productData.category_id as number) || (productData.category as any)?.id || undefined,
         subCategoryId: (productData.subCategoryId as number) || (productData.sub_category_id as number) || (productData.sub_category as any)?.id || undefined,
 

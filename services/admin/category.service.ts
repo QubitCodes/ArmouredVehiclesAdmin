@@ -10,6 +10,7 @@ export interface Category {
   parent_id?: number | null; // For API compatibility
   isControlled?: boolean;
   is_controlled?: boolean;
+  product_count?: number; // Count of products directly assigned to this category
 }
 
 class CategoryService {

@@ -32,11 +32,11 @@ export function CategoryList() {
     // Check role on mount
     const user = authService.getUserDetails();
     if (user && user.userType === 'vendor') { // Check userType or user_type? usually userType in stored obj
-         setIsVendor(true);
+      setIsVendor(true);
     } else if (user && user.user_type === 'vendor') {
-         setIsVendor(true);
+      setIsVendor(true);
     }
-    
+
     // Also if no user, check maybe authService normalized logic?
     // Let's rely on standard object property check.
     loadData();
@@ -47,37 +47,37 @@ export function CategoryList() {
     setLoading(true);
     try {
       const all: Category[] = await categoryService.getAllCategories();
-      
+
       // Build hierarchy map
       const categoryMap = new Map<number, Category & { children?: Category[] }>();
       all.forEach(cat => categoryMap.set(cat.id, { ...cat, children: [] }));
-      
+
       const roots: (Category & { children?: Category[] })[] = [];
-      
+
       // Assign children to parents
       all.forEach(cat => {
-          // Normalize parentId
-          const pId = cat.parentId ?? cat.parent_id;
+        // Normalize parentId
+        const pId = cat.parentId ?? cat.parent_id;
 
-          if (pId && categoryMap.has(pId)) { 
-              const parent = categoryMap.get(pId);
-              if (parent) parent.children?.push(categoryMap.get(cat.id)!);
-          } else {
-              roots.push(categoryMap.get(cat.id)!);
-          }
+        if (pId && categoryMap.has(pId)) {
+          const parent = categoryMap.get(pId);
+          if (parent) parent.children?.push(categoryMap.get(cat.id)!);
+        } else {
+          roots.push(categoryMap.get(cat.id)!);
+        }
       });
-      
+
       // Flatten for table display
       const flattened: (Category & { level: number })[] = [];
       const traverse = (nodes: (Category & { children?: Category[] })[], level: number) => {
-          nodes.forEach(node => {
-              flattened.push({ ...node, level });
-              if (node.children && node.children.length > 0) {
-                  traverse(node.children, level + 1);
-              }
-          });
+        nodes.forEach(node => {
+          flattened.push({ ...node, level });
+          if (node.children && node.children.length > 0) {
+            traverse(node.children, level + 1);
+          }
+        });
       };
-      
+
       traverse(roots, 0);
       setCategories(flattened);
     } catch (error) {
@@ -110,52 +110,61 @@ export function CategoryList() {
     }
   };
 
-  const columns: Column<Category & { level?: number } >[] = [
+  const columns: Column<Category & { level?: number }>[] = [
     {
       header: "Name",
       accessorKey: "name",
       render: (item) => (
         <div className="flex items-center gap-2 font-medium text-black" style={{ paddingLeft: `${(item.level || 0) * 24}px` }}>
-             {(item.level || 0) > 0 ? <div className="border-l-2 border-b-2 w-3 h-3 border-gray-300 -mt-2 mr-1"></div> : null}
-             <Folder className="h-4 w-4 text-primary/50" />
-             {item.name}
+          {(item.level || 0) > 0 ? <div className="border-l-2 border-b-2 w-3 h-3 border-gray-300 -mt-2 mr-1"></div> : null}
+          <Folder className="h-4 w-4 text-primary/50" />
+          {item.name}
         </div>
       )
     },
     {
-        header: "Description",
-        accessorKey: "description",
-        className: "text-muted-foreground text-sm truncate max-w-[300px]"
+      header: "Description",
+      accessorKey: "description",
+      className: "text-muted-foreground text-sm truncate max-w-[300px]"
     },
     {
-        header: "Controlled",
-        accessorKey: "isControlled",
-        render: (item) => (
-            (item.isControlled || item.is_controlled) ? (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                    <ShieldCheck className="w-3 h-3 mr-1" />
-                    Controlled
-                </span>
-            ) : null
-        )
+      header: "Controlled",
+      accessorKey: "isControlled",
+      render: (item) => (
+        (item.isControlled || item.is_controlled) ? (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+            <ShieldCheck className="w-3 h-3 mr-1" />
+            Controlled
+          </span>
+        ) : null
+      )
+    },
+    {
+      header: "Products",
+      accessorKey: "product_count",
+      render: (item) => (
+        <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+          {item.product_count ?? 0}
+        </span>
+      )
     }
   ];
 
   // Only add Actions column if NOT vendor
   if (!isVendor) {
-      columns.push({
-        header: "Actions",
-        render: (item) => (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
-                    <Pencil className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(item.id)}>
-                    <Trash2 className="h-4 w-4" />
-                </Button>
-            </div>
-        )
-      });
+    columns.push({
+      header: "Actions",
+      render: (item) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(item.id)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )
+    });
   }
 
   return (
@@ -166,26 +175,26 @@ export function CategoryList() {
           <p className="text-muted-foreground">Manage product categories and hierarchy.</p>
         </div>
         {!isVendor && (
-            <Button onClick={() => { setSelectedCategory(null); setDialogOpen(true); }}>
+          <Button onClick={() => { setSelectedCategory(null); setDialogOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" /> Add Category
-            </Button>
+          </Button>
         )}
       </div>
 
-      <CustomTable 
-        data={categories} 
-        columns={columns} 
-        gridCols={!isVendor ? "2fr 3fr 1fr 100px" : "2fr 3fr 1fr"} // Adjust grid based on columns
+      <CustomTable
+        data={categories}
+        columns={columns}
+        gridCols={!isVendor ? "2fr 3fr 1fr 80px 100px" : "2fr 3fr 1fr 80px"} // Name, Description, Controlled, Products, Actions
         isLoading={loading}
         onRowClick={(item) => {
-            // Optional: navigate to subcategories?
-            // router.push(`/admin/categories/${item.id}`)
-        }} 
+          // Optional: navigate to subcategories?
+          // router.push(`/admin/categories/${item.id}`)
+        }}
       />
 
-      <CategoryDialog 
-        open={dialogOpen} 
-        onOpenChange={setDialogOpen} 
+      <CategoryDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
         category={selectedCategory}
         onSuccess={loadData}
       />
