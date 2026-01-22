@@ -18,6 +18,8 @@ import {
   Trash2,
   Package,
   Settings,
+  Save,
+  Hash,
   ShoppingCart,
   Image as ImageIcon,
   Shield,
@@ -52,6 +54,14 @@ import {
   useMainCategories,
   useCategoriesByParent,
 } from "@/hooks/admin/product-management/use-categories";
+import {
+  useProductSpecifications,
+  useCreateSpecification,
+  useUpdateSpecification,
+  useBulkUpdateSpecifications,
+  useDeleteSpecification,
+} from "@/hooks/admin/product-management/use-product-specifications";
+import type { ProductSpecification } from "@/services/admin/product-specification.service";
 import type {
   CreateProductRequest,
   UpdateProductRequest,
@@ -361,6 +371,25 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   // File states
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+
+  // Specifications state (moved to top level to follow React hooks rules)
+  const { data: specificationsData = [], isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId);
+  const createSpec = useCreateSpecification(currentProductId);
+  const updateSpec = useUpdateSpecification(currentProductId);
+  const deleteSpec = useDeleteSpecification(currentProductId);
+  const bulkUpdateSpecs = useBulkUpdateSpecifications(currentProductId);
+  const [localSpecs, setLocalSpecs] = useState<ProductSpecification[]>([]);
+  const [rowsToAdd, setRowsToAdd] = useState<number>(1);
+
+  // Sync local specs with fetched data, or initialize with one empty row
+  useEffect(() => {
+    if (specificationsData.length > 0) {
+      setLocalSpecs(specificationsData);
+    } else if (currentProductId && localSpecs.length === 0) {
+      // Start with one empty row
+      setLocalSpecs([{ label: '', value: '', type: 'general', active: false, sort: 0 }]);
+    }
+  }, [specificationsData, currentProductId]);
 
   // If productId is provided, fetch product data
   const {
@@ -1259,8 +1288,271 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         );
 
       case 2:
+        // Helper functions for specifications (hooks are at top level)
+        const addSpecRows = () => {
+          const newRows = [];
+          for (let i = 0; i < rowsToAdd; i++) {
+            newRows.push({
+              label: '',
+              value: '',
+              type: 'general' as const,
+              active: false,
+              sort: localSpecs.length + i,
+            });
+          }
+          setLocalSpecs([...localSpecs, ...newRows]);
+        };
+
+        const updateLocalSpec = (index: number, field: keyof ProductSpecification, val: any) => {
+          const updated = [...localSpecs];
+          (updated[index] as any)[field] = val;
+          if (field === 'label' || field === 'value') {
+            updated[index].active = !!(updated[index].label || updated[index].value);
+          }
+          setLocalSpecs(updated);
+        };
+
+        const saveSpecRow = async (index: number) => {
+          const spec = localSpecs[index];
+          // Sanitize
+          const dataToSave = {
+            ...spec,
+            label: spec.type === 'value_only' ? null : spec.label,
+            value: spec.type === 'title_only' ? null : spec.value,
+          };
+
+          if (spec.id) {
+            await updateSpec.mutateAsync({ specId: spec.id, data: dataToSave });
+          } else {
+            await createSpec.mutateAsync(dataToSave);
+          }
+        };
+
+        const deleteSpecRow = async (index: number) => {
+          const spec = localSpecs[index];
+          if (spec.id) {
+            await deleteSpec.mutateAsync(spec.id);
+          }
+          setLocalSpecs(localSpecs.filter((_, i) => i !== index));
+        };
+
+
+        const saveAllSpecs = async () => {
+          await bulkUpdateSpecs.mutateAsync(localSpecs);
+        };
+
+        const handlePaste = (e: React.ClipboardEvent, startIndex: number, startField: 'label' | 'value') => {
+          e.preventDefault();
+          const pasteData = e.clipboardData.getData('text');
+          if (!pasteData) return;
+
+          const rows = pasteData.split(/\r\n|\n/).filter(row => row.trim() !== '');
+          if (rows.length === 0) return;
+
+          const newSpecs = [...localSpecs];
+
+          rows.forEach((row, i) => {
+            const cols = row.split('\t');
+            const currentIndex = startIndex + i;
+
+            // Create new row if needed
+            if (currentIndex >= newSpecs.length) {
+              newSpecs.push({
+                label: '',
+                value: '',
+                type: 'general',
+                active: true,
+                sort: newSpecs.length,
+              });
+            }
+
+            const spec = newSpecs[currentIndex];
+
+            // Map columns based on startField
+            if (startField === 'label') {
+              if (cols[0] !== undefined) spec.label = cols[0].trim();
+              if (cols[1] !== undefined) spec.value = cols[1].trim();
+              // Optional: Try to map 3rd column to Type
+              if (cols[2] !== undefined) {
+                const typeVal = cols[2].trim().toLowerCase();
+                if (['general', 'title_only', 'value_only'].includes(typeVal)) {
+                  spec.type = typeVal as any;
+                } else if (typeVal === 'title') {
+                  spec.type = 'title_only';
+                } else if (typeVal === 'value') {
+                  spec.type = 'value_only';
+                }
+              }
+            } else { // startField === 'value'
+              if (cols[0] !== undefined) spec.value = cols[0].trim();
+            }
+
+            // Auto-activate
+            spec.active = !!(spec.label || spec.value);
+
+            // Sanitize based on Type
+            // @ts-ignore
+            if (spec.type === 'value_only') spec.label = null;
+            // @ts-ignore
+            if (spec.type === 'title_only') spec.value = null;
+
+            // Update sort order just in case
+            spec.sort = currentIndex;
+          });
+
+          setLocalSpecs(newSpecs);
+        };
+
+
+
         return (
           <div className="space-y-6">
+            {/* SPECIFICATIONS TABLE - NEW SECTION */}
+            {currentProductId && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>SPECIFICATIONS</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingSpecs ? (
+                    <div className="flex justify-center py-8"><Spinner /></div>
+                  ) : (
+                    <>
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-sm table-fixed">
+                          <thead className="bg-muted">
+                            <tr>
+                              <th className="w-10 px-2 py-2 text-center">Act.</th>
+                              <th className="px-2 py-2 text-left">Label</th>
+                              <th className="px-2 py-2 text-left">Value</th>
+                              <th className="w-40 px-2 py-2 text-left">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {localSpecs.map((spec, index) => (
+                              <tr key={spec.id || `new-${index}`} className="border-t">
+                                <td className="px-2 py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={spec.active}
+                                    onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
+                                    className="h-4 w-4"
+                                  />
+                                </td>
+                                {spec.type === 'title_only' || spec.type === 'value_only' ? (
+                                  <td colSpan={2} className="px-2 py-2">
+                                    <div className="relative">
+                                      <Input
+                                        value={spec.type === 'title_only' ? spec.label || '' : spec.value || ''}
+                                        onChange={(e) => updateLocalSpec(index, spec.type === 'title_only' ? 'label' : 'value', e.target.value)}
+                                        onPaste={(e) => handlePaste(e, index, spec.type === 'title_only' ? 'label' : 'value')}
+                                        className={`${spec.type === 'title_only' ? 'font-bold bg-muted/50 pl-10 border-primary/20' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all`}
+                                        placeholder={spec.type === 'title_only' ? 'Section Title' : 'Value'}
+                                      />
+                                      {spec.type === 'title_only' && (
+                                        <div className="absolute top-0 left-0 bg-orange-600 text-white w-8 h-full flex items-center justify-center rounded-l-lg shadow-sm pointer-events-none opacity-100 z-10">
+                                          <Hash className="w-4 h-4" />
+                                        </div>
+                                      )}
+                                      {spec.type === 'value_only' && (
+                                        <div className="absolute top-0 left-0 bg-primary text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                ) : (
+                                  <>
+                                    <td className="px-2 py-2">
+                                      <Input
+                                        value={spec.label || ''}
+                                        onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                        onPaste={(e) => handlePaste(e, index, 'label')}
+                                        placeholder="Label"
+                                        className="w-full font-medium border-primary/30 bg-muted/10"
+                                      />
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <Input
+                                        value={spec.value || ''}
+                                        onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                        onPaste={(e) => handlePaste(e, index, 'value')}
+                                        placeholder="Value"
+                                        className="w-full"
+                                      />
+                                    </td>
+                                  </>
+                                )}
+                                <td className="px-2 py-2">
+                                  <div className="flex gap-1 items-center">
+                                    <select
+                                      value={spec.type}
+                                      onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
+                                      className="h-8 px-1 text-xs border rounded bg-background w-20"
+                                    >
+                                      <option value="general">General</option>
+                                      <option value="title_only">Title</option>
+                                      <option value="value_only">Value</option>
+                                    </select>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-8 w-8 p-0 aspect-square shrink-0"
+                                      onClick={() => saveSpecRow(index)}
+                                      disabled={updateSpec.isPending || createSpec.isPending}
+                                      title="Save Row"
+                                    >
+                                      <Save className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-8 w-8 p-0 aspect-square shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-black dark:hover:text-white"
+                                      onClick={() => deleteSpecRow(index)}
+                                      disabled={deleteSpec.isPending}
+                                      title="Delete Row"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex justify-between mt-4 items-center">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={rowsToAdd}
+                            onChange={(e) => setRowsToAdd(parseInt(e.target.value) || 1)}
+                            className="w-16 h-9"
+                          />
+                          <Button type="button" variant="outline" size="sm" onClick={addSpecRows}>
+                            <Plus className="mr-2 h-4 w-4" /> Add Rows
+                          </Button>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          onClick={saveAllSpecs}
+                          disabled={bulkUpdateSpecs.isPending}
+                        >
+                          {bulkUpdateSpecs.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Save All
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>TECHNICAL SPECIFICATIONS:</CardTitle>
