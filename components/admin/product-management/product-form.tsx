@@ -25,6 +25,7 @@ import {
   Shield,
   UploadCloud,
   Eye,
+  Info,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -381,13 +382,22 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   const [localSpecs, setLocalSpecs] = useState<ProductSpecification[]>([]);
   const [rowsToAdd, setRowsToAdd] = useState<number>(1);
 
+  // Helper functions for specifications
+  const getNextSuggestedType = (specs: any[], index: number): 'general' | 'title_only' | 'value_only' => {
+    if (index === 0) return 'title_only';
+    const prev = specs[index - 1];
+    if (!prev) return 'general';
+    if (prev.type === 'title_only') return 'general'; // Allow choice after title, default to general
+    return prev.type; // Force same type as before in the same section
+  };
+
   // Sync local specs with fetched data, or initialize with one empty row
   useEffect(() => {
     if (specificationsData.length > 0) {
       setLocalSpecs(specificationsData);
     } else if (currentProductId && localSpecs.length === 0) {
-      // Start with one empty row
-      setLocalSpecs([{ label: '', value: '', type: 'general', active: false, sort: 0 }]);
+      // Start with one empty row (must be title)
+      setLocalSpecs([{ label: '', value: '', type: 'title_only', active: false, sort: 0 }]);
     }
   }, [specificationsData, currentProductId]);
 
@@ -1286,21 +1296,20 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             </CardContent>
           </Card>
         );
-
       case 2:
-        // Helper functions for specifications (hooks are at top level)
         const addSpecRows = () => {
-          const newRows = [];
+          const newSpecs = [...localSpecs];
           for (let i = 0; i < rowsToAdd; i++) {
-            newRows.push({
+            const nextIndex = newSpecs.length;
+            newSpecs.push({
               label: '',
               value: '',
-              type: 'general' as const,
+              type: getNextSuggestedType(newSpecs, nextIndex),
               active: false,
-              sort: localSpecs.length + i,
+              sort: nextIndex,
             });
           }
-          setLocalSpecs([...localSpecs, ...newRows]);
+          setLocalSpecs(newSpecs);
         };
 
         const updateLocalSpec = (index: number, field: keyof ProductSpecification, val: any) => {
@@ -1312,7 +1321,38 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
           setLocalSpecs(updated);
         };
 
+        const validateSpecsRules = (): boolean => {
+          if (localSpecs.length === 0) return true;
+
+          // Rule 1: First spec must be title
+          if (localSpecs[0].type !== 'title_only') {
+            toast.warning('The first specification must always be a Section Title.');
+            return false;
+          }
+
+          // Rule 2: Section consistency
+          let currentSectionType: string | null = null;
+          let sectionStartTitle = localSpecs[0].label || 'Initial Section';
+
+          for (let i = 0; i < localSpecs.length; i++) {
+            const spec = localSpecs[i];
+            if (spec.type === 'title_only') {
+              currentSectionType = null;
+              sectionStartTitle = spec.label || `Section at row ${i + 1}`;
+            } else {
+              if (currentSectionType === null) {
+                currentSectionType = spec.type;
+              } else if (spec.type !== currentSectionType) {
+                toast.warning(`Rule violation in "${sectionStartTitle}": You cannot mix General and Value Only items in the same section (Row ${i + 1}).`);
+                return false;
+              }
+            }
+          }
+          return true;
+        };
+
         const saveSpecRow = async (index: number) => {
+          if (!validateSpecsRules()) return;
           const spec = localSpecs[index];
           // Sanitize
           const dataToSave = {
@@ -1338,6 +1378,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
 
         const saveAllSpecs = async () => {
+          if (!validateSpecsRules()) return;
           await bulkUpdateSpecs.mutateAsync(localSpecs);
         };
 
@@ -1360,7 +1401,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
               newSpecs.push({
                 label: '',
                 value: '',
-                type: 'general',
+                type: getNextSuggestedType(newSpecs, currentIndex),
                 active: true,
                 sort: newSpecs.length,
               });
@@ -1375,7 +1416,9 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
               // Optional: Try to map 3rd column to Type
               if (cols[2] !== undefined) {
                 const typeVal = cols[2].trim().toLowerCase();
-                if (['general', 'title_only', 'value_only'].includes(typeVal)) {
+                if (currentIndex === 0) {
+                  spec.type = 'title_only';
+                } else if (['general', 'title_only', 'value_only'].includes(typeVal)) {
                   spec.type = typeVal as any;
                 } else if (typeVal === 'title') {
                   spec.type = 'title_only';
@@ -1395,6 +1438,9 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             if (spec.type === 'value_only') spec.label = null;
             // @ts-ignore
             if (spec.type === 'title_only') spec.value = null;
+
+            // First row MUST be title_only regardless of paste content
+            if (currentIndex === 0) spec.type = 'title_only';
 
             // Update sort order just in case
             spec.sort = currentIndex;
@@ -1425,7 +1471,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                               <th className="w-10 px-2 py-2 text-center">Act.</th>
                               <th className="px-2 py-2 text-left">Label</th>
                               <th className="px-2 py-2 text-left">Value</th>
-                              <th className="w-40 px-2 py-2 text-left">Actions</th>
+                              <th className="w-32 px-2 py-2 text-left">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1490,21 +1536,32 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                                       onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
                                       className="h-8 px-1 text-xs border rounded bg-background w-20"
                                     >
-                                      <option value="general">General</option>
-                                      <option value="title_only">Title</option>
-                                      <option value="value_only">Value</option>
+                                      {/* Rule: First row must be title */}
+                                      {index === 0 ? (
+                                        <option value="title_only">Title</option>
+                                      ) : (
+                                        <>
+                                          <option value="title_only">Title</option>
+                                          {/* Rule: Once general/value started in a section, stick to it */}
+                                          {(() => {
+                                            const findSectionType = () => {
+                                              for (let i = index - 1; i >= 0; i--) {
+                                                if (localSpecs[i].type === 'title_only') return null;
+                                                return localSpecs[i].type;
+                                              }
+                                              return null;
+                                            };
+                                            const sectionType = findSectionType();
+                                            return (
+                                              <>
+                                                <option value="general" disabled={sectionType !== null && sectionType !== 'general'}>General</option>
+                                                <option value="value_only" disabled={sectionType !== null && sectionType !== 'value_only'}>Value</option>
+                                              </>
+                                            );
+                                          })()}
+                                        </>
+                                      )}
                                     </select>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-8 w-8 p-0 aspect-square shrink-0"
-                                      onClick={() => saveSpecRow(index)}
-                                      disabled={updateSpec.isPending || createSpec.isPending}
-                                      title="Save Row"
-                                    >
-                                      <Save className="h-4 w-4" />
-                                    </Button>
                                     <Button
                                       type="button"
                                       variant="outline"
@@ -1546,6 +1603,18 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                           {bulkUpdateSpecs.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                           Save All
                         </Button>
+                      </div>
+
+                      <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 items-start">
+                        <Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
+                          <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+                            <li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
+                            <li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
+                            <li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
+                          </ul>
+                        </div>
                       </div>
                     </>
                   )}
@@ -1646,7 +1715,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                 <FormField control={form.control} name="minOrderQuantity" render={({ field }) => <FormItem><FormLabel>MOQ</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
               </CardContent>
             </Card>
-          </div>
+          </div >
         );
 
       case 3:
