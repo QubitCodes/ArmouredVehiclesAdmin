@@ -761,27 +761,24 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
 
 
-  const generateSku = (name: string) => {
-    return name
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+  /**
+   * Generate a random SKU with fixed format: SKU-XXXXXX
+   * Where X is uppercase alphanumeric (A-Z, 0-9)
+   */
+  const generateSku = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `SKU-${code}`;
   };
 
   const handleNameKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const currentName = form.getValues("name");
-    const generated = generateSku(currentName);
-
-    // Check if the user has manually touched the SKU field.
+    // Only auto-generate SKU for new products if SKU is empty
     const currentSku = form.getValues("sku");
-
-    // Update if:
-    // 1. It is a new product (no currentProductId)
-    // 2. OR the SKU field is currently empty
-    // 3. AND we are not in edit mode with an existing valid SKU
-    if (!currentProductId || !currentSku) {
-      form.setValue("sku", generated, { shouldValidate: true });
+    if (!currentProductId && !currentSku) {
+      form.setValue("sku", generateSku(), { shouldValidate: true });
     }
   };
 
