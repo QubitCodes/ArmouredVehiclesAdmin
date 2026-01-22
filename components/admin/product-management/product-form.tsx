@@ -74,7 +74,7 @@ const basicInfoSchema = z.object({
   categoryId: z.number().optional(),
   subCategoryId: z.number().optional(),
   vehicleCompatibility: z.string().optional(),
-  certifications: z.string().optional(),
+  certifications: z.array(z.string()).optional().default([]),
   countryOfOrigin: z.string().optional(),
   controlledItemType: z.string().optional(),
   description: z.string().optional(),
@@ -380,7 +380,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
       mainCategoryId: undefined,
       categoryId: undefined,
       subCategoryId: undefined, // Note: Ensure these IDs exist in your DB
-      certifications: "",
+      certifications: [],
       controlledItemType: "",
       vehicleCompatibility: "",
       make: "",
@@ -517,7 +517,19 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         description: (productData.description as string) || "",
 
         vehicleCompatibility: (getVal("vehicleCompatibility", "vehicle_compatibility") as string) || "",
-        certifications: (productData.certifications as string) || "",
+        certifications: (() => {
+          const val = productData.certifications;
+          if (Array.isArray(val)) return val as string[];
+          if (typeof val === 'string' && val.trim() !== '') {
+            try {
+              const parsed = JSON.parse(val);
+              return Array.isArray(parsed) ? parsed : [val];
+            } catch (e) {
+              return val ? [val] : [];
+            }
+          }
+          return [];
+        })(),
         countryOfOrigin: (getVal("countryOfOrigin", "country_of_origin") as string) || "",
         controlledItemType: (getVal("controlledItemType", "controlled_item_type") as string) || "",
 
@@ -721,6 +733,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
       | "vehicleFitment"
       | "pricingTerms"
       | "gallery"
+      | "certifications"
   ) => {
     const current = form.getValues(fieldName) || [];
     // @ts-ignore
@@ -1091,19 +1104,24 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
               />
 
               <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="certifications"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Certifications / Standards</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., CEN BR6" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="md:col-span-1">
+                  <Label className="mb-2 block">Certifications / Standards</Label>
+                  {(form.watch("certifications") || []).map((item: string, index: number) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        value={item}
+                        placeholder="e.g., CEN BR6"
+                        onChange={e => updateArrayItem("certifications", index, e.target.value)}
+                      />
+                      <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem("certifications", index)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem("certifications")}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Certification
+                  </Button>
+                </div>
                 {isControlledItemVisible && (
                   <FormField
                     control={form.control}
