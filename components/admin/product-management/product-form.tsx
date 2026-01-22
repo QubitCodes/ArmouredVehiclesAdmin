@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -59,9 +59,9 @@ import type {
 
 // Pricing Tier Schema
 const pricingTierSchema = z.object({
-  min_quantity: z.coerce.number().int().nonnegative(),
-  max_quantity: z.union([z.coerce.number().int().positive(), z.null(), z.literal("")]).optional(),
-  price: z.coerce.number().nonnegative(),
+  min_quantity: z.coerce.number().int().nonnegative().optional().default(0),
+  max_quantity: z.union([z.coerce.number().int().positive(), z.null(), z.literal("")]).optional().nullable(),
+  price: z.coerce.number().nonnegative().optional().default(0),
 });
 
 // --- Split Schemas for Tabs ---
@@ -115,14 +115,14 @@ const specificationsSchema = z.object({
 
 // Tab 3: Pricing & Stock
 const pricingSchema = z.object({
-  basePrice: z.coerce.number().min(0, "Base price must be greater than or equal to 0"),
+  basePrice: z.coerce.number().min(0, "Base price must be greater than or equal to 0").optional(),
   shippingCharge: z.coerce.number().min(0).optional(),
   packingCharge: z.coerce.number().min(0).optional(),
   currency: z.string().optional(),
   stock: z.number().optional(),
   readyStockAvailable: z.boolean().optional(),
   pricingTerms: z.array(z.string()).optional(),
-  pricing_tiers: z.array(pricingTierSchema).optional(),
+  pricing_tiers: z.array(pricingTierSchema).optional().default([]),
 });
 
 // Tab 4: Uploads
@@ -148,13 +148,7 @@ const declarationsSchema = z.object({
   complianceConfirmed: z.boolean().optional(),
   supplierSignature: z.string().optional(),
   warranty: z.string().optional(),
-  signatureDate: z
-    .object({
-      day: z.number().optional(),
-      month: z.number().optional(),
-      year: z.number().optional(),
-    })
-    .optional(),
+  signatureDate: z.any().optional(),
   status: z.string().optional(),
 });
 
@@ -180,6 +174,7 @@ const SECTIONS = [
   {
     id: 1,
     name: "Basic Information",
+    slug: "basic-info",
     icon: Package,
     fields: [
       "name",
@@ -200,6 +195,7 @@ const SECTIONS = [
   {
     id: 2,
     name: "Technical Description",
+    slug: "technical",
     icon: Settings,
     fields: [
       "dimensionLength",
@@ -229,6 +225,7 @@ const SECTIONS = [
   {
     id: 3,
     name: "Pricing & Availability",
+    slug: "pricing",
     icon: ShoppingCart,
     fields: [
       "basePrice",
@@ -246,12 +243,14 @@ const SECTIONS = [
   {
     id: 4,
     name: "Uploads & Media",
+    slug: "uploads",
     icon: ImageIcon,
     fields: ["image", "gallery"],
   },
   {
     id: 5,
     name: "Declarations",
+    slug: "declarations",
     icon: Shield,
     fields: [
       "manufacturingSource",
@@ -269,6 +268,23 @@ const SECTIONS = [
   },
 ];
 
+/**
+ * Helper function to get tab ID from URL slug
+ */
+const getTabIdFromSlug = (slug: string | null): number => {
+  if (!slug) return 1;
+  const section = SECTIONS.find(s => s.slug === slug);
+  return section?.id || 1;
+};
+
+/**
+ * Helper function to get URL slug from tab ID
+ */
+const getSlugFromTabId = (tabId: number): string => {
+  const section = SECTIONS.find(s => s.id === tabId);
+  return section?.slug || "basic-info";
+};
+
 interface ProductFormProps {
   productId?: string;
   defaultValues?: Partial<ProductFormValues>;
@@ -277,12 +293,64 @@ interface ProductFormProps {
 
 export default function ProductForm({ productId, isVendor = false }: ProductFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
-  const [activeTab, setActiveTab] = useState(1);
+
+  // Read initial tab from URL query parameter
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(() => getTabIdFromSlug(tabFromUrl));
   const [currentProductId, setCurrentProductId] = useState<string | null>(
     productId || null
   );
+
+  /**
+   * Update URL when tab changes (without triggering React navigation/re-render)
+   * Uses window.history.replaceState to update URL without causing component remount
+   */
+  const updateTabInUrl = (tabId: number) => {
+    const slug = getSlugFromTabId(tabId);
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", slug);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+  };
+
+  /**
+   * Navigate to next tab after save
+   * For new product creation, use router.push to navigate to edit page
+   * For updates, just update the URL without full navigation
+   */
+  const goToNextTab = (productIdForUrl?: string) => {
+    const nextTab = Math.min(activeTab + 1, SECTIONS.length);
+    setActiveTab(nextTab);
+
+    const slug = getSlugFromTabId(nextTab);
+    const basePath = isVendor ? "/vendor/products" : "/admin/products";
+
+    if (productIdForUrl) {
+      // New product created - navigate to edit page
+      router.push(`${basePath}/${productIdForUrl}/edit?tab=${slug}`);
+    } else if (currentProductId) {
+      // Existing product update - just update URL without navigation
+      const newUrl = `${basePath}/${currentProductId}/edit?tab=${slug}`;
+      window.history.replaceState(null, "", newUrl);
+    } else {
+      // Still on new product page
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", slug);
+      window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+    }
+  };
+
+  /**
+   * Handle tab change with URL sync (without causing re-render)
+   */
+  const handleTabChange = (tabId: number) => {
+    setActiveTab(tabId);
+    updateTabInUrl(tabId);
+  };
 
   // Track initialization to prevent resetting form on re-renders/tab switches
   const initializedId = useRef<string | null>(null);
@@ -590,13 +658,47 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   const gallery = form.watch("gallery") || [];
   const pricingTiers = form.watch("pricing_tiers") || [];
 
-  // Publish Validation Logic
+  // Watch required fields
   const watchName = form.watch("name");
   const watchCategories = form.watch("mainCategoryId"); // At least one category
   const watchPrice = form.watch("basePrice");
   const watchStock = form.watch("stock");
   const watchDesc = form.watch("description");
 
+  /**
+   * Step-specific validation for required fields
+   * Only validates the current step's requirements
+   */
+  const getStepValidation = (step: number): { isValid: boolean; message: string } => {
+    switch (step) {
+      case 1: // Basic Info - Name, Category, Description required
+        const step1Valid = !!(watchName && watchCategories && watchDesc);
+        return {
+          isValid: step1Valid,
+          message: step1Valid ? "" : "Required: Name, Category, Description"
+        };
+      case 2: // Specs & Variants - No required fields
+        return { isValid: true, message: "" };
+      case 3: // Pricing & Stock - Price, Quantity required
+        const step3Valid = (watchPrice !== undefined && watchPrice >= 0) && (watchStock !== undefined && watchStock >= 0);
+        return {
+          isValid: step3Valid,
+          message: step3Valid ? "" : "Required: Price, Quantity"
+        };
+      case 4: // Uploads - No required fields
+        return { isValid: true, message: "" };
+      case 5: // Declarations - No required fields
+        return { isValid: true, message: "" };
+      default:
+        return { isValid: true, message: "" };
+    }
+  };
+
+  // Get current step validation
+  const currentStepValidation = getStepValidation(activeTab);
+  const canProceed = currentStepValidation.isValid;
+
+  // Full form validation for publishing (all required fields across all steps)
   const canPublish = !!(
     watchName &&
     watchCategories &&
@@ -820,8 +922,8 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         if (newProductId) {
           setCurrentProductId(String(newProductId));
           toast.success("Product created successfully!");
-          // CRITICAL: Redirect to the edit page for this specific product
-          router.replace(`/admin/products/${newProductId}/edit`);
+          // Navigate to the edit page with the next tab
+          goToNextTab(String(newProductId));
         } else {
           throw new Error("Product ID not found in response");
         }
@@ -832,7 +934,8 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
           data: fd as unknown as UpdateProductRequest,
         });
         toast.success("Product updated successfully!");
-        // Stay on page or handle next logic if needed
+        // Navigate to next tab after successful update
+        goToNextTab();
       }
     } catch (error) {
       console.error(error);
@@ -1647,8 +1750,9 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
-          console.error("Form Validation Errors:", errors);
-
+          if (Object.keys(errors).length > 0) {
+            console.error("Form Validation Errors:", errors);
+          }
         })} className="space-y-8">
           {/* Custom Tab Navigation Matching Product Detail Page */}
           <div className="flex space-x-1 border-b border-border w-full overflow-x-auto">
@@ -1661,7 +1765,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                   key={section.id}
                   type="button"
                   disabled={isDisabled}
-                  onClick={() => !isDisabled && setActiveTab(section.id)}
+                  onClick={() => !isDisabled && handleTabChange(section.id)}
                   className={`
                         flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2
                         ${isActive
@@ -1682,7 +1786,13 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             {renderStepContent(activeTab)}
           </div>
 
-          <div className="flex justify-end gap-4">
+          <div className="flex justify-end gap-4 items-center">
+            {/* Show helper message for current step when required fields are missing */}
+            {!currentProductId && !canProceed && currentStepValidation.message && (
+              <p className="text-xs text-muted-foreground">
+                {currentStepValidation.message}
+              </p>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -1692,7 +1802,11 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             </Button>
             <Button
               type="submit"
-              disabled={createProductMutation.isPending || updateProductMutation.isPending}
+              disabled={
+                createProductMutation.isPending ||
+                updateProductMutation.isPending ||
+                (!currentProductId && !canProceed) // Disable for new products until current step's required fields are filled
+              }
             >
               {createProductMutation.isPending || updateProductMutation.isPending ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>

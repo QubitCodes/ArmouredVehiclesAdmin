@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { ApiResponse } from '@/lib/api';
 
 export interface DashboardStats {
   totalSellers?: number;
@@ -15,13 +15,26 @@ export interface DashboardStats {
 class DashboardService {
   /**
    * Fetch dashboard statistics from /admin/dashboard
+   * @returns {Promise<DashboardStats>} Dashboard statistics object
    */
-  async getDashboardStats() {
+  async getDashboardStats(): Promise<DashboardStats> {
     try {
-      const response = await api.get<{ success: boolean; data: DashboardStats }>("/admin/dashboard");
-      return response.data.data;
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
+      const response = await api.get<ApiResponse<DashboardStats>>('/admin/dashboard');
+      
+      // Defensive check for response structure
+      if (!response?.data) {
+        console.error('Dashboard API returned empty response:', response);
+        throw new Error('Dashboard API returned empty response');
+      }
+      
+      if (!response.data.status) {
+        console.error('Dashboard API returned failure:', response.data);
+        throw new Error(response.data.message || 'Failed to fetch dashboard stats');
+      }
+      
+      return response.data.data || {};
+    } catch (error: any) {
+      console.error('Error fetching dashboard stats:', error?.response?.data || error?.message || error);
       throw error;
     }
   }
