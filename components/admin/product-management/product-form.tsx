@@ -40,6 +40,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { DateSelector } from "@/components/ui/date-selector";
+import { COUNTRY_LIST } from "@/lib/countries";
 
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -80,7 +81,7 @@ const basicInfoSchema = z.object({
   description: z.string().optional(),
   make: z.string().optional(),
   model: z.string().optional(),
-  year: z.number().optional(),
+  year: z.coerce.number().optional(),
   condition: z.string().optional(),
   actionType: z.string().optional(),
   isFeatured: z.boolean().optional(),
@@ -1156,18 +1157,54 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                 <FormField
                   control={form.control}
                   name="countryOfOrigin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country of Origin</FormLabel>
-                      <FormControl>
-                        <Select value={field.value || ""} onChange={field.onChange} placeholder="Select Country">
-                          <option value="USA">USA</option>
-                          <option value="UAE">UAE</option>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const [countrySearch, setCountrySearch] = useState("");
+                    const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+
+                    const filteredCountries = COUNTRY_LIST.filter((country) =>
+                      country.name.toLowerCase().includes((countrySearch || field.value || "").toLowerCase())
+                    ).slice(0, 10);
+
+                    return (
+                      <FormItem className="relative">
+                        <FormLabel>Country of Origin (Add Custom Text if needed)</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              placeholder="Type to search or enter custom value"
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
+                                setCountrySearch(e.target.value);
+                                setShowCountryDropdown(true);
+                              }}
+                              onFocus={() => setShowCountryDropdown(true)}
+                              onBlur={() => setTimeout(() => setShowCountryDropdown(false), 200)}
+                            />
+                            {showCountryDropdown && filteredCountries.length > 0 && (
+                              <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto">
+                                {filteredCountries.map((country) => (
+                                  <div
+                                    key={country.countryCode}
+                                    className="px-3 py-2 cursor-pointer hover:bg-accent flex items-center gap-2"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      field.onChange(country.name);
+                                      setShowCountryDropdown(false);
+                                    }}
+                                  >
+                                    <span>{country.flag}</span>
+                                    <span>{country.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               </div>
 
@@ -1185,7 +1222,22 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                 <FormField
                   control={form.control}
                   name="year"
-                  render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormControl></FormItem>)}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Year</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? undefined : parseInt(val));
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
 
