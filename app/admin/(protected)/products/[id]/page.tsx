@@ -22,6 +22,131 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
 import { normalizeImageUrl } from "@/lib/utils";
+import { useProductSpecifications } from "@/hooks/admin/product-management/use-product-specifications";
+
+type Specification = {
+  id: string;
+  product_id: number;
+  label?: string;
+  value?: string;
+  type: 'general' | 'title_only' | 'value_only';
+  active: boolean;
+  sort: number;
+};
+
+// Specifications Table Component
+// Specifications Table Component
+function SpecificationsTable({ productId }: { productId: string }) {
+  const { data: specs, isLoading } = useProductSpecifications(productId);
+  console.log("Rendering SpecificationsTable", { productId, specs });
+
+  if (isLoading) return <div className="text-sm text-muted-foreground">Loading specifications...</div>;
+  if (!specs || specs.length === 0) return null;
+
+  const sections: { title: Specification; items: Specification[] }[] = [];
+  let current: { title: Specification; items: Specification[] } | null = null;
+
+  // Sort and Filter Active
+  const activeSpecs = Array.isArray(specs)
+    ? specs.filter((s: any) => s.active).sort((a: any, b: any) => a.sort - b.sort)
+    : [];
+
+  activeSpecs.forEach((spec: any) => {
+    if (spec.type === 'title_only') {
+      current = { title: spec, items: [] };
+      sections.push(current);
+    } else if (current) {
+      current.items.push(spec);
+    } else {
+      // Fallback for specs without a header
+      current = {
+        title: { id: 'fallback', label: 'General Details', type: 'title_only' } as any,
+        items: [spec]
+      };
+      sections.push(current);
+    }
+  });
+
+  return (
+    <div className="border border-border rounded-md overflow-hidden bg-background">
+      {sections.map((section, sIdx) => {
+        return (
+          <div key={section.title.id || sIdx} className="flex flex-col">
+            {/* Section Header */}
+            <div className="bg-[#E1D9CC] border-t border-b border-border py-2.5 px-4">
+              <h4 className="text-xs font-bold text-black uppercase tracking-wider font-orbitron">
+                {section.title.label}
+              </h4>
+            </div>
+
+            {/* Items */}
+            {(() => {
+              const generalItems = section.items.filter((it: any) => it.type !== 'value_only' && it.label && it.value);
+              const valueOnlyItems = section.items.filter((it: any) => it.type === 'value_only' || (!it.label && it.value));
+
+              // Custom sort for general items: Width MUST come after Length if both exist
+              generalItems.sort((a, b) => {
+                const labelA = (a.label || "").toLowerCase();
+                const labelB = (b.label || "").toLowerCase();
+                if (labelA.includes('length') && labelB.includes('width')) return -1;
+                if (labelA.includes('width') && labelB.includes('length')) return 1;
+                return 0; // maintain original sort for others
+              });
+
+              return (
+                <div className="bg-background">
+                  {/* General Items - 1 Column Grid for Strict Vertical Stacking */}
+                  {generalItems.length > 0 && (
+                    <div className="grid grid-cols-1 border-b border-border last:border-b-0">
+                      {generalItems.map((item: any, idx: number) => {
+                        const isLastItem = idx === generalItems.length - 1;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className={`flex border-border ${!isLastItem ? 'border-b' : ''}`}
+                          >
+                            <div className="w-1/3 min-w-[120px] bg-muted/30 py-3 px-4 border-r border-border flex items-center">
+                              <span className="text-sm font-semibold text-foreground">
+                                {item.label}
+                              </span>
+                            </div>
+                            <div className="flex-1 py-3 px-4 flex items-center">
+                              <span className="text-sm text-foreground">
+                                {item.value}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Value-Only Items - Full Width */}
+                  {valueOnlyItems.length > 0 && (
+                    <div className="w-full">
+                      {valueOnlyItems.map((item: any) => (
+                        <div
+                          key={item.id}
+                          className="py-2 px-6 bg-background"
+                        >
+                          <div className="text-sm text-foreground flex items-start">
+                            <span className="mr-2 text-primary mt-1 text-[8px]">●</span>
+                            {item.value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
@@ -319,6 +444,20 @@ export default function ProductDetailPage() {
 
     const formattedValue = formatFieldValue(value, fieldName);
 
+    if (fieldName === 'description') {
+      return (
+        <div key={fieldName} className="col-span-2">
+          <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            {formatFieldName(fieldName)}
+          </label>
+          <div
+            className="mt-2 prose max-w-none dark:prose-invert [&_table]:border-collapse [&_table]:w-full [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-border [&_td]:p-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:mt-3 [&_h3]:mb-1 [&_blockquote]:border-l-4 [&_blockquote]:border-primary/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_img]:max-w-full [&_img]:rounded-md"
+            dangerouslySetInnerHTML={{ __html: value as string || '' }}
+          />
+        </div>
+      );
+    }
+
     return (
       <div key={fieldName}>
         <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -360,9 +499,8 @@ export default function ProductDetailPage() {
               variant="outline"
               onClick={() =>
                 window.open(
-                  `${
-                    process.env.NEXT_PUBLIC_WEBSITE_URL ||
-                    "http://localhost:3000"
+                  `${process.env.NEXT_PUBLIC_WEBSITE_URL ||
+                  "http://localhost:3000"
                   }/product/${product.id}`,
                   "_blank"
                 )
@@ -393,10 +531,9 @@ export default function ProductDetailPage() {
               onClick={() => setActiveTab(section.id)}
               className={`
                 flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2
-                ${
-                  isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
+                ${isActive
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
                 }
               `}
             >
@@ -423,25 +560,25 @@ export default function ProductDetailPage() {
                 <div className="space-y-6">
                   {((productData.image as string) ||
                     (productData.imageUrl as string)) && (
-                    <div>
-                      <h3 className="text-sm font-semibold mb-2">
-                        Cover Image
-                      </h3>
-                      <div className="relative w-full max-w-md aspect-video rounded-md border overflow-hidden">
-                        <Image
-                          src={
-                            normalizeImageUrl(
-                              (productData.image as string) ||
+                      <div>
+                        <h3 className="text-sm font-semibold mb-2">
+                          Cover Image
+                        </h3>
+                        <div className="relative w-full max-w-md aspect-video rounded-md border overflow-hidden">
+                          <Image
+                            src={
+                              normalizeImageUrl(
+                                (productData.image as string) ||
                                 (productData.imageUrl as string)
-                            ) || ""
-                          }
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                        />
+                              ) || ""
+                            }
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {Array.isArray(productData.gallery) &&
                     productData.gallery.length > 0 && (
@@ -479,18 +616,33 @@ export default function ProductDetailPage() {
                     )}
                 </div>
               ) : (
-                <div className="grid gap-6 md:grid-cols-2">
-                  {currentSection.fields.map((fieldName) =>
-                    renderField(fieldName)
+                <div className="space-y-8">
+                  {/* Render Specifications Table for Technical Description Tab */}
+                  {activeTab === 2 && (
+                    <div className="mb-8 border-b pb-8">
+                      <h3 className="text-lg font-bold mb-4 font-orbitron uppercase tracking-wide">Detailed Specifications</h3>
+                      <SpecificationsTable productId={productId} />
+                    </div>
                   )}
+
+                  <div className="space-y-4">
+                    {activeTab === 2 && (
+                      <h3 className="text-lg font-bold mb-4 font-orbitron uppercase tracking-wide">Technical Description</h3>
+                    )}
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {currentSection.fields.map((fieldName) =>
+                        renderField(fieldName)
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
-        </div>
+        </div >
 
         {/* Sidebar Info (Timeline / Meta) */}
-        <div className="w-full lg:w-80 space-y-6">
+        < div className="w-full lg:w-80 space-y-6" >
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -511,12 +663,12 @@ export default function ProductDetailPage() {
                     return isNaN(d.getTime())
                       ? "Invalid Date"
                       : d.toLocaleString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
                   })()}
                 </p>
               </div>
@@ -533,20 +685,20 @@ export default function ProductDetailPage() {
                       return isNaN(d.getTime())
                         ? "Invalid Date"
                         : d.toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          });
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
                     })()}
                   </p>
                 </div>
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   );
 }

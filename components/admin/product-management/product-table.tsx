@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Package, Trash2, Check, X, Loader2 } from "lucide-react";
+import { Package, Trash2, Pencil, Check, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Product } from "@/services/admin/product.service";
@@ -57,8 +57,8 @@ export function ProductTable({
     const user = authService.getUserDetails();
     if (user && ["admin", "super_admin"].includes(user.userType)) {
       setIsAdmin(true);
-      // Check for products.manage permission
-      if (user.userType === 'super_admin' || authService.hasPermission('products.manage')) {
+      // Check for product.manage permission
+      if (user.userType === 'super_admin' || authService.hasPermission('product.manage')) {
         setCanManageProducts(true);
       }
     }
@@ -191,28 +191,53 @@ export function ProductTable({
   // Admin View: Added Featured & Top Selling columns
   // Vendor Column: Replaces SKU when viewing all products (admin only)
   // Adjust columns based on permissions
+  // Adjust columns based on permissions and view mode
   const showFeaturedColumns = showRestricted && canManageProducts;
+  const showActions = canManageProducts;
 
-  const gridTemplate = fromVendor
-    ? (showFeaturedColumns
-      ? "grid-cols-[60px_2fr_100px_80px_110px_150px_80px_80px_80px]"
-      : "grid-cols-[60px_2fr_100px_80px_110px_150px_80px]")
-    : (showFeaturedColumns
-      ? (showVendorColumn
-        ? "grid-cols-[60px_2fr_150px_80px_110px_80px_80px_80px]"
-        : "grid-cols-[60px_2fr_100px_80px_110px_80px_80px_80px]")
-      : (showVendorColumn
-        ? "grid-cols-[60px_2fr_150px_80px_110px_80px]"
-        : "grid-cols-[60px_2fr_100px_80px_110px_80px]"));
+  // Build the grid columns dynamically
+  const getGridTemplate = () => {
+    const cols = ["60px", "2fr"]; // Image, Name
+
+    // Vendor or SKU
+    if (showVendorColumn) {
+      cols.push("150px");
+    } else {
+      cols.push("100px");
+    }
+
+    // Stock, Price
+    cols.push("80px", "110px");
+
+    // Status (only in vendor view)
+    if (fromVendor) {
+      cols.push("150px");
+    }
+
+    // Featured & Top Selling
+    if (showFeaturedColumns) {
+      cols.push("80px", "80px");
+    }
+
+    // Actions
+    if (showActions) {
+      cols.push("80px");
+    }
+
+    return cols.join(" ");
+  };
+
+  const gridTemplate = getGridTemplate();
+  const gridStyle = { gridTemplateColumns: gridTemplate };
 
   return (
     <>
       <div className="w-full">
         <div className="w-full overflow-hidden mb-1">
-          <div className={cn(
-            "grid items-center gap-4 px-4 py-3 bg-transparent",
-            gridTemplate
-          )}>
+          <div
+            className="grid items-center gap-4 px-4 py-3 bg-transparent"
+            style={gridStyle}
+          >
             <div className="text-sm font-semibold text-black">Image</div>
             <div className="text-sm font-semibold text-black">Name</div>
             {showVendorColumn ? (
@@ -231,7 +256,7 @@ export function ProductTable({
                 <div className="text-sm text-center font-semibold text-black">Top Selling</div>
               </>
             )}
-            <div className="text-sm text-center font-semibold text-black">Actions</div>
+            {showActions && <div className="text-sm text-center font-semibold text-black">Actions</div>}
           </div>
         </div>
 
@@ -246,10 +271,10 @@ export function ProductTable({
                 key={product.id}
                 className="w-full overflow-hidden bg-card transition-all hover:bg-muted/50 hover:shadow-sm"
               >
-                <div className={cn(
-                  "grid items-center gap-4 px-4 py-3",
-                  gridTemplate
-                )}>
+                <div
+                  className="grid items-center gap-4 px-4 py-3"
+                  style={gridStyle}
+                >
                   <Link href={productLink} className="block">
                     {imageUrl ? (
                       <Image
@@ -353,16 +378,30 @@ export function ProductTable({
                       </div>
                     </>
                   )}
-                  <div className="flex items-center justify-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setProductToDelete(product)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {showActions && (
+                    <div className="flex items-center justify-center gap-2">
+                      <Link href={`/admin/products/${product.id}/edit${fromVendor ? "?from=vendor" : ""}`}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProductToDelete(product);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

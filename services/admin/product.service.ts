@@ -30,6 +30,8 @@ export interface Product {
       company_name: string;
     };
   };
+  individual_product_pricing?: { name: string; amount: number }[];
+  individualProductPricing?: { name: string; amount: number }[];
 }
 
 export interface CreateProductRequest {
@@ -90,6 +92,7 @@ export interface CreateProductRequest {
   isFeatured?: boolean;
   image?: string;
   gallery?: string[];
+  individualProductPricing?: { name: string; amount: number }[];
 }
 
 export type UpdateProductRequest = Partial<CreateProductRequest>;

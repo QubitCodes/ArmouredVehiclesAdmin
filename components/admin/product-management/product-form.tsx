@@ -46,6 +46,7 @@ import { DateSelector } from "@/components/ui/date-selector";
 import { COUNTRY_LIST } from "@/lib/countries";
 
 import { Spinner } from "@/components/ui/spinner";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 import {
   useCreateProduct,
   useUpdateProduct,
@@ -131,10 +132,12 @@ const pricingSchema = z.object({
   shippingCharge: z.coerce.number().min(0).optional(),
   packingCharge: z.coerce.number().min(0).optional(),
   currency: z.string().optional(),
+  productionLeadTime: z.coerce.number().optional().nullable(),
   stock: z.number().optional(),
   readyStockAvailable: z.boolean().optional(),
   pricingTerms: z.array(z.string()).optional(),
   pricing_tiers: z.array(pricingTierSchema).optional().default([]),
+  individualProductPricing: z.array(z.object({ name: z.string(), amount: z.coerce.number() })).optional().default([]),
 });
 
 // Tab 4: Uploads
@@ -149,7 +152,6 @@ const mediaSchema = z.object({
 
 // Tab 5: Declarations
 const declarationsSchema = z.object({
-  productionLeadTime: z.number().optional(),
   manufacturingSource: z.string().optional(),
   manufacturingSourceName: z.string().optional(),
   requiresExportLicense: z.boolean().optional(),
@@ -250,6 +252,7 @@ const SECTIONS = [
       "stock",
       "condition",
       "pricing_tiers",
+      "individualProductPricing",
     ],
   },
   {
@@ -467,6 +470,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         { min_quantity: undefined, max_quantity: undefined, price: undefined }, // Added max_quantity logic if needed or keep null
         { min_quantity: undefined, max_quantity: undefined, price: undefined }
       ],
+      individualProductPricing: [],
 
       // Declarations
       manufacturingSource: "In-house",
@@ -634,6 +638,10 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             max_quantity: t.max_quantity,
             price: t.price
           }))
+          : [],
+
+        individualProductPricing: Array.isArray(getVal("individualProductPricing", "individual_product_pricing"))
+          ? (getVal("individualProductPricing", "individual_product_pricing") as any[])
           : [],
 
         // Date Handling
@@ -812,6 +820,29 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     );
   };
 
+  const addIndividualProduct = () => {
+    const current = form.getValues("individualProductPricing") || [];
+    form.setValue("individualProductPricing", [
+      ...current,
+      { name: "", amount: 0 },
+    ]);
+  };
+
+  const removeIndividualProduct = (index: number) => {
+    const current = form.getValues("individualProductPricing") || [];
+    form.setValue(
+      "individualProductPricing",
+      current.filter((_, i) => i !== index)
+    );
+  };
+
+  const updateBasePrice = () => {
+    const items = form.getValues("individualProductPricing") || [];
+    const total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    form.setValue("basePrice", total);
+    toast.success(`Base price updated to ${total} based on individual costs.`);
+  };
+
 
 
   /**
@@ -874,7 +905,8 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     subCategoryId: 'sub_category_id',
     basePrice: 'base_price',
     shippingCharge: 'shipping_charge',
-    packingCharge: 'packing_charge'
+    packingCharge: 'packing_charge',
+    individualProductPricing: 'individual_product_pricing'
   };
 
   const cleanDataForApi = (
@@ -900,8 +932,8 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             cleanedData[apiField] = dateStr;
           }
         }
-      } else if (field === "pricing_tiers") {
-        // Pass through pricing tiers
+      } else if (field === "pricing_tiers" || field === "individualProductPricing") {
+        // Pass through object arrays without string filtering
         if (value) {
           cleanedData[apiField] = value;
         }
@@ -1287,7 +1319,10 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <textarea className="w-full min-h-[100px] px-3 py-2 text-sm bg-input border border-border" {...field} />
+                      <RichTextEditor
+                        value={field.value || ""}
+                        onChange={(val) => field.onChange(val)}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -1735,6 +1770,69 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                 </FormItem>} />
               </div>
 
+              {/* Combo product Individual pricing Section */}
+              <div className="border p-4 rounded-md bg-muted/20">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-lg">Combo product Individual pricing</h3>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={updateBasePrice} className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
+                      <Save className="h-4 w-4 mr-2" /> Update Base Price
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={addIndividualProduct}>
+                      <Plus className="h-4 w-4 mr-2" /> Add product
+                    </Button>
+                  </div>
+                </div>
+
+                {(form.watch("individualProductPricing") || []).map((_, index) => (
+                  <div key={index} className="flex gap-4 items-end mb-4 border-b pb-4 last:border-0 last:pb-0">
+                    <FormField
+                      control={form.control}
+                      name={`individualProductPricing.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem className="flex-[2]">
+                          <FormLabel className="text-xs">Product Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Enter product name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`individualProductPricing.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-xs">Amount</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              onChange={e => field.onChange(parseFloat(e.target.value || "0"))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive h-10 w-10 mb-2"
+                      onClick={() => removeIndividualProduct(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {(form.watch("individualProductPricing") || []).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No individual products added.</p>
+                )}
+              </div>
+
               {/* Pricing Tiers Section */}
               <div className="border p-4 rounded-md bg-muted/20">
                 <div className="flex justify-between items-center mb-4">
@@ -1858,7 +1956,23 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField control={form.control} name="stock" render={({ field }) => <FormItem><FormLabel>Stock</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
-                <FormField control={form.control} name="productionLeadTime" render={({ field }) => <FormItem><FormLabel>Lead Time (Days)</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
+                <FormField
+                  control={form.control}
+                  name="productionLeadTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lead Time (Days)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          value={field.value ?? ""}
+                          onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <FormField
