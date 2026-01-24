@@ -466,10 +466,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
       readyStockAvailable: true,
       stock: undefined,
       condition: "new",
-      pricing_tiers: [
-        { min_quantity: undefined, max_quantity: undefined, price: undefined }, // Added max_quantity logic if needed or keep null
-        { min_quantity: undefined, max_quantity: undefined, price: undefined }
-      ],
+      pricing_tiers: [],
       individualProductPricing: [],
 
       // Declarations
@@ -484,9 +481,9 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
       complianceConfirmed: true,
       supplierSignature: "",
       signatureDate: {
-        day: undefined,
-        month: undefined,
-        year: undefined
+        day: new Date().getDate(),
+        month: new Date().getMonth() + 1, // Month is 0-indexed
+        year: new Date().getFullYear()
       },
 
       // Defaults/Placeholders
@@ -509,38 +506,44 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
       // Helper to get value from either camelCase or snake_case
       const getVal = (k1: string, k2: string) => (productData[k1] !== undefined ? productData[k1] : productData[k2]);
 
+      const parseNumber = (val: any): number | undefined => {
+        if (val === undefined || val === null || val === '') return undefined;
+        const num = Number(val);
+        return isNaN(num) ? undefined : num;
+      };
+
       const formData: Partial<ProductFormValues> = {
         name: (productData.name as string) || "",
         sku: (productData.sku as string) || "",
         basePrice:
-          (getVal("basePrice", "base_price") as number) ||
-          (getVal("price", "price") as number) ||
+          parseNumber(getVal("basePrice", "base_price")) ||
+          parseNumber(getVal("price", "price")) ||
           0,
-        shippingCharge: (getVal("shippingCharge", "shipping_charge") as number) || undefined,
-        packingCharge: (getVal("packingCharge", "packing_charge") as number) || undefined,
+        shippingCharge: parseNumber(getVal("shippingCharge", "shipping_charge")),
+        packingCharge: parseNumber(getVal("packingCharge", "packing_charge")),
         currency: (getVal("currency", "currency") as string) || "AED",
         condition: (getVal("condition", "condition") as string) || "new",
 
         // Dimensions
         dimensionUnit: (getVal("dimensionUnit", "dimension_unit") as string) || "mm",
-        dimensionLength: (getVal("dimensionLength", "dimension_length") as number) || undefined,
-        dimensionWidth: (getVal("dimensionWidth", "dimension_width") as number) || undefined,
-        dimensionHeight: (getVal("dimensionHeight", "dimension_height") as number) || undefined,
+        dimensionLength: parseNumber(getVal("dimensionLength", "dimension_length")),
+        dimensionWidth: parseNumber(getVal("dimensionWidth", "dimension_width")),
+        dimensionHeight: parseNumber(getVal("dimensionHeight", "dimension_height")),
 
         // Weight
-        weightValue: (getVal("weightValue", "weight_value") as number) || undefined,
+        weightValue: parseNumber(getVal("weightValue", "weight_value")),
         weightUnit: (getVal("weightUnit", "weight_unit") as string) || "kg",
 
         // Packing
-        packingLength: (getVal("packingLength", "packing_length") as number) || undefined,
-        packingWidth: (getVal("packingWidth", "packing_width") as number) || undefined,
-        packingHeight: (getVal("packingHeight", "packing_height") as number) || undefined,
+        packingLength: parseNumber(getVal("packingLength", "packing_length")),
+        packingWidth: parseNumber(getVal("packingWidth", "packing_width")),
+        packingHeight: parseNumber(getVal("packingHeight", "packing_height")),
         packingDimensionUnit: (getVal("packingDimensionUnit", "packing_dimension_unit") as string) || "cm",
-        packingWeight: (getVal("packingWeight", "packing_weight") as number) || undefined,
+        packingWeight: parseNumber(getVal("packingWeight", "packing_weight")),
         packingWeightUnit: (getVal("packingWeightUnit", "packing_weight_unit") as string) || "kg",
 
-        minOrderQuantity: (getVal("minOrderQuantity", "min_order_quantity") as number) || undefined,
-        productionLeadTime: (getVal("productionLeadTime", "production_lead_time") as number) || undefined,
+        minOrderQuantity: parseNumber(getVal("minOrderQuantity", "min_order_quantity")),
+        productionLeadTime: parseNumber(getVal("productionLeadTime", "production_lead_time")),
 
         // Declarations
         manufacturingSource: (getVal("manufacturingSource", "manufacturing_source") as string) || "",
@@ -647,9 +650,12 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         // Date Handling
         signatureDate: (() => {
           const val = getVal("signatureDate", "submission_date");
+
           if (typeof val === 'string') {
-            // Parse "YYYY-MM-DD"
-            const parts = val.split('-');
+            // Check if ISO string, take YYYY-MM-DD
+            // If just "YYYY-MM-DD"
+            const datePart = val.split('T')[0];
+            const parts = datePart.split('-');
             if (parts.length === 3) {
               return {
                 year: parseInt(parts[0]),
@@ -658,7 +664,18 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
               };
             }
           }
-          return val as { day?: number; month?: number; year?: number } | undefined;
+
+          if (val && typeof val === 'object' && 'day' in val) {
+            return val as { day?: number; month?: number; year?: number };
+          }
+
+          // Default to today if missing
+          const now = new Date();
+          return {
+            day: now.getDate(),
+            month: now.getMonth() + 1,
+            year: now.getFullYear()
+          };
         })(),
 
         // Map Categories (IMPORTANT: Ensure IDs are numbers)

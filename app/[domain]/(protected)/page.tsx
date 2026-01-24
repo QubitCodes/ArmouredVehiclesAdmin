@@ -87,7 +87,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Total Revenue",
-      value: `$${typeof stats?.totalRevenue === 'number'
+      value: `AED ${typeof stats?.totalRevenue === 'number'
         ? stats.totalRevenue.toFixed(2)
         : parseFloat(String(stats?.totalRevenue || '0')).toFixed(2)}`,
       icon: DollarSign,
