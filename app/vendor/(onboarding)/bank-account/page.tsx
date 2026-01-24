@@ -74,7 +74,7 @@ export default function AddPaymentMethodPage() {
     useProofTypes();
   const { data: countries = [], isLoading: isCountriesLoading } = useCountries();
   const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
-  
+
   const step5Mutation = useOnboardingStep5();
 
   const form = useForm<PaymentMethodFormValues>({
@@ -109,7 +109,7 @@ export default function AddPaymentMethodPage() {
         setProofPreview(p.bank_proof_url);
         const isPdf = p.bank_proof_url.toLowerCase().endsWith('.pdf');
         setFileType(isPdf ? 'pdf' : 'image');
-        
+
         // Dummy file for validation
         const dummyFile = new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" });
         form.setValue("bankProofFile", dummyFile);
@@ -131,7 +131,7 @@ export default function AddPaymentMethodPage() {
       };
 
       await step5Mutation.mutateAsync(payload);
-      
+
       toast.success("Bank account information saved successfully");
       // Navigate to verification page
       router.push("/vendor/verification");
@@ -199,14 +199,14 @@ export default function AddPaymentMethodPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-3">
             {/* Info Message */}
-            <div className="bg-[#DAD4C5] p-4 flex items-start gap-3">
+            {/* <div className="bg-[#DAD4C5] p-4 flex items-start gap-3">
               <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <p className="text-sm text-gray-800">
                 You are adding your bank account for the <strong>UAE</strong>{" "}
                 marketplace. You can add additional bank accounts for other
                 regions you choose to sell in once registration is complete.
               </p>
-            </div>
+            </div> */}
 
             <div className="bg-bg-light p-6 space-y-5">
               {/* Country and Financial Institution */}

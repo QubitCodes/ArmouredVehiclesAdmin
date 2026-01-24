@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import Link from "next/link";
+import api from "@/lib/api";
 
 import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
 import { useVerifyLoginOtp } from "@/hooks/vendor/(auth)/use-verify-login-otp";
@@ -84,20 +85,70 @@ function VerifyEmailContent() {
 
       // Note: accessToken and refreshToken are automatically stored in cookies
       // by the useVerifyLoginOtp hook via vendorAuthService.setTokens()
-      
+
       // Store User Details
       if (response && response.data && response.data.user) {
-         vendorAuthService.setUserDetails(response.data.user);
+        vendorAuthService.setUserDetails(response.data.user);
       }
 
       toast.success(
         response.message || "Email verified successfully"
       );
 
+      // Fetch profile to check onboarding status
+      try {
+        const profileRes = await api.get('/onboarding/profile');
+        if (profileRes.data.status && profileRes.data.data && profileRes.data.data.profile) {
+          const profile = profileRes.data.data.profile;
+
+          // Only redirect vendors to onboarding if not complete
+          // current_step matches the UI logic (1-based on frontend usually, but DB stores as is)
+          // Based on inspection:
+          // 1 -> Company Info
+          // 2 -> Contact Person
+          // 3 -> Declaration
+          // 4 -> Account Prefs
+          // 5 -> Bank Account
+          // 6 -> Verification
+
+          if (profile.onboarding_status !== 'approved_general' && profile.onboarding_status !== 'approved_controlled') {
+            // Logic: If on a step, go there.
+            // Note: API might return step number. Let's assume standard mapping.
+            switch (profile.current_step) {
+              case 1:
+                router.push("/vendor/company-information");
+                return;
+              case 2:
+                router.push("/vendor/contact-person");
+                return;
+              case 3:
+                router.push("/vendor/declaration");
+                return;
+              case 4:
+                router.push("/vendor/account-preferences");
+                return;
+              case 5:
+                router.push("/vendor/bank-account");
+                return;
+              case 6:
+              case 7:
+                router.push("/vendor/verification");
+                return;
+              default:
+                // If 0 or null, or unknown step, fall through to default redirect (Dashboard)
+                break;
+            }
+          }
+        }
+      } catch (profileError) {
+        console.error("Failed to fetch onboarding profile for redirect check", profileError);
+        // Fallback to default redirect
+      }
+
       // Redirect to intended destination or vendor dashboard after successful verification
       setTimeout(() => {
         router.push(redirect);
-      }, 1500);
+      }, 500);
     } catch (error) {
       const axiosError = error as AxiosError<{
         message?: string;

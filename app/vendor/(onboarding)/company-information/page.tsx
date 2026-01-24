@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Info, Upload, ChevronDown, X } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
+import api from "@/lib/api";
 
 // Dynamically import PDF viewer to avoid SSR issues
 const PDFViewer = dynamic(() => import("@/components/vendor/pdf-viewer"), {
@@ -283,19 +284,10 @@ export default function CompanyInformationPage() {
         uploadData.append("data", JSON.stringify({}));
 
         // Use the same API URL logic as frontend or configure environment
-        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/upload/files`, {
-          method: 'POST',
-          body: uploadData,
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}` // Ensure token is sent
-          }
-        });
+        // Use centralized API instance to ensure proper token handling (401 fix)
+        const uploadRes = await api.post('/upload/files', uploadData);
 
-        if (!uploadRes.ok) {
-          throw new Error("File upload failed");
-        }
-
-        const uploadJson = await uploadRes.json();
+        const uploadJson = uploadRes.data;
         if (uploadJson.status && uploadJson.data && uploadJson.data.length > 0) {
           vatCertificateUrl = uploadJson.data[0];
         } else {

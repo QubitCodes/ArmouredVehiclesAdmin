@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useParams } from "next/navigation";
 import { LayoutDashboard, Users, Store, Package, ShoppingCart, LogOut, Tag, Database, CreditCard, Monitor, Wallet } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
@@ -20,25 +20,39 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { vendorAuthService } from "@/services/vendor/auth.service";
+
+import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
+
 // Navigation moved inside component for state access
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const params = useParams();
+  const domain = (params?.domain as string) || "admin";
+
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<any>(null);
 
+  // Check onboarding status for vendors
+  const { data: profileData } = useOnboardingProfile(domain === 'vendor');
+  const onboardingStatus = profileData?.profile?.onboarding_status;
+
   useEffect(() => {
+    // Select auth service based on domain
+    const currentAuthService = domain === "vendor" ? vendorAuthService : authService;
+
     // Get user details from auth service
-    const user = authService.getUserDetails();
+    const user = currentAuthService.getUserDetails();
     if (user) {
       setUserDetails(user);
       if (user.userType) {
         setUserRole(user.userType.toLowerCase());
       }
     }
-  }, []);
+  }, [domain]);
 
   const accessCheck = (requiredPerm: string | string[] | null, allowVendor: boolean = false) => {
     if (!userRole) return false;
@@ -73,82 +87,89 @@ export function Sidebar() {
   const navigationItems = [
     {
       name: "Dashboard",
-      href: "/admin",
+      href: `/${domain}`,
       icon: LayoutDashboard,
       visibility: accessCheck(null, true),
     },
     {
       name: "Admins",
-      href: "/admin/admin-management",
+      href: `/${domain}/admin-management`,
       icon: Users,
       visibility: accessCheck("admin.view", false),
     },
     {
       name: "Vendors",
-      href: "/admin/vendors",
+      href: `/${domain}/vendors`,
       icon: Store,
       visibility: accessCheck(["vendor.view", "vendor.controlled.approve"], false),
     },
     {
       name: "Customers",
-      href: "/admin/customers",
+      href: `/${domain}/customers`,
       icon: Users,
       visibility: accessCheck(["customer.view", "customer.controlled.approve"], false),
     },
     {
       name: "Products",
-      href: "/admin/products",
+      href: `/${domain}/products`,
       icon: Package,
       visibility: accessCheck(["product.view", "product.controlled.approve"], true),
     },
     {
       name: "Orders",
-      href: "/admin/orders",
+      href: `/${domain}/orders`,
       icon: ShoppingCart,
       visibility: accessCheck(["order.view", "order.controlled.approve"], true),
     },
     {
       name: "Wallet",
-      href: "/admin/wallet",
+      href: `/${domain}/wallet`,
       icon: Wallet,
       visibility: accessCheck("wallet.view", true),
     },
     {
       name: "Payouts",
-      href: "/admin/payouts",
+      href: `/${domain}/payouts`,
       icon: CreditCard,
       visibility: accessCheck("payout.view", false),
     },
     {
       name: "Categories",
-      href: "/admin/categories",
+      href: `/${domain}/categories`,
       icon: Tag,
       visibility: accessCheck("category.manage", true),
     },
     {
       name: "Web Frontend",
-      href: "/admin/web-frontend",
+      href: `/${domain}/web-frontend`,
       icon: Monitor,
       visibility: accessCheck("content.manage", false),
     },
     {
       name: "References",
-      href: "/admin/references",
+      href: `/${domain}/references`,
       icon: Database,
       visibility: accessCheck("reference.manage", false),
     },
   ];
 
-  const filteredNavigation = navigationItems.filter(item => item.visibility);
+  // Restrict navigation if verification is pending or rejected (Vendors only)
+  const isRestricted = domain === "vendor" && (onboardingStatus === 'pending_verification' || onboardingStatus === 'rejected');
+  const filteredNavigation = isRestricted ? [] : navigationItems.filter(item => item.visibility);
 
   const handleLogoutClick = () => {
     setShowLogoutDialog(true);
   };
 
   const handleLogoutConfirm = () => {
-    authService.clearTokens();
-    router.push("/admin/login");
+    const currentAuthService = domain === "vendor" ? vendorAuthService : authService;
+    currentAuthService.clearTokens();
+    router.push(`/${domain}/login`);
   };
+
+  const defaultUserLabel = domain === "vendor" ? "Vendor User" : "Admin User";
+  const defaultUserEmail = domain === "vendor" ? "vendor@example.com" : "admin@example.com";
+  const defaultUserRole = domain === "vendor" ? "VENDOR" : "ADMIN";
 
   return (
     <div className="flex h-full w-64 flex-col bg-primary">
@@ -163,28 +184,30 @@ export function Sidebar() {
         />
       </div>
 
-      <nav className="flex-1 space-y-1 p-4">
-        {filteredNavigation.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
+      {!isRestricted && (
+        <nav className="flex-1 space-y-1 p-4">
+          {filteredNavigation.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
 
-          return (
-            <Link
-              key={item.name}
-              href={item.href!}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-muted text-foreground"
-                  : "text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
-      </nav>
+            return (
+              <Link
+                key={item.name}
+                href={item.href!}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-muted text-foreground"
+                    : "text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {/* Mini Profile Card & Logout */}
       <div className="border-t border-primary/20 p-4">
@@ -194,13 +217,13 @@ export function Sidebar() {
           </div>
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <span className="truncate text-sm font-medium text-primary-foreground">
-              {userDetails?.name || "Admin User"}
+              {userDetails?.name || defaultUserLabel}
             </span>
             <span className="truncate text-xs text-primary-foreground/70">
-              {userDetails?.email || "admin@example.com"}
+              {userDetails?.email || defaultUserEmail}
             </span>
             <span className="truncate text-[10px] uppercase text-primary-foreground/50 tracking-wider">
-              {(userDetails?.userType || "ADMIN").replace(/_/g, " ")}
+              {(userDetails?.userType || defaultUserRole).replace(/_/g, " ")}
             </span>
           </div>
           <button

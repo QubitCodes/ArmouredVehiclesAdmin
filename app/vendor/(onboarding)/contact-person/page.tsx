@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Info, Upload, X, ChevronDown, Search } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import api from "@/lib/api";
 
 // Dynamically import PDF viewer to avoid SSR issues
 const PDFViewer = dynamic(() => import("@/components/vendor/pdf-viewer"), {
@@ -209,19 +210,14 @@ export default function ContactPersonPage() {
           // Real upload
           const uploadData = new FormData();
           uploadData.append("files", data.passport);
-          uploadData.append("label", "ONBOARDING_CONTACT_ID");
+          uploadData.append("label", "CONTACT_ID_DOCUMENT");
           uploadData.append("data", JSON.stringify({}));
 
-          const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/upload/files`, {
-            method: 'POST',
-            body: uploadData,
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-          });
+          // Use centralized API instance to ensure proper token handling (401 fix)
+          const uploadRes = await api.post('/upload/files', uploadData);
+          if (uploadRes.status !== 200 && uploadRes.status !== 201) throw new Error("File upload failed");
 
-          if (!uploadRes.ok) throw new Error("File upload failed");
-          const uploadJson = await uploadRes.json();
+          const uploadJson = uploadRes.data;
           if (uploadJson.status && uploadJson.data && uploadJson.data.length > 0) {
             contactIdDocumentUrl = uploadJson.data[0];
           }

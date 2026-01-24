@@ -10,6 +10,7 @@ import { Info, X, ChevronDown, Search, Upload } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import api from "@/lib/api";
 
 // Dynamically import PDF viewer to avoid SSR issues
 const PDFViewer = dynamic(() => import("@/components/vendor/pdf-viewer"), {
@@ -38,12 +39,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Select } from "@/components/ui/select";
 
+// Update Schema
 const declarationSchema = z.object({
   natureOfBusiness: z
     .array(z.string())
     .min(1, "Please select at least one nature of business"),
-  controlledDualUseItems: z.string().optional(),
+  controlledItems: z.enum(["yes", "no"]),
   manufacturingSourceName: z.string().optional(),
   endUseMarket: z
     .array(z.string())
@@ -156,7 +159,7 @@ export default function DeclarationPage() {
     resolver: zodResolver(declarationSchema),
     defaultValues: {
       natureOfBusiness: [],
-      controlledDualUseItems: "",
+      controlledItems: "no",
       manufacturingSourceName: "",
       endUseMarket: [],
       licenses: [],
@@ -177,19 +180,55 @@ export default function DeclarationPage() {
   useEffect(() => {
     if (profileData?.profile && !isProfileLoading) {
       const p = profileData.profile;
+
+      // Ensure natureOfBusiness is parsed correctly (handle PG array string format if needed)
+      let natureOfBusiness: string[] = [];
+      const rawNob = p.nature_of_business;
+
+      if (Array.isArray(rawNob)) {
+        natureOfBusiness = rawNob;
+      } else if (typeof rawNob === 'string') {
+        // Handle Postgres array string format: {"Item 1","Item 2"}
+        if (rawNob.startsWith('{') && rawNob.endsWith('}')) {
+          natureOfBusiness = rawNob
+            .slice(1, -1) // Remove { }
+            .split(',') // Split by comma
+            // Process each item: remove wrapping quotes if present
+            .map((s: string) => {
+              const trimmed = s.trim();
+              if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+                return trimmed.slice(1, -1);
+              }
+              return trimmed;
+            })
+            // Filter empty
+            .filter((s: string) => s.length > 0);
+        } else {
+          // Single string item
+          natureOfBusiness = [rawNob];
+        }
+      }
+
+      // Ensure arrays are arrays for other fields (using safer fallback)
+      const endUseMarkets = Array.isArray(p.end_use_markets) ? p.end_use_markets : [];
+      const licenseTypes = Array.isArray(p.license_types) ? p.license_types : [];
+      const operatingCountries = Array.isArray(p.operating_countries) ? p.operating_countries : [];
+
+      console.log("Pre-filling Nature of Business:", natureOfBusiness);
+
       form.reset({
-        natureOfBusiness: Array.isArray(p.nature_of_business) ? p.nature_of_business : [],
-        controlledDualUseItems: p.controlled_dual_use_items || "",
+        natureOfBusiness: natureOfBusiness,
+        controlledItems: p.controlled_items ? "yes" : "no",
         manufacturingSourceName: p.manufacturing_source_name || "",
-        endUseMarket: Array.isArray(p.end_use_markets) ? p.end_use_markets : [],
-        licenses: Array.isArray(p.license_types) ? p.license_types : [],
-        operatingCountries: Array.isArray(p.operating_countries) ? p.operating_countries : [],
+        endUseMarket: endUseMarkets,
+        licenses: licenseTypes,
+        operatingCountries: operatingCountries,
         countryInput: "",
         onSanctionsList: p.is_on_sanctions_list ? "yes" : "no",
         agreeToCompliance: p.compliance_terms_accepted || false,
       });
 
-      // Handle file previews if URLs exist
+      // Handle file previews if URLs exist (rest of Logic same as before)
       if (p.business_license_url) {
         setBusinessLicensePreview(p.business_license_url);
         const isPdf = p.business_license_url.toLowerCase().endsWith('.pdf');
@@ -207,10 +246,6 @@ export default function DeclarationPage() {
       }
 
       // Handle license files
-      // Mapping from license type value to URL field in profile is not 1:1 direct property name
-      // We need to check if we have separate fields in profile response or if they are generic.
-      // Based on previous chats, profile has: defense_approval_url, eocn_approval_url, itar_registration_url, local_authority_approval_url
-
       const licenseUrlMap: Record<string, string | undefined> = {
         "authority_license": p.defense_approval_url,
         "eocn": p.eocn_approval_url,
@@ -236,7 +271,7 @@ export default function DeclarationPage() {
 
   const onSubmit = async (data: DeclarationFormValues) => {
     try {
-      // Helper to upload file
+      // Helper to upload file (Same logic)
       const uploadFile = async (file: File | undefined, previewUrl: string | null, label: string): Promise<string | undefined> => {
         if (!file) return undefined;
         // If it's a dummy existing file, return the preview URL (which is the actual URL)
@@ -248,16 +283,11 @@ export default function DeclarationPage() {
         uploadData.append("files", file);
         uploadData.append("label", label); // Generic label or specific?
 
-        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/upload/files`, {
-          method: 'POST',
-          body: uploadData,
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        // Use centralized API instance to ensure proper token handling (401 fix)
+        const uploadRes = await api.post('/upload/files', uploadData);
+        if (uploadRes.status !== 200 && uploadRes.status !== 201) throw new Error("File upload failed");
 
-        if (!uploadRes.ok) throw new Error("File upload failed");
-        const uploadJson = await uploadRes.json();
+        const uploadJson = uploadRes.data;
 
         if (uploadJson.status && uploadJson.data && uploadJson.data.length > 0) {
           return uploadJson.data[0];
@@ -285,7 +315,7 @@ export default function DeclarationPage() {
       // Map form data to API schema
       const payload = {
         natureOfBusiness: data.natureOfBusiness,
-        controlledDualUseItems: data.controlledDualUseItems || undefined,
+        controlledItems: data.controlledItems === "yes", // Map to boolean
         manufacturingSourceName: data.manufacturingSourceName || undefined,
         licenseTypes: data.licenses,
         endUseMarkets: data.endUseMarket,
@@ -325,6 +355,7 @@ export default function DeclarationPage() {
   const selectedLicenses = form.watch("licenses");
   const selectedCountries = form.watch("operatingCountries");
 
+  // Handlers and helper functions (kept same)
   const handleRemoveNatureOfBusiness = (item: string) => {
     const current = form.getValues("natureOfBusiness");
     form.setValue(
@@ -378,7 +409,8 @@ export default function DeclarationPage() {
     }
   };
 
-  // File upload refs and previews
+  // ... (Other handlers like file upload kept same, will be available in full file) ...
+  // File upload refs and previews code...
   const businessLicenseRef = useRef<HTMLInputElement>(null);
   const companyProfileRef = useRef<HTMLInputElement>(null);
   const [businessLicensePreview, setBusinessLicensePreview] = useState<string | null>(null);
@@ -599,6 +631,8 @@ export default function DeclarationPage() {
                             control={form.control}
                             name="natureOfBusiness"
                             render={({ field }) => {
+                              // Ensure explicit checkbox handling
+                              const isChecked = field.value?.includes(option.name);
                               return (
                                 <FormItem
                                   key={option.id}
@@ -606,18 +640,11 @@ export default function DeclarationPage() {
                                 >
                                   <FormControl>
                                     <Checkbox
-                                      checked={field.value?.includes(option.name)}
+                                      checked={isChecked}
                                       onCheckedChange={(checked) => {
                                         return checked
-                                          ? field.onChange([
-                                            ...field.value,
-                                            option.name,
-                                          ])
-                                          : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== option.name
-                                            )
-                                          );
+                                          ? field.onChange([...field.value, option.name])
+                                          : field.onChange(field.value?.filter((value) => value !== option.name));
                                       }}
                                       className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
                                     />
@@ -638,28 +665,28 @@ export default function DeclarationPage() {
               />
             </div>
 
-            {/* Controlled/Dual Use Items, End-Use Market, Licenses - Separate Light Container */}
+            {/* Controlled Items, End-Use Market, Licenses - Separate Light Container */}
             <div className="bg-bg-light p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-28">
                 {/* Left Column */}
                 <div className="space-y-8">
-                  {/* Controlled/Dual Use Items */}
                   <div className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="controlledDualUseItems"
+                      name="controlledItems"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm font-bold text-black">
-                            Are you dealing with any of the following
-                            controlled/ dual use items? If yes, specify:
+                            Do you plan to sell any controlled products?
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Type here"
-                              className="bg-bg-medium border border-border h-11 focus:border-border focus:ring-1 focus:ring-border rounded-none"
+                            <Select
+                              placeholder="Select Yes / No"
                               {...field}
-                            />
+                            >
+                              <option value="yes">Yes</option>
+                              <option value="no">No</option>
+                            </Select>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
