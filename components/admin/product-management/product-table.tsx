@@ -366,14 +366,24 @@ export function ProductTable({
                         <Switch
                           checked={product.is_featured === true}
                           onCheckedChange={(checked) => handleAttributeToggle(product, 'is_featured', checked)}
-                          disabled={attributesMutation.isPending}
+                          disabled={attributesMutation.isPending || !imageUrl || product.status === 'draft' || product.approval_status !== 'approved'}
+                          title={
+                            !imageUrl ? "Product must have an image to be featured" :
+                              product.status === 'draft' ? "Draft products cannot be featured" :
+                                product.approval_status !== 'approved' ? "Product must be approved to be featured" : ""
+                          }
                         />
                       </div>
                       <div className="flex items-center justify-center">
                         <Switch
                           checked={product.is_top_selling === true}
                           onCheckedChange={(checked) => handleAttributeToggle(product, 'is_top_selling', checked)}
-                          disabled={attributesMutation.isPending}
+                          disabled={attributesMutation.isPending || !imageUrl || product.status === 'draft' || product.approval_status !== 'approved'}
+                          title={
+                            !imageUrl ? "Product must have an image to be top selling" :
+                              product.status === 'draft' ? "Draft products cannot be top selling" :
+                                product.approval_status !== 'approved' ? "Product must be approved to be top selling" : ""
+                          }
                         />
                       </div>
                     </>

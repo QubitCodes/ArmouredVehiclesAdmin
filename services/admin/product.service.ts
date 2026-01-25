@@ -264,7 +264,6 @@ class ProductService {
       const response = await api.patch(`/admin/products/${id}/attributes`, attributes);
       return response.data;
     } catch (error) {
-      console.error("Error updating product attributes:", error);
       throw error;
     }
   }
