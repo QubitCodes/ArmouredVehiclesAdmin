@@ -22,12 +22,14 @@ export interface Admin {
   created_at: string;
   updated_at?: string;
   deleted_at?: string | null;
+  is_controlled?: boolean;
 }
 
 export interface GetAdminsParams {
   page?: number;
   limit?: number;
   search?: string;
+  controlled?: string; // 'true' or 'false'
 }
 
 export interface ApiResponse<T> {

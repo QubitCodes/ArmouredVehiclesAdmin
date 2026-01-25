@@ -32,7 +32,7 @@ export function AdminTable({ admins, onEditAdmin, onDeleteAdmin }: AdminTablePro
             Phone
           </div>
           <div className="min-w-[100px] text-sm font-semibold text-black">
-            User Role
+            Controlled
           </div>
           <div className="w-[100px] text-sm font-semibold text-black text-right">
             Actions
@@ -55,7 +55,9 @@ export function AdminTable({ admins, onEditAdmin, onDeleteAdmin }: AdminTablePro
                   : admin.phone || "-"}
               </div>
               <div className="text-foreground">
-                <span className="capitalize">{admin.user_type}</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${admin.is_controlled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                  {admin.is_controlled ? 'Yes' : 'No'}
+                </span>
               </div>
               <div className="flex justify-end gap-1">
                 {authService.hasPermission("admin.manage") && (

@@ -27,17 +27,18 @@ function AdminManagementContent() {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
-  
+
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
+  const controlled = searchParams.get("controlled") || undefined;
 
   // Use React Query to fetch admins with search and pagination parameters
   const {
     data,
     isLoading,
     error,
-  } = useAdmins({ search: search || undefined, page, limit: 10 });
+  } = useAdmins({ search: search || undefined, page, limit: 10, controlled });
 
   const deleteAdminMutation = useDeleteAdmin();
 
@@ -69,7 +70,7 @@ function AdminManagementContent() {
 
   const handleConfirmDelete = async () => {
     if (!selectedAdmin) return;
-    
+
     try {
       await deleteAdminMutation.mutateAsync(selectedAdmin.id);
       toast.success("Admin deleted successfully");
@@ -104,9 +105,9 @@ function AdminManagementContent() {
         </div>
       ) : (
         <>
-          <AdminTable 
-            admins={admins} 
-            onEditAdmin={handleEditAdmin} 
+          <AdminTable
+            admins={admins}
+            onEditAdmin={handleEditAdmin}
             onDeleteAdmin={handleDeleteClick}
           />
           <Pagination
