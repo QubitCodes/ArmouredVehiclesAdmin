@@ -56,6 +56,8 @@ import {
   useMainCategories,
   useCategoriesByParent,
 } from "@/hooks/admin/product-management/use-categories";
+import { PatternFormat } from "react-number-format";
+import { EXTERNAL_COLORS } from "@/lib/external-colors";
 import {
   useProductSpecifications,
   useCreateSpecification,
@@ -63,6 +65,8 @@ import {
   useBulkUpdateSpecifications,
   useDeleteSpecification,
 } from "@/hooks/admin/product-management/use-product-specifications";
+import { useProductColors } from "@/hooks/admin/use-references";
+import { MultiSelect } from "@/components/ui/multi-select";
 import type { ProductSpecification } from "@/services/admin/product-specification.service";
 import type {
   CreateProductRequest,
@@ -378,6 +382,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
   // Specifications state (moved to top level to follow React hooks rules)
   const { data: specificationsData = [], isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId);
+  const { data: productColors = [] } = useProductColors();
   const createSpec = useCreateSpecification(currentProductId);
   const updateSpec = useUpdateSpecification(currentProductId);
   const deleteSpec = useDeleteSpecification(currentProductId);
@@ -1561,23 +1566,88 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                                   </td>
                                 ) : (
                                   <>
-                                    <td className="px-2 py-2">
-                                      <Input
-                                        value={spec.label || ''}
-                                        onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
-                                        onPaste={(e) => handlePaste(e, index, 'label')}
-                                        placeholder="Label"
-                                        className="w-full font-medium border-primary/30 bg-muted/10"
-                                      />
+                                    <td className="px-2 py-2 align-top">
+                                      <div className="relative group">
+                                        {/* Label Input with Suggestions */}
+                                        <Input
+                                          value={spec.label || ''}
+                                          onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                          onPaste={(e) => handlePaste(e, index, 'label')}
+                                          placeholder="Label"
+                                          className="w-full font-medium border-primary/30 bg-muted/10"
+                                          list={`suggestions-${index}`}
+                                        />
+                                        <datalist id={`suggestions-${index}`}>
+                                          {["Condition", "Color", "Size"]
+                                            .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
+                                            .map(opt => <option key={opt} value={opt} />)
+                                          }
+                                        </datalist>
+                                      </div>
                                     </td>
-                                    <td className="px-2 py-2">
-                                      <Input
-                                        value={spec.value || ''}
-                                        onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                        onPaste={(e) => handlePaste(e, index, 'value')}
-                                        placeholder="Value"
-                                        className="w-full"
-                                      />
+                                    <td className="px-2 py-2 align-top">
+                                      {/* Dynamic Value Input */}
+                                      {(() => {
+                                        const label = spec.label?.trim();
+
+                                        if (label === 'Condition') {
+                                          return (
+                                            <select
+                                              value={spec.value || ''}
+                                              onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                              <option value="" disabled>Select Condition</option>
+                                              <option value="New">New</option>
+                                              <option value="Used">Used</option>
+                                              <option value="Refurbished">Refurbished</option>
+                                            </select>
+                                          );
+                                        }
+
+                                        if (label === 'Color') {
+                                          const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                          return (
+                                            <MultiSelect
+                                              options={EXTERNAL_COLORS}
+                                              selected={selectedColors}
+                                              onChange={(selected) => updateLocalSpec(index, 'value', selected.join(', '))}
+                                              placeholder="Select or add Colors..."
+                                              creatable={true}
+                                            />
+                                          );
+                                        }
+
+                                        if (label === 'Size') {
+                                          // Parse composite value "11x11x11 mm"
+                                          const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
+                                          const dimensions = match ? match[1] : (spec.value || '');
+                                          const unit = match ? match[2] : 'mm';
+
+                                          const updateSizeValue = (newDims: string, newUnit: string) => {
+                                            updateLocalSpec(index, 'value', `${newDims} ${newUnit}`.trim());
+                                          };
+
+                                          return (
+                                            <MaskedSizeInput
+                                              value={dimensions}
+                                              unit={unit}
+                                              onChange={(dims, u) => updateSizeValue(dims, u)}
+                                            />
+                                          );
+                                        }
+
+                                        // Default Text Input
+                                        return (
+                                          <Input
+                                            value={spec.value || ''}
+                                            onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                            onPaste={(e) => handlePaste(e, index, 'value')}
+                                            placeholder="Value"
+                                            className="w-full"
+                                          />
+                                        );
+                                      })()}
                                     </td>
                                   </>
                                 )}
@@ -1669,10 +1739,12 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                         </div>
                       </div>
                     </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                  )
+                  }
+                </CardContent >
+              </Card >
+            )
+            }
 
             <Card>
               <CardHeader>
@@ -2380,5 +2452,103 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     </div>
   );
 }
+
+const MaskedSizeInput = ({
+  value,
+  unit,
+  onChange
+}: {
+  value: string,
+  unit: string,
+  onChange: (dims: string, unit: string) => void
+}) => {
+  // Value format: "LxWxH"
+  const parts = value.split('x');
+  const l = parts[0] || '';
+  const w = parts[1] || '';
+  const h = parts[2] || '';
+
+  // Refs for focus management
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const updatePart = (index: number, val: string) => {
+    // Only allow digits
+    if (val && !/^\d*$/.test(val)) return;
+
+    const newParts = [l, w, h];
+    newParts[index] = val;
+    onChange(newParts.join('x'), unit);
+
+    // Auto-focus next input if length reaches 4
+    if (val.length === 4 && index < 2) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'x') {
+      e.preventDefault();
+      // Focus next input
+      if (index < 2) {
+        inputRefs.current[index + 1]?.focus();
+      }
+    }
+    // Handle Backspace at start of input to jump back
+    if (e.key === 'Backspace' && (e.currentTarget.value === '')) {
+      if (index > 0) {
+        e.preventDefault();
+        inputRefs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex-1 flex items-center border rounded-md bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background transition-all overflow-hidden h-10 w-full">
+        <Input
+          ref={(el) => { inputRefs.current[0] = el }}
+          value={l}
+          onChange={(e) => updatePart(0, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, 0)}
+          placeholder="000"
+          className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+          maxLength={4}
+        />
+        <span className="text-muted-foreground font-medium select-none text-xs">x</span>
+        <Input
+          ref={(el) => { inputRefs.current[1] = el }}
+          value={w}
+          onChange={(e) => updatePart(1, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, 1)}
+          placeholder="000"
+          className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+          maxLength={4}
+        />
+        <span className="text-muted-foreground font-medium select-none text-xs">x</span>
+        <Input
+          ref={(el) => { inputRefs.current[2] = el }}
+          value={h}
+          onChange={(e) => updatePart(2, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, 2)}
+          placeholder="000"
+          className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+          maxLength={4}
+        />
+      </div>
+
+      <select
+        value={unit}
+        onChange={(e) => onChange(value, e.target.value)}
+        className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm"
+      >
+        <option value="mm">mm</option>
+        <option value="cm">cm</option>
+        <option value="m">m</option>
+      </select>
+    </div>
+  );
+};
+
+
 
 
