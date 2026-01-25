@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { referenceService } from "@/services/admin/reference.service";
+import { brandService } from "@/services/admin/brand.service";
 
 export interface ReferenceOption {
   value: string;
@@ -29,6 +30,16 @@ export const useProductColors = () => {
         label: item.name,
         color: item.hex_code || "#000000",
       }));
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+export const useBrands = () => {
+  return useQuery({
+    queryKey: ["brands"],
+    queryFn: async () => {
+      const data = await brandService.getAll();
+      return data;
     },
     staleTime: 5 * 60 * 1000,
   });

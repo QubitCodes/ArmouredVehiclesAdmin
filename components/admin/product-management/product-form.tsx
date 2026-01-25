@@ -65,7 +65,7 @@ import {
   useBulkUpdateSpecifications,
   useDeleteSpecification,
 } from "@/hooks/admin/product-management/use-product-specifications";
-import { useProductColors } from "@/hooks/admin/use-references";
+import { useProductColors, useBrands } from "@/hooks/admin/use-references";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { ProductSpecification } from "@/services/admin/product-specification.service";
 import type {
@@ -95,7 +95,7 @@ const basicInfoSchema = z.object({
   countryOfOrigin: z.string().optional(),
   controlledItemType: z.string().optional(),
   description: z.string().optional(),
-  make: z.string().optional(),
+  brandId: z.coerce.number().optional().nullable(),
   model: z.string().optional(),
   year: z.coerce.number().optional(),
   condition: z.string().optional(),
@@ -203,7 +203,7 @@ const SECTIONS = [
       "certifications",
       "controlledItemType",
       "vehicleCompatibility",
-      "make",
+      "brandId",
       "model",
       "year",
       "countryOfOrigin",
@@ -383,6 +383,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   // Specifications state (moved to top level to follow React hooks rules)
   const { data: specificationsData = [], isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId);
   const { data: productColors = [] } = useProductColors();
+  const { data: brands = [], isLoading: isLoadingBrands } = useBrands();
   const createSpec = useCreateSpecification(currentProductId);
   const updateSpec = useUpdateSpecification(currentProductId);
   const deleteSpec = useDeleteSpecification(currentProductId);
@@ -431,7 +432,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
       certifications: [],
       controlledItemType: "",
       vehicleCompatibility: "",
-      make: "",
+      brandId: undefined,
       model: "",
       year: undefined,
       countryOfOrigin: "",
@@ -585,7 +586,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         countryOfOrigin: (getVal("countryOfOrigin", "country_of_origin") as string) || "",
         controlledItemType: (getVal("controlledItemType", "controlled_item_type") as string) || "",
 
-        make: (productData.make as string) || "",
+        brandId: parseNumber(getVal("brandId", "brand_id") as string | number) || (productData.brand as any)?.id || undefined,
         model: (productData.model as string) || "",
         year: productData.year as number | undefined,
 
@@ -928,7 +929,8 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     basePrice: 'base_price',
     shippingCharge: 'shipping_charge',
     packingCharge: 'packing_charge',
-    individualProductPricing: 'individual_product_pricing'
+    individualProductPricing: 'individual_product_pricing',
+    brandId: 'brand_id'
   };
 
   const cleanDataForApi = (
@@ -1304,8 +1306,32 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
               <div className="grid gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="make"
-                  render={({ field }) => (<FormItem><FormLabel>Make</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}
+                  name="brandId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Brand</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value?.toString() || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? null : parseInt(val));
+                            // Optional: Reset model if needed, but usually Brand has independent Models? 
+                            // Or keep Model free text.
+                          }}
+                          placeholder="Select Brand"
+                          disabled={isLoadingBrands}
+                        >
+                          {brands.map((brand: any) => (
+                            <option key={brand.id} value={brand.id}>
+                              {brand.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
                   control={form.control}

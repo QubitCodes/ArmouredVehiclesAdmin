@@ -20,7 +20,10 @@ import {
 import { cn } from "@/lib/utils";
 
 // Hardcoded list of supported reference types based on ReferenceController docs
+import { BrandList } from "@/components/admin/brands/brand-list";
+
 const REFERENCE_TYPES = [
+  { id: "brands", label: "Product Brands" },
   { id: "nature-of-business", label: "Nature of Business" },
   { id: "end-use-markets", label: "End Use Markets" },
   { id: "license-types", label: "License Types" },
@@ -50,6 +53,7 @@ export function ReferenceList() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const loadData = async () => {
+    if (selectedType === 'brands') return; // Handled by BrandList component
     setLoading(true);
     try {
       const items = await referenceService.getData(selectedType);
@@ -91,31 +95,31 @@ export function ReferenceList() {
       className: "font-medium"
     },
     {
-        header: "Status",
-        accessorKey: "is_active",
-        render: (item) => (
-            <span className={cn(
-                "text-xs px-2 py-1 rounded-full font-medium",
-                item.is_active 
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
-                    : "bg-gray-100 text-gray-500"
-            )}>
-                {item.is_active ? "Active" : "Inactive"}
-            </span>
-        )
+      header: "Status",
+      accessorKey: "is_active",
+      render: (item) => (
+        <span className={cn(
+          "text-xs px-2 py-1 rounded-full font-medium",
+          item.is_active
+            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            : "bg-gray-100 text-gray-500"
+        )}>
+          {item.is_active ? "Active" : "Inactive"}
+        </span>
+      )
     },
     {
-        header: "Actions",
-        render: (item) => (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
-                    <Pencil className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(item.id)}>
-                    <Trash2 className="h-4 w-4" />
-                </Button>
-            </div>
-        )
+      header: "Actions",
+      render: (item) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(item.id)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )
     }
   ];
 
@@ -127,16 +131,16 @@ export function ReferenceList() {
         <div className="space-y-1">
           {REFERENCE_TYPES.map(type => (
             <button
-                key={type.id}
-                onClick={() => setSelectedType(type.id)}
-                className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    selectedType === type.id 
-                        ? "bg-secondary text-secondary-foreground shadow-sm"
-                        : "text-muted-foreground hover:bg-muted"
-                )}
+              key={type.id}
+              onClick={() => setSelectedType(type.id)}
+              className={cn(
+                "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                selectedType === type.id
+                  ? "bg-secondary text-secondary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
             >
-                {type.label}
+              {type.label}
             </button>
           ))}
         </div>
@@ -144,25 +148,31 @@ export function ReferenceList() {
 
       {/* Main Content */}
       <div className="flex-1 p-6">
-         <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                {REFERENCE_TYPES.find(t => t.id === selectedType)?.label}
-              </h2>
-              <p className="text-muted-foreground text-sm">Manage values for this dropdown.</p>
+        {selectedType === 'brands' ? (
+          <BrandList />
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  {REFERENCE_TYPES.find(t => t.id === selectedType)?.label}
+                </h2>
+                <p className="text-muted-foreground text-sm">Manage values for this dropdown.</p>
+              </div>
+              <Button onClick={() => { setSelectedItem(null); setDialogOpen(true); }}>
+                <Plus className="mr-2 h-4 w-4" /> Add Item
+              </Button>
             </div>
-            <Button onClick={() => { setSelectedItem(null); setDialogOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" /> Add Item
-            </Button>
-          </div>
 
-          <CustomTable
-            data={data}
-            columns={columns}
-            gridCols="2fr 1fr 100px"
-            isLoading={loading}
-            emptyMessage="No items found in this list."
-          />
+            <CustomTable
+              data={data}
+              columns={columns}
+              gridCols="2fr 1fr 100px"
+              isLoading={loading}
+              emptyMessage="No items found in this list."
+            />
+          </>
+        )}
       </div>
 
       <ReferenceDialog
