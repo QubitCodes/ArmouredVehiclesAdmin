@@ -978,8 +978,48 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     return cleanedData;
   };
 
+  const validateSpecsRules = (): boolean => {
+    if (localSpecs.length === 0) return true;
+
+    // Rule 1: First spec must be title
+    if (localSpecs[0].type !== 'title_only') {
+      toast.warning('The first specification must always be a Section Title.');
+      return false;
+    }
+
+    // Rule 2: Section consistency
+    let currentSectionType: string | null = null;
+    let sectionStartTitle = localSpecs[0].label || 'Initial Section';
+
+    for (let i = 0; i < localSpecs.length; i++) {
+      const spec = localSpecs[i];
+      if (spec.type === 'title_only') {
+        currentSectionType = null;
+        sectionStartTitle = spec.label || `Section at row ${i + 1}`;
+      } else {
+        if (currentSectionType === null) {
+          currentSectionType = spec.type;
+        } else if (spec.type !== currentSectionType) {
+          toast.warning(`Rule violation in "${sectionStartTitle}": You cannot mix General and Value Only items in the same section (Row ${i + 1}).`);
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
   const onSubmit = async (formData: ProductFormValues) => {
     try {
+      // Handle Technical Specs Saving (Tab 2)
+      if (currentProductId && activeTab === 2) {
+        if (!validateSpecsRules()) return;
+        await bulkUpdateSpecs.mutateAsync(localSpecs);
+        // Continue to save other product fields if needed, or just return/toast/navigate?
+        // The user wants "Save Changes" to save specs AND go to next tab.
+        // We usually also save the product form data (e.g. if they edited other fields even though they are hidden? No, hidden fields won't be edited by user but might exist in form state).
+        // Let's proceed with standard product update as well to be safe, especially if there are other fields on this tab like 'technicalDescription' (which we are hiding but model has it).
+      }
+
       const allFields = [...SECTIONS.flatMap(s => s.fields), "status"];
       const cleanedData = cleanDataForApi(formData, allFields);
 
@@ -1404,35 +1444,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
           setLocalSpecs(updated);
         };
 
-        const validateSpecsRules = (): boolean => {
-          if (localSpecs.length === 0) return true;
 
-          // Rule 1: First spec must be title
-          if (localSpecs[0].type !== 'title_only') {
-            toast.warning('The first specification must always be a Section Title.');
-            return false;
-          }
-
-          // Rule 2: Section consistency
-          let currentSectionType: string | null = null;
-          let sectionStartTitle = localSpecs[0].label || 'Initial Section';
-
-          for (let i = 0; i < localSpecs.length; i++) {
-            const spec = localSpecs[i];
-            if (spec.type === 'title_only') {
-              currentSectionType = null;
-              sectionStartTitle = spec.label || `Section at row ${i + 1}`;
-            } else {
-              if (currentSectionType === null) {
-                currentSectionType = spec.type;
-              } else if (spec.type !== currentSectionType) {
-                toast.warning(`Rule violation in "${sectionStartTitle}": You cannot mix General and Value Only items in the same section (Row ${i + 1}).`);
-                return false;
-              }
-            }
-          }
-          return true;
-        };
 
         const saveSpecRow = async (index: number) => {
           if (!validateSpecsRules()) return;
@@ -1741,7 +1753,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                             <Plus className="mr-2 h-4 w-4" /> Add Rows
                           </Button>
                         </div>
-                        <Button
+                        {/* <Button
                           type="button"
                           variant="default"
                           size="sm"
@@ -1750,7 +1762,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                         >
                           {bulkUpdateSpecs.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                           Save All
-                        </Button>
+                        </Button> */}
                       </div>
 
                       <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 items-start">
@@ -1772,12 +1784,11 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             )
             }
 
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>TECHNICAL SPECIFICATIONS:</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Simplified sections for brevity, assume full implementation matches original */}
                 <div className="grid gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
@@ -1802,7 +1813,6 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                   />
                 </div>
 
-                {/* Array fields using helpers */}
                 {['materials', 'features', 'performance', 'specifications'].map(key => (
                   <div key={key}>
                     <Label className="capitalize mb-2 block">{key}</Label>
@@ -1864,7 +1874,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                 </div>
                 <FormField control={form.control} name="minOrderQuantity" render={({ field }) => <FormItem><FormLabel>MOQ</FormLabel><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} /></FormItem>} />
               </CardContent>
-            </Card>
+            </Card> */}
           </div >
         );
 
