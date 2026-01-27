@@ -76,6 +76,7 @@ import type {
   UpdateProductRequest,
   Product,
 } from "@/services/admin/product.service";
+import api from "@/lib/api";
 
 // Pricing Tier Schema
 const pricingTierSchema = z.object({
@@ -1530,6 +1531,45 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                       <RichTextEditor
                         value={field.value || ""}
                         onChange={(val) => field.onChange(val)}
+                        onFileUpload={async (file) => {
+                          if (!currentProductId) {
+                            toast.error("Please save the basic information first before uploading files.");
+                            throw new Error("Product ID required");
+                          }
+
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          formData.append('label', 'PRODUCT_DESCRIPTION_MEDIA');
+                          formData.append('data', JSON.stringify({ product_id: currentProductId }));
+
+                          try {
+                            const response = await api.post('/upload/files', formData, {
+                              headers: { 'Content-Type': 'multipart/form-data' }
+                            });
+
+                            // Verify response structure
+                            // API returns data as array of strings: ["path/to/file"]
+                            if (response.data?.status && Array.isArray(response.data?.data) && response.data.data.length > 0) {
+                              const filePath = response.data.data[0];
+                              // Construct full URL assuming local server or using environment variable base
+                              // We take the API URL (e.g. http://localhost:3002/api/v1) and remove /api/v1 to get root
+                              const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
+                              const baseUrl = apiBase.replace(/\/api\/v1\/?$/, '');
+                              const fullUrl = `${baseUrl}/${filePath}`;
+
+                              return {
+                                url: fullUrl,
+                                type: file.type.startsWith('image/') ? 'image' : 'file',
+                                name: file.name
+                              };
+                            } else {
+                              throw new Error("Invalid response from server");
+                            }
+                          } catch (error) {
+                            console.error("Upload failed", error);
+                            throw error;
+                          }
+                        }}
                       />
                     </FormControl>
                   </FormItem>

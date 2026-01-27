@@ -27,6 +27,7 @@ import {
     Table as TableIcon,
     Minus,
     Trash2,
+    UploadCloud,
 } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 
@@ -35,9 +36,10 @@ interface RichTextEditorProps {
     onChange: (value: string) => void;
     placeholder?: string;
     editable?: boolean;
+    onFileUpload?: (file: File) => Promise<{ url: string; type: 'image' | 'file'; name: string }>;
 }
 
-const MenuBar = ({ editor }: { editor: Editor | null }) => {
+const MenuBar = ({ editor, onFileUpload }: { editor: Editor | null; onFileUpload?: RichTextEditorProps['onFileUpload'] }) => {
     if (!editor) {
         return null;
     }
@@ -49,22 +51,32 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         }
     }, [editor]);
 
+    const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && onFileUpload) {
+            try {
+                const { url, type, name } = await onFileUpload(file);
+                if (type === 'image') {
+                    editor.chain().focus().setImage({ src: url, alt: name }).run();
+                } else {
+                    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).insertContent(name).run();
+                }
+            } catch (error) {
+                console.error("File upload failed", error);
+                alert("Upload failed");
+            }
+        }
+    }, [editor, onFileUpload]);
+
     const setLink = useCallback(() => {
         const previousUrl = editor.getAttributes('link').href;
         const url = window.prompt('URL', previousUrl);
 
-        // cancelled
-        if (url === null) {
-            return;
-        }
-
-        // empty
+        if (url === null) return;
         if (url === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
             return;
         }
-
-        // update
         editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
     }, [editor]);
 
@@ -171,6 +183,28 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             >
                 <LinkIcon className="h-4 w-4" />
             </Button>
+
+            {/* Upload Button */}
+            {onFileUpload && (
+                <div className="relative">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="relative z-10"
+                        onClick={() => document.getElementById('rte-file-upload')?.click()}
+                        type="button"
+                    >
+                        <UploadCloud className="h-4 w-4" />
+                    </Button>
+                    <input
+                        id="rte-file-upload"
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                    />
+                </div>
+            )}
+
             <Button
                 variant="ghost"
                 size="sm"
@@ -218,7 +252,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
                 </>
             )}
 
-
             <div className="w-px h-6 bg-border mx-1" />
 
             <Button
@@ -247,6 +280,7 @@ export default function RichTextEditor({
     value,
     onChange,
     editable = true,
+    onFileUpload,
 }: RichTextEditorProps) {
     const editor = useEditor({
         extensions: [
@@ -287,7 +321,7 @@ export default function RichTextEditor({
 
     return (
         <div className="flex flex-col w-full">
-            <MenuBar editor={editor} />
+            <MenuBar editor={editor} onFileUpload={onFileUpload} />
             <EditorContent editor={editor} />
         </div>
     );
