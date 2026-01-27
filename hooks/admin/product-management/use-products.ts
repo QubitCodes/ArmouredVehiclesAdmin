@@ -146,9 +146,49 @@ export function useUpdateProductAttributes() {
       return productService.updateProductAttributes(id, attributes);
     },
     onSuccess: () => {
-      // Invalidate queries to refresh the list
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["vendor-products"] });
+    },
+  });
+}
+
+/**
+ * React Query hook for deleting product media
+ */
+export function useDeleteProductMedia() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    AxiosError,
+    { productId: string; mediaId: string }
+  >({
+    mutationFn: async ({ productId, mediaId }) => {
+      await productService.deleteProductMedia(productId, mediaId);
+    },
+    onSuccess: (_, { productId }) => {
+      // Invalidate specific product query to refresh (including getting updated gallery)
+      queryClient.invalidateQueries({ queryKey: ["product", productId] });
+    },
+  });
+}
+
+/**
+ * React Query hook for bulk deleting product media
+ */
+export function useBulkDeleteProductMedia() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    AxiosError,
+    { productId: string; mediaIds: number[] }
+  >({
+    mutationFn: async ({ productId, mediaIds }) => {
+      await productService.bulkDeleteProductMedia(productId, mediaIds);
+    },
+    onSuccess: (_, { productId }) => {
+      queryClient.invalidateQueries({ queryKey: ["product", productId] });
     },
   });
 }

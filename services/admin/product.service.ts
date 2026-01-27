@@ -18,6 +18,7 @@ export interface Product {
   updated_at?: string;
   image?: string | null;
   imageUrl?: string | null;
+  media?: { id: number; url: string; type: string; is_cover: boolean }[];
   stock?: number;
   sku?: string;
   is_featured?: boolean;
@@ -264,6 +265,47 @@ class ProductService {
       const response = await api.patch(`/admin/products/${id}/attributes`, attributes);
       return response.data;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Delete product media
+   */
+  async deleteProductMedia(productId: string, mediaId: string) {
+    try {
+      const response = await api.delete(`/admin/products/${productId}/media/${mediaId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting product media:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add media to a product
+   */
+  async addProductMedia(productId: string, media: { type: string; url: string; fileName?: string; fileSize?: number; mimeType?: string; isCover?: boolean }) {
+    try {
+      const response = await api.post(`/admin/products/${productId}/media`, media);
+      return response.data;
+    } catch (error) {
+      console.error("Error adding product media:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk delete product media
+   */
+  async bulkDeleteProductMedia(productId: string, mediaIds: number[]) {
+    try {
+      const response = await api.delete(`/admin/products/${productId}/media`, {
+        data: { mediaIds },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error bulk deleting product media:", error);
       throw error;
     }
   }

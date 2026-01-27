@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AxiosError } from "axios";
@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -50,6 +51,8 @@ import RichTextEditor from "@/components/ui/rich-text-editor";
 import {
   useCreateProduct,
   useUpdateProduct,
+  useDeleteProductMedia,
+  useBulkDeleteProductMedia,
 } from "@/hooks/admin/product-management/use-products";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
 import {
@@ -417,10 +420,34 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     error: productError,
   } = useProduct(currentProductId || ""); // Only run if ID exists
 
+  // Refs for resolver access
+  const activeTabRef = useRef(activeTab);
+  const productIdRef = useRef(currentProductId);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    productIdRef.current = currentProductId;
+  }, [currentProductId]);
+
   // Dynamic Resolver based on active tab
-  // This allows validation to default to the current tab's schema
+  // This allows validation to default to the current tab's schema in Edit Mode
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema) as any, // Use unified schema to prevent field stripping on tab change
+    resolver: (async (data, context, options) => {
+      const isEditMode = !!productIdRef.current;
+      const tabId = activeTabRef.current;
+
+      // In Create Mode, we enforce the full schema to ensure integrity before first save
+      // In Edit Mode, we only validate the current tab to avoid blocking unrelated field errors (e.g. data loss on unmount)
+      const schema = isEditMode && SCHEMA_MAP[tabId]
+        ? SCHEMA_MAP[tabId]
+        : productSchema;
+
+      const resolverFunc = zodResolver(schema);
+      return (resolverFunc as any)(data, context, options);
+    }) as Resolver<ProductFormValues>,
     shouldUnregister: false, // CRITICAL: Keep form values when fields are unmounted (switching tabs)
     mode: "onChange",
     defaultValues: {
@@ -811,8 +838,101 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     form.setValue(fieldName, [...current, ""]);
   };
 
-  const removeArrayItem = (fieldName: any, index: number) => {
+  const { mutateAsync: deleteMedia } = useDeleteProductMedia();
+  const { mutateAsync: bulkDeleteMedia } = useBulkDeleteProductMedia();
+  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<number>>(new Set());
+
+  const handleToggleSelect = (mediaId: number) => {
+    const newSelected = new Set(selectedMediaIds);
+    if (newSelected.has(mediaId)) {
+      newSelected.delete(mediaId);
+    } else {
+      newSelected.add(mediaId);
+    }
+    setSelectedMediaIds(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMediaIds.size === 0) return;
+    if (!currentProductId) return;
+
+    try {
+      await bulkDeleteMedia({ productId: currentProductId, mediaIds: Array.from(selectedMediaIds) });
+
+      // Optimistic UI Update
+      const currentGallery = form.getValues('gallery') || [];
+      const newGallery = currentGallery.filter((url: string) => {
+        // Keep it if it's NOT in the selected list
+        // We need to match URL to ID again to be safe, or relies on invalidation
+        // But invalidation happens on success. 
+        // Ideally we just wait for query refresh or filter out based on URL matching
+
+        // Find media ID for this URL
+        const mediaItem = (product as any)?.media?.find((m: any) =>
+          m.url === url || url.endsWith(m.url) || (m.url && m.url.endsWith(url))
+        );
+
+        if (mediaItem && selectedMediaIds.has(mediaItem.id)) {
+          return false; // Remove
+        }
+        return true;
+      });
+
+      form.setValue('gallery', newGallery);
+
+      setSelectedMediaIds(new Set());
+      toast.success(`Deleted ${selectedMediaIds.size} images`);
+    } catch (error) {
+      console.error("Bulk delete failed", error);
+      toast.error("Failed to delete images");
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // Find all server-side images
+      const currentGallery = form.getValues('gallery') || [];
+      const idsToSelect = new Set<number>();
+
+      currentGallery.forEach((url: string) => {
+        const mediaItem = (product as any)?.media?.find((m: any) =>
+          m.url === url || url.endsWith(m.url) || (m.url && m.url.endsWith(url))
+        );
+        if (mediaItem) {
+          idsToSelect.add(mediaItem.id);
+        }
+      });
+      setSelectedMediaIds(idsToSelect);
+    } else {
+      setSelectedMediaIds(new Set());
+    }
+  };
+
+  const removeArrayItem = async (fieldName: any, index: number) => {
     const current = form.getValues(fieldName) || [];
+
+    if (fieldName === 'gallery') {
+      // Special handling for gallery to delete from server if it's an existing URL
+      const itemToDelete = current[index];
+      if (typeof itemToDelete === 'string' && itemToDelete.startsWith('http') && currentProductId) {
+        // Find media ID from product object
+        const mediaItem = (product as any)?.media?.find((m: any) =>
+          m.url === itemToDelete || itemToDelete.endsWith(m.url) || (m.url && m.url.endsWith(itemToDelete))
+        );
+
+        if (mediaItem) {
+          try {
+            await deleteMedia({ productId: currentProductId, mediaId: String(mediaItem.id) });
+            toast.success("Image deleted successfully");
+          } catch (error) {
+            console.error("Failed to delete image", error);
+            toast.error("Failed to delete image");
+            return; // Don't remove from UI if API failed
+          }
+        }
+      }
+    }
+
     form.setValue(
       fieldName,
       current.filter((_: any, i: number) => i !== index)
@@ -2190,30 +2310,79 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
               {/* Gallery Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <FormLabel className="text-base font-semibold">Gallery Images</FormLabel>
-                  <span className="text-xs text-muted-foreground">{gallery.length + galleryFiles.length} images</span>
+                  <div className="flex items-center gap-4">
+                    <FormLabel className="text-base font-semibold">Gallery Images</FormLabel>
+                    <span className="text-xs text-muted-foreground">{gallery.length + galleryFiles.length} images</span>
+                  </div>
+                  {/* Select All / Delete Controls */}
+                  <div className="flex items-center gap-2">
+                    {(gallery.length > 0) && (
+                      <div className="flex items-center gap-2 mr-2">
+                        <Checkbox
+                          checked={selectedMediaIds.size > 0 && selectedMediaIds.size === (product as any)?.media?.length} // Approximation, ideally accurate count
+                          onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                          id="select-all"
+                        />
+                        <Label htmlFor="select-all" className="text-xs font-medium cursor-pointer">
+                          Select All
+                        </Label>
+                      </div>
+                    )}
+
+                    {selectedMediaIds.size > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                        className="gap-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete Selected ({selectedMediaIds.size})
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {/* Existing Gallery Items */}
-                  {gallery.map((item, index) => (
-                    <div key={`existing-${index}`} className="group relative aspect-square border rounded-xl overflow-hidden bg-background shadow-sm">
-                      <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                        onClick={() => removeArrayItem('gallery', index)}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        Existing
+                  {gallery.map((item, index) => {
+                    // Determine if this is an existing server image with an ID
+                    const mediaItem = (product as any)?.media?.find((m: any) =>
+                      m.url === item || item.endsWith(m.url) || (m.url && m.url.endsWith(item))
+                    );
+
+                    return (
+                      <div key={`existing-${index}`} className="group relative aspect-square border rounded-xl overflow-hidden bg-background shadow-sm">
+                        <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+
+                        {/* Checkbox for Bulk Delete (Only for server items) */}
+                        {mediaItem && (
+                          <div className="absolute top-2 left-2 z-10">
+                            <Checkbox
+                              checked={selectedMediaIds.has(mediaItem.id)}
+                              onCheckedChange={() => handleToggleSelect(mediaItem.id)}
+                              className="bg-white/90 border-black/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary h-5 w-5"
+                            />
+                          </div>
+                        )}
+
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                          onClick={() => removeArrayItem('gallery', index)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                        <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          Existing
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* New Uploads */}
                   {galleryFiles.map((file, i) => (
@@ -2228,7 +2397,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                         type="button"
                         variant="destructive"
                         size="icon"
-                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
                         onClick={() => {
                           const newFiles = [...galleryFiles];
                           newFiles.splice(i, 1);
@@ -2237,7 +2406,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                       >
                         <X className="h-3.5 w-3.5" />
                       </Button>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground rounded text-[10px] font-medium shadow-sm">
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground rounded text-[10px] font-medium shadow-sm pointer-events-none">
                         New
                       </div>
                     </div>
