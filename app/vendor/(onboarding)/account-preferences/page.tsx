@@ -33,9 +33,7 @@ const accountPreferencesSchema = z.object({
   categories: z
     .array(z.string())
     .min(1, "Please select at least one category"),
-  registerAs: z
-    .string()
-    .min(1, "Please select registration type"),
+  registerAs: z.string().nullable().optional(),
   preferredCurrency: z
     .string()
     .min(1, "Please select a currency"),
@@ -73,7 +71,7 @@ export default function AccountPreferencesPage() {
     resolver: zodResolver(accountPreferencesSchema),
     defaultValues: {
       categories: [],
-      registerAs: "verified-supplier",
+      registerAs: null, // Set as null
       preferredCurrency: "AED",
       sponsorContent: "no",
       // captcha: "",
@@ -85,13 +83,13 @@ export default function AccountPreferencesPage() {
     if (profileData?.profile && !isProfileLoading) {
       const p = profileData.profile;
       const currency = p.currency || "AED";
-      
+
       // Check if currency is in the main options
       const isStandardCurrency = currencyOptions.some(opt => opt.value === currency);
-      
+
       form.reset({
         categories: p.selling_categories || [],
-        registerAs: p.subscription_type || "verified-supplier",
+        registerAs: p.subscription_type || null,
         preferredCurrency: isStandardCurrency ? currency : "other",
         sponsorContent: p.sponsor_content ? "yes" : "no",
         // captcha: "", // Captcha cannot be pre-filled
@@ -119,14 +117,14 @@ export default function AccountPreferencesPage() {
       // Transform form data to match API schema
       const apiPayload = {
         sellingCategories: data.categories,
-        registerAs: data.registerAs === "verified-supplier" ? "Verified Supplier" : data.registerAs,
+        registerAs: data.registerAs || null, // Ensure null is passed
         preferredCurrency: finalCurrency.toUpperCase(),
         sponsorContent: data.sponsorContent === "yes",
         isDraft: false,
         password: "demo-demo",
       };
 
-      await step4Mutation.mutateAsync(apiPayload);
+      await step4Mutation.mutateAsync(apiPayload as any); // Type cast as API interface might be strict
       toast.success("Account preferences saved successfully");
       router.push("/vendor/bank-account");
     } catch (error) {
@@ -268,14 +266,14 @@ export default function AccountPreferencesPage() {
                                         onCheckedChange={(checked) => {
                                           return checked
                                             ? field.onChange([
-                                                ...field.value,
-                                                option.name,
-                                              ])
+                                              ...field.value,
+                                              option.name,
+                                            ])
                                             : field.onChange(
-                                                field.value?.filter(
-                                                  (value) => value !== option.name
-                                                )
-                                              );
+                                              field.value?.filter(
+                                                (value) => value !== option.name
+                                              )
+                                            );
                                         }}
                                         className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
                                       />
@@ -298,7 +296,8 @@ export default function AccountPreferencesPage() {
             </div>
 
             {/* Request to Register As and Preferred Currency - Separate Containers */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* HIDDEN IN UI BUT PRESERVED FOR DATA */}
+            <div className="hidden grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column - Request to Register As */}
               <div className="bg-bg-light p-6">
                 <FormField
@@ -331,11 +330,10 @@ export default function AccountPreferencesPage() {
                                 className="sr-only"
                               />
                               <span
-                                className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
-                                  field.value === "verified-supplier"
+                                className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${field.value === "verified-supplier"
                                     ? "border-border"
                                     : ""
-                                }`}
+                                  }`}
                               >
                                 {field.value === "verified-supplier" && (
                                   <span className="h-2 w-2 rounded-full bg-border"></span>
@@ -344,11 +342,10 @@ export default function AccountPreferencesPage() {
                             </label>
                             <label
                               htmlFor="registerAs-verified-supplier"
-                              className={`text-sm font-medium leading-none cursor-pointer ${
-                                field.value === "verified-supplier"
+                              className={`text-sm font-medium leading-none cursor-pointer ${field.value === "verified-supplier"
                                   ? "text-black"
                                   : "text-gray-500"
-                              }`}
+                                }`}
                             >
                               Verified Supplier
                             </label>
@@ -401,11 +398,10 @@ export default function AccountPreferencesPage() {
                                     className="sr-only"
                                   />
                                   <span
-                                    className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
-                                      field.value === option.value
+                                    className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${field.value === option.value
                                         ? "border-border"
                                         : ""
-                                    }`}
+                                      }`}
                                   >
                                     {field.value === option.value && (
                                       <span className="h-2 w-2 rounded-full bg-border"></span>
@@ -414,11 +410,10 @@ export default function AccountPreferencesPage() {
                                 </label>
                                 <label
                                   htmlFor={`currency-${option.value}`}
-                                  className={`text-sm font-medium leading-none cursor-pointer ${
-                                    field.value === option.value
+                                  className={`text-sm font-medium leading-none cursor-pointer ${field.value === option.value
                                       ? "text-black"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   {option.label}
                                 </label>
@@ -454,9 +449,8 @@ export default function AccountPreferencesPage() {
                                   <Spinner size="sm" className="text-gray-400" />
                                 ) : (
                                   <ChevronDown
-                                    className={`h-5 w-5 text-gray-400 transition-transform ${
-                                      isCurrencyDropdownOpen ? "rotate-180" : ""
-                                    }`}
+                                    className={`h-5 w-5 text-gray-400 transition-transform ${isCurrencyDropdownOpen ? "rotate-180" : ""
+                                      }`}
                                   />
                                 )}
                               </div>
@@ -492,9 +486,8 @@ export default function AccountPreferencesPage() {
                                           return (
                                             <div
                                               key={currency.code}
-                                              className={`flex items-center gap-3 p-2 hover:bg-bg-medium rounded cursor-pointer transition-colors ${
-                                                isSelected ? "bg-bg-medium" : ""
-                                              }`}
+                                              className={`flex items-center gap-3 p-2 hover:bg-bg-medium rounded cursor-pointer transition-colors ${isSelected ? "bg-bg-medium" : ""
+                                                }`}
                                               onClick={() => handleCurrencySelect(currency.code)}
                                             >
                                               <span className="text-sm font-medium text-black w-16">
@@ -561,11 +554,10 @@ export default function AccountPreferencesPage() {
                                 className="sr-only"
                               />
                               <span
-                                className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${
-                                  field.value === option.value
+                                className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${field.value === option.value
                                     ? "border-border"
                                     : ""
-                                }`}
+                                  }`}
                               >
                                 {field.value === option.value && (
                                   <span className="h-2 w-2 rounded-full bg-border"></span>

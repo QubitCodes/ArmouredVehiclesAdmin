@@ -4,7 +4,7 @@ import api from "@/lib/api";
 
 export interface OnboardingStep4Request {
   sellingCategories: string[];
-  registerAs: string;
+  registerAs: string | null;
   preferredCurrency: string;
   sponsorContent: boolean;
   password?: string;
