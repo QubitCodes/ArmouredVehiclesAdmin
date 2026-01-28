@@ -34,6 +34,15 @@ export function useOnboardingProfile(enabled: boolean = true) {
     enabled,
     retry: false,
     refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data?.profile?.onboarding_status) return false;
+      
+      const status = data.profile.onboarding_status;
+      const isApproved = status === 'approved_general' || status === 'approved_controlled';
+      
+      return isApproved ? false : 10000;
+    },
   });
 }
 
