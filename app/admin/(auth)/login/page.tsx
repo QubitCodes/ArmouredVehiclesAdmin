@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +36,7 @@ const identifierSchema = z.object({
 
 type IdentifierFormValues = z.infer<typeof identifierSchema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<'IDENTIFIER' | 'OTP' | 'EMAIL_SENT'>('IDENTIFIER');
@@ -54,7 +54,8 @@ export default function LoginPage() {
 
   // Check for Magic Link on Mount
   useEffect(() => {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
+    // Only run on client
+    if (typeof window !== 'undefined' && isSignInWithEmailLink(auth, window.location.href)) {
       handleMagicLinkVerification();
     }
   }, []);
@@ -119,7 +120,6 @@ export default function LoginPage() {
     try {
       // 1. Check User Exists
       const check = await authService.checkUserExists(data.identifier);
-      // check.data = { identifier_type: 'email'|'phone', identifier: 'value', userType }
 
       const type = check.data.identifier_type;
       const validIdentifier = check.data.identifier; // Formatted E.164 if phone
@@ -297,7 +297,6 @@ export default function LoginPage() {
           </form>
         </Form>
       </CardContent>
-      {/* Debug box kept as requested by previous code context */}
       <div className="mt-8"><QuickLoginBox /></div>
     </CenteredLayout>
   );
@@ -317,5 +316,19 @@ function CenteredLayout({ children }: { children: React.ReactNode }) {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <CenteredLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </CenteredLayout>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
