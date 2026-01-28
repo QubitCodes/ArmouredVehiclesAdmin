@@ -48,10 +48,8 @@ const declarationSchema = z.object({
     .min(1, "Please select at least one nature of business"),
   controlledItems: z.enum(["yes", "no"]),
   manufacturingSourceName: z.string().optional(),
-  endUseMarket: z
-    .array(z.string())
-    .min(1, "Please select at least one end-use market"),
-  licenses: z.array(z.string()).min(1, "Please select at least one license type. License files are mandatory."),
+  endUseMarket: z.array(z.string()).optional(),
+  licenses: z.array(z.string()).optional(),
   operatingCountries: z
     .array(z.string())
     .min(1, "Please select at least one country"),
@@ -70,8 +68,19 @@ const declarationSchema = z.object({
   }),
 }).refine(
   (data) => {
+    if (data.controlledItems === "yes") {
+      return data.endUseMarket && data.endUseMarket.length > 0;
+    }
+    return true;
+  },
+  {
+    message: "Please select at least one end-use market",
+    path: ["endUseMarket"],
+  }
+).refine(
+  (data) => {
     // If authority_license is selected, modLicenseFile is required
-    if (data.licenses.includes("authority_license")) {
+    if (data.licenses?.includes("authority_license")) {
       return data.modLicenseFile !== undefined && data.modLicenseFile instanceof File;
     }
     return true;
@@ -83,7 +92,7 @@ const declarationSchema = z.object({
 ).refine(
   (data) => {
     // If eocn is selected, eocnApprovalFile is required
-    if (data.licenses.includes("eocn")) {
+    if (data.licenses?.includes("eocn")) {
       return data.eocnApprovalFile !== undefined && data.eocnApprovalFile instanceof File;
     }
     return true;
@@ -95,7 +104,7 @@ const declarationSchema = z.object({
 ).refine(
   (data) => {
     // If itar is selected, itarRegistrationFile is required
-    if (data.licenses.includes("itar")) {
+    if (data.licenses?.includes("itar")) {
       return data.itarRegistrationFile !== undefined && data.itarRegistrationFile instanceof File;
     }
     return true;
@@ -107,7 +116,7 @@ const declarationSchema = z.object({
 ).refine(
   (data) => {
     // If local is selected, localAuthorityApprovalFile is required
-    if (data.licenses.includes("local")) {
+    if (data.licenses?.includes("local")) {
       return data.localAuthorityApprovalFile !== undefined && data.localAuthorityApprovalFile instanceof File;
     }
     return true;
@@ -127,7 +136,6 @@ const licenseOptions = [
   { value: "eocn", label: "EOCN Approval" },
   { value: "itar", label: "ITAR Registration" },
   { value: "local", label: "Local approval from authorities" },
-  { value: "none", label: "None" },
 ];
 
 // License type to file field mapping
@@ -317,8 +325,8 @@ export default function DeclarationPage() {
         natureOfBusiness: data.natureOfBusiness,
         controlledItems: data.controlledItems === "yes", // Map to boolean
         manufacturingSourceName: data.manufacturingSourceName || undefined,
-        licenseTypes: data.licenses,
-        endUseMarkets: data.endUseMarket,
+        licenseTypes: data.licenses || [],
+        endUseMarkets: data.endUseMarket || [],
         operatingCountries: data.operatingCountries,
         isOnSanctionsList: data.onSanctionsList === "yes",
         complianceTermsAccepted: data.agreeToCompliance === true,
@@ -351,8 +359,8 @@ export default function DeclarationPage() {
   };
 
   const selectedNatureOfBusiness = form.watch("natureOfBusiness");
-  const selectedEndUseMarket = form.watch("endUseMarket");
-  const selectedLicenses = form.watch("licenses");
+  const selectedEndUseMarket = form.watch("endUseMarket") || [];
+  const selectedLicenses = form.watch("licenses") || [];
   const selectedCountries = form.watch("operatingCountries");
 
   // Handlers and helper functions (kept same)
@@ -365,7 +373,7 @@ export default function DeclarationPage() {
   };
 
   const handleRemoveEndUseMarket = (item: string) => {
-    const current = form.getValues("endUseMarket");
+    const current = form.getValues("endUseMarket") || [];
     form.setValue(
       "endUseMarket",
       current.filter((i) => i !== item)
@@ -373,7 +381,7 @@ export default function DeclarationPage() {
   };
 
   const handleRemoveLicense = (item: string) => {
-    const current = form.getValues("licenses");
+    const current = form.getValues("licenses") || [];
     form.setValue(
       "licenses",
       current.filter((i) => i !== item)
@@ -670,6 +678,7 @@ export default function DeclarationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-28">
                 {/* Left Column */}
                 <div className="space-y-8">
+                  {/* Controlled Items */}
                   <div className="space-y-4">
                     <FormField
                       control={form.control}
@@ -694,83 +703,85 @@ export default function DeclarationPage() {
                     />
                   </div>
 
-                  {/* End-Use Market */}
-                  <div className="space-y-4">
-                    <FormLabel className="text-sm font-bold text-black">
-                      End-Use Market:
-                    </FormLabel>
+                  {/* Licenses - Moved from Right Column */}
+                  {form.watch("controlledItems") === "yes" && (
+                    <div className="space-y-4">
+                      <FormLabel className="text-sm font-bold text-black">
+                        Do you hold any of the following licenses?
+                      </FormLabel>
 
-                    {/* Input Field with Tags and Count */}
-                    <div className="relative">
-                      <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
-                        {/* Selected Tags */}
-                        {selectedEndUseMarket.length > 0 && (
-                          <>
-                            {selectedEndUseMarket.map((item) => (
-                              <div
-                                key={item}
-                                className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
-                              >
-                                <span className="text-sm text-black">
-                                  {item}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveEndUseMarket(item)}
-                                  className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
-                                >
-                                  <X className="w-3.5 h-3.5 text-border" />
-                                </button>
-                              </div>
-                            ))}
-                          </>
+                      {/* Input Field with Tags and Count */}
+                      <div className="relative">
+                        <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
+                          {/* Selected Tags */}
+                          {selectedLicenses.length > 0 && (
+                            <>
+                              {selectedLicenses.map((licenseValue) => {
+                                const license = licenseOptions.find(
+                                  (l) => l.value === licenseValue
+                                );
+                                if (!license) return null;
+                                return (
+                                  <div
+                                    key={licenseValue}
+                                    className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
+                                  >
+                                    <span className="text-sm text-black">
+                                      {license.label}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveLicense(licenseValue)}
+                                      className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
+                                    >
+                                      <X className="w-3.5 h-3.5 text-border" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+                        </div>
+                        {/* Count Badge */}
+                        {selectedLicenses.length > 0 && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
+                            <span className="text-sm font-medium text-black">
+                              {selectedLicenses.length}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      {/* Count Badge */}
-                      {selectedEndUseMarket.length > 0 && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
-                          <span className="text-sm font-medium text-black">
-                            {selectedEndUseMarket.length}
-                          </span>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Checkboxes */}
-                    <FormField
-                      control={form.control}
-                      name="endUseMarket"
-                      render={() => (
-                        <FormItem>
-                          {isLoading ? (
-                            <div className="text-sm text-gray-500">Loading...</div>
-                          ) : (
-                            <div className="flex flex-wrap gap-4">
-                              {endUseMarketOptions.map((option) => (
+                      {/* Checkboxes Grid */}
+                      <FormField
+                        control={form.control}
+                        name="licenses"
+                        render={() => (
+                          <FormItem>
+                            <div className="grid grid-cols-1 gap-3">
+                              {licenseOptions.map((option) => (
                                 <FormField
-                                  key={option.id}
+                                  key={option.value}
                                   control={form.control}
-                                  name="endUseMarket"
+                                  name="licenses"
                                   render={({ field }) => {
                                     return (
                                       <FormItem
-                                        key={option.id}
+                                        key={option.value}
                                         className="flex flex-row items-start space-x-3 space-y-0"
                                       >
                                         <FormControl>
                                           <Checkbox
-                                            checked={field.value?.includes(
-                                              option.name
-                                            )}
+                                            checked={field.value?.includes(option.value)}
                                             onCheckedChange={(checked) => {
                                               return checked
                                                 ? field.onChange([
                                                   ...field.value,
-                                                  option.name,
+                                                  option.value,
                                                 ])
                                                 : field.onChange(
                                                   field.value?.filter(
-                                                    (value) => value !== option.name
+                                                    (value) => value !== option.value
                                                   )
                                                 );
                                             }}
@@ -778,7 +789,7 @@ export default function DeclarationPage() {
                                           />
                                         </FormControl>
                                         <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                          {option.name}
+                                          {option.label}
                                         </FormLabel>
                                       </FormItem>
                                     );
@@ -786,134 +797,141 @@ export default function DeclarationPage() {
                                 />
                               ))}
                             </div>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* Right Column - Licenses */}
-                <div className="space-y-4">
-                  <FormLabel className="text-sm font-bold text-black">
-                    Do you hold any of the following licenses?
-                  </FormLabel>
-
-                  {/* Input Field with Tags and Count */}
-                  <div className="relative">
-                    <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
-                      {/* Selected Tags */}
-                      {selectedLicenses.length > 0 && (
-                        <>
-                          {selectedLicenses.map((licenseValue) => {
-                            const license = licenseOptions.find(
-                              (l) => l.value === licenseValue
-                            );
-                            if (!license) return null;
-                            return (
-                              <div
-                                key={licenseValue}
-                                className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
-                              >
-                                <span className="text-sm text-black">
-                                  {license.label}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveLicense(licenseValue)}
-                                  className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
-                                >
-                                  <X className="w-3.5 h-3.5 text-border" />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </>
-                      )}
+                {/* Right Column */}
+                <div className="space-y-8">
+                  {/* Name of Manufacturing Source (Moved to top) */}
+                  {form.watch("controlledItems") === "yes" && (
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="manufacturingSourceName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-bold text-black">
+                              Name of Manufacturing Source (Optional)
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g., Blueweb Auto Industries LLC"
+                                className="bg-bg-medium border border-border h-11 focus:border-border focus:ring-1 focus:ring-border rounded-none"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                    {/* Count Badge */}
-                    {selectedLicenses.length > 0 && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
-                        <span className="text-sm font-medium text-black">
-                          {selectedLicenses.length}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  )}
 
-                  {/* Checkboxes Grid */}
-                  <FormField
-                    control={form.control}
-                    name="licenses"
-                    render={() => (
-                      <FormItem>
-                        <div className="grid grid-cols-1 gap-3">
-                          {licenseOptions.map((option) => (
-                            <FormField
-                              key={option.value}
-                              control={form.control}
-                              name="licenses"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem
-                                    key={option.value}
-                                    className="flex flex-row items-start space-x-3 space-y-0"
+                  {/* End-Use Market - Moved from Left Column */}
+                  {form.watch("controlledItems") === "yes" && (
+                    <div className="space-y-4">
+                      <FormLabel className="text-sm font-bold text-black">
+                        End-Use Market:
+                      </FormLabel>
+
+                      {/* Input Field with Tags and Count */}
+                      <div className="relative">
+                        <div className="min-h-[44px] bg-bg-medium border border-border p-2 pr-12 flex flex-wrap items-center gap-2">
+                          {/* Selected Tags */}
+                          {selectedEndUseMarket.length > 0 && (
+                            <>
+                              {selectedEndUseMarket.map((item) => (
+                                <div
+                                  key={item}
+                                  className="flex items-center gap-1.5 bg-bg-light border border-border px-3 py-1.5"
+                                >
+                                  <span className="text-sm text-black">
+                                    {item}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveEndUseMarket(item)}
+                                    className="hover:opacity-70 transition-opacity p-0.5 flex-shrink-0"
                                   >
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(option.value)}
-                                        onCheckedChange={(checked) => {
-                                          return checked
-                                            ? field.onChange([
-                                              ...field.value,
-                                              option.value,
-                                            ])
-                                            : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== option.value
-                                              )
-                                            );
-                                        }}
-                                        className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="text-sm font-normal text-black cursor-pointer">
-                                      {option.label}
-                                    </FormLabel>
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                          ))}
+                                    <X className="w-3.5 h-3.5 text-border" />
+                                  </button>
+                                </div>
+                              ))}
+                            </>
+                          )}
                         </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                        {/* Count Badge */}
+                        {selectedEndUseMarket.length > 0 && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg-light border border-border w-8 h-8 flex items-center justify-center">
+                            <span className="text-sm font-medium text-black">
+                              {selectedEndUseMarket.length}
+                            </span>
+                          </div>
+                        )}
+                      </div>
 
-                  {/* Name of Manufacturing Source */}
-                  <div className="space-y-4 pt-6">
-                    <FormField
-                      control={form.control}
-                      name="manufacturingSourceName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-black">
-                            Name of Manufacturing Source (Optional)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="e.g., Blueweb Auto Industries LLC"
-                              className="bg-bg-medium border border-border h-11 focus:border-border focus:ring-1 focus:ring-border rounded-none"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                      {/* Checkboxes */}
+                      <FormField
+                        control={form.control}
+                        name="endUseMarket"
+                        render={() => (
+                          <FormItem>
+                            {isLoading ? (
+                              <div className="text-sm text-gray-500">Loading...</div>
+                            ) : (
+                              <div className="flex flex-wrap gap-4">
+                                {endUseMarketOptions.map((option) => (
+                                  <FormField
+                                    key={option.id}
+                                    control={form.control}
+                                    name="endUseMarket"
+                                    render={({ field }) => {
+                                      return (
+                                        <FormItem
+                                          key={option.id}
+                                          className="flex flex-row items-start space-x-3 space-y-0"
+                                        >
+                                          <FormControl>
+                                            <Checkbox
+                                              checked={field.value?.includes(
+                                                option.name
+                                              )}
+                                              onCheckedChange={(checked) => {
+                                                return checked
+                                                  ? field.onChange([
+                                                    ...field.value,
+                                                    option.name,
+                                                  ])
+                                                  : field.onChange(
+                                                    field.value?.filter(
+                                                      (value) => value !== option.name
+                                                    )
+                                                  );
+                                              }}
+                                              className="bg-bg-light border-border data-[state=checked]:bg-border data-[state=checked]:border-border rounded-none"
+                                            />
+                                          </FormControl>
+                                          <FormLabel className="text-sm font-normal text-black cursor-pointer">
+                                            {option.name}
+                                          </FormLabel>
+                                        </FormItem>
+                                      );
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
