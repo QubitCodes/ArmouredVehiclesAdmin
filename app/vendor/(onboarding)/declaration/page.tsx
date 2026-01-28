@@ -758,7 +758,7 @@ export default function DeclarationPage() {
                         name="licenses"
                         render={() => (
                           <FormItem>
-                            <div className="grid grid-cols-1 gap-3">
+                            <div className="flex flex-wrap gap-4">
                               {licenseOptions.map((option) => (
                                 <FormField
                                   key={option.value}
