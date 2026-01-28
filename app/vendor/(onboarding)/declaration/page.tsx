@@ -1262,10 +1262,6 @@ export default function DeclarationPage() {
                 {selectedLicenses.length > 0 && (
                   <div className="space-y-4">
                     <div>
-                      <FormLabel className="text-sm font-bold text-black">
-                        Do you hold any of the following licenses?
-                        <span className="text-red-500 ml-1">*</span>
-                      </FormLabel>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                         {selectedLicenses.map((licenseValue) => {
                           const license = licenseOptions.find((l) => l.value === licenseValue);
