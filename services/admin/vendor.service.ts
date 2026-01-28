@@ -104,6 +104,7 @@ export interface GetVendorsResponse {
     total: number;
     page: number;
     pages: number;
+    pending_count?: number;
   };
 }
 

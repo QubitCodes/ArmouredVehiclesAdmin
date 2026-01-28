@@ -8,15 +8,16 @@ import { normalizeImageUrl } from "@/lib/utils";
 
 interface VendorTableProps {
   vendors: Vendor[];
+  emptyMessage?: string;
 }
 
-export function VendorTable({ vendors }: VendorTableProps) {
+export function VendorTable({ vendors, emptyMessage = "No vendors found." }: VendorTableProps) {
   const router = useRouter();
 
   if (vendors.length === 0) {
     return (
       <div className="border p-8 text-center text-muted-foreground">
-        No vendors found.
+        {emptyMessage}
       </div>
     );
   }

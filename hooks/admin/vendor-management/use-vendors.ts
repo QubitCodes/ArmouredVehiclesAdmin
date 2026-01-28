@@ -13,6 +13,7 @@ interface VendorsResponse {
     totalPages: number;
     total: number;
     limit: number;
+    pending_count?: number;
   };
 }
 
@@ -34,6 +35,7 @@ export function useVendors(params: GetVendorsParams = {}) {
           totalPages: misc?.pages ?? Math.ceil((misc?.total ?? vendors.length) / limit),
           total: misc?.total ?? vendors.length,
           limit,
+          pending_count: misc?.pending_count,
         },
       };
     },

@@ -34,6 +34,7 @@ function VendorsContent() {
     totalPages: 1,
     total: 0,
     limit: 10,
+    pending_count: 0
   };
 
   // Show error toast when query fails
@@ -44,6 +45,27 @@ function VendorsContent() {
     }
   }, [error]);
 
+  // Smart Filter Default Logic
+  // Check if there are any verification pending records.
+  // If so, filter by pending. Else, show all.
+  const hasFilter = searchParams.has("onboarding_status");
+  const pendingCount = data?.pagination?.pending_count;
+
+  useEffect(() => {
+    // Only run if not loading, no user-selected filter exists, and we have pending count data
+    if (!isLoading && !hasFilter && pendingCount !== undefined) {
+      const params = new URLSearchParams(searchParams.toString());
+      if (pendingCount > 0) {
+        params.set("onboarding_status", "pending_verification");
+      } else {
+        params.set("onboarding_status", "all");
+      }
+
+      // Use replace to avoid adding to history stack
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [isLoading, hasFilter, pendingCount, router, pathname, searchParams]);
+
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const params = new URLSearchParams(searchParams.toString());
@@ -53,6 +75,25 @@ function VendorsContent() {
     const queryString = params.toString();
     const url = queryString ? `${pathname}?${queryString}` : pathname;
     router.push(url, { scroll: false });
+  };
+
+  const getEmptyMessage = () => {
+    switch (onboardingStatus) {
+      case "pending_verification":
+        return "No pending verifications found.";
+      case "approved_general":
+        return "No approved (general) vendors found.";
+      case "approved_controlled":
+        return "No approved (controlled) vendors found.";
+      case "rejected":
+        return "No rejected vendors found.";
+      case "in_progress":
+        return "No vendors in progress found.";
+      case "not_started":
+        return "No not started vendors found.";
+      default:
+        return "No vendors found.";
+    }
   };
 
   return (
@@ -90,7 +131,7 @@ function VendorsContent() {
         </div>
       ) : (
         <>
-          <VendorTable vendors={vendors} />
+          <VendorTable vendors={vendors} emptyMessage={getEmptyMessage()} />
           <Pagination
             currentPage={pagination.page}
             totalPages={pagination.totalPages}
