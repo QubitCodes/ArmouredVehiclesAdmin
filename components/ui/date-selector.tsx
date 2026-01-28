@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Select } from "./select";
+import { Input } from "./input";
 import { cn } from "@/lib/utils";
 
 interface DateSelectorProps {
@@ -32,7 +33,6 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
     },
     ref
   ) => {
-    const days = Array.from({ length: 31 }, (_, i) => i + 1);
     const months = [
       "January",
       "February",
@@ -85,53 +85,68 @@ const DateSelector = React.forwardRef<HTMLDivElement, DateSelectorProps>(
         className={cn("flex gap-2", className)}
         {...props}
       >
-        <Select
+        <Input
+          type="number"
+          min={1}
+          max={31}
           placeholder={dayPlaceholder}
           value={value?.day?.toString() || ""}
-          onChange={(e) => handleDayChange(e.target.value)}
-          className={cn("flex-1", selectClassName)}
-        >
-          <option value="" disabled>
-            {dayPlaceholder}
-          </option>
-          {days.map((day) => (
-            <option key={day} value={day}>
-              {day}
-            </option>
-          ))}
-        </Select>
+          onChange={(e) => {
+            const val = e.target.value;
+            // Allow empty string to clear field
+            if (val === "") {
+              handleDayChange("");
+              return;
+            }
+            // Enforce limits strictly if needed, or just standard form validation
+            const num = parseInt(val);
+            if (!isNaN(num) && num >= 1 && num <= 31) {
+              handleDayChange(val);
+            } else if (!isNaN(num) && num > 31) {
+              handleDayChange(val);
+            }
+          }}
+          className={cn(
+            "flex-1 min-w-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            selectClassName
+          )}
+        />
 
-        <Select
-          placeholder={monthPlaceholder}
-          value={value?.month?.toString() || ""}
-          onChange={(e) => handleMonthChange(e.target.value)}
-          className={cn("flex-1", selectClassName)}
-        >
-          <option value="" disabled>
-            {monthPlaceholder}
-          </option>
-          {months.map((month, index) => (
-            <option key={index + 1} value={index + 1}>
-              {month}
+        <div className="flex-1 min-w-0">
+          <Select
+            placeholder={monthPlaceholder}
+            value={value?.month?.toString() || ""}
+            onChange={(e) => handleMonthChange(e.target.value)}
+            className={cn("w-full", selectClassName)}
+          >
+            <option value="" disabled>
+              {monthPlaceholder}
             </option>
-          ))}
-        </Select>
+            {months.map((month, index) => (
+              <option key={index + 1} value={index + 1}>
+                {month}
+              </option>
+            ))}
+          </Select>
+        </div>
 
-        <Select
-          placeholder={yearPlaceholder}
-          value={value?.year?.toString() || ""}
-          onChange={(e) => handleYearChange(e.target.value)}
-          className={cn("flex-1", selectClassName)}
-        >
-          <option value="" disabled>
-            {yearPlaceholder}
-          </option>
-          {years.map((year) => (
-            <option key={year} value={year}>
-              {year}
+        <div className="flex-1 min-w-0">
+          <Select
+            placeholder={yearPlaceholder}
+            value={value?.year?.toString() || ""}
+            onChange={(e) => handleYearChange(e.target.value)}
+            className={cn("w-full", selectClassName)}
+          >
+            <option value="" disabled>
+              {yearPlaceholder}
             </option>
-          ))}
-        </Select>
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
     );
   }

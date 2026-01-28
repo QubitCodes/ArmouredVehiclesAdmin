@@ -1,12 +1,14 @@
 "use client";
 
+import { vendorAuthService } from "@/services/vendor/auth.service";
+
 import { Suspense, useState, useMemo, useRef, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { ChevronDown, ArrowRight, Loader2, Search } from "lucide-react";
+import { ChevronDown, ArrowRight, Loader2, Search, ChevronLeft } from "lucide-react";
 import * as z from "zod";
 
 import {
@@ -19,11 +21,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useSetPhone } from "@/hooks/vendor/(auth)/use-set-phone";
-import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
+import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { COUNTRY_LIST } from "@/lib/countries";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
 
 const phoneSchema = z
   .object({
@@ -54,18 +56,29 @@ type PhoneFormValues = z.infer<typeof phoneSchema>;
 function AddPhoneContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const urlUserId = searchParams.get("userId") || "";
+  const urlEmail = searchParams.get("email"); // Get email passed from verify-email
 
-  // Determine if this is registration flow (has userId in URL) or verification flow
-  const isRegistrationFlow = !!urlUserId;
+  // Hook
+  const { linkPhone, verifyPhoneLink, loading: firebaseLoading } = useFirebaseAuth();
 
-  // Fetch profile for verification flow (when user is logged in but no userId in URL)
-  const { data: profileData, isLoading: isLoadingProfile } =
-    useOnboardingProfile(!isRegistrationFlow);
-  const profileUserId = profileData?.user?.id;
+  // State
+  const [stage, setStage] = useState<"input" | "verify">("input");
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const [recaptchaContainerId] = useState("recaptcha-container");
 
-  // Use userId from URL (registration flow) or profile (verification flow)
-  const userId = urlUserId || profileUserId || "";
+  // OTP State
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Recovery Data
+  const [savedData, setSavedData] = useState<any>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('vendor_reg_form');
+    if (saved) {
+      try { setSavedData(JSON.parse(saved)); } catch (e) { }
+    }
+  }, []);
 
   const form = useForm<PhoneFormValues>({
     resolver: zodResolver(phoneSchema),
@@ -77,60 +90,36 @@ function AddPhoneContent() {
     },
   });
 
-  const setPhoneMutation = useSetPhone();
-
-  // State for searchable country dropdown
+  // Country Dropdown State
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Watch ISO code for selected country
-  const watchedIsoCode = useWatch({
-    control: form.control,
-    name: "isoCode",
-  });
-
-  // Get selected country info
-  const selectedCountry = useMemo(() => {
-    return COUNTRY_LIST.find((c) => c.countryCode === watchedIsoCode);
-  }, [watchedIsoCode]);
-
-  // Filter countries based on search
+  // ... (Country Logic Same as Before)
+  const watchedIsoCode = useWatch({ control: form.control, name: "isoCode" });
+  const selectedCountry = useMemo(() => COUNTRY_LIST.find((c) => c.countryCode === watchedIsoCode), [watchedIsoCode]);
   const filteredCountries = useMemo(() => {
     if (!countrySearch) return COUNTRY_LIST;
     const term = countrySearch.toLowerCase();
-    return COUNTRY_LIST.filter(
-      (c) =>
-        c.name.toLowerCase().includes(term) ||
-        c.value.includes(term) ||
-        c.countryCode.toLowerCase().includes(term)
-    );
+    return COUNTRY_LIST.filter(c => c.name.toLowerCase().includes(term) || c.value.includes(term) || c.countryCode.toLowerCase().includes(term));
   }, [countrySearch]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCountryOpen(false);
         setCountrySearch("");
       }
     };
-
     if (isCountryOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       setTimeout(() => searchInputRef.current?.focus(), 0);
     }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isCountryOpen]);
 
-  // Handle country selection
+  // Handlers
   const handleCountrySelect = (country: (typeof COUNTRY_LIST)[0]) => {
     form.setValue("countryCode", country.value);
     form.setValue("isoCode", country.countryCode);
@@ -140,60 +129,106 @@ function AddPhoneContent() {
     setCountrySearch("");
   };
 
-  // Show loading state while fetching profile for verification flow
-  if (!urlUserId && isLoadingProfile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-medium px-4 py-8">
-        <Card className="w-full max-w-md md:max-w-xl p-0 bg-bg-light border-none shadow-lg">
-          <CardContent className="p-6 sm:p-8 md:p-10">
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div
-                className="inline-block h-8 w-8 animate-spin border-4 border-solid border-primary border-r-transparent"
-                style={{ borderRadius: "50%" }}
-              ></div>
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // 1. Send OTP
   const onSubmit = async (data: PhoneFormValues) => {
-    if (!userId) {
-      toast.error("User ID is missing. Please try again.");
+    try {
+      const dialCode = data.countryCode.replace('+', '');
+      const phoneDigits = data.phoneNumber.replace(/^0+/, '');
+      const phoneToUse = `+${dialCode}${phoneDigits}`;
+
+      // Check if phone exists (Backend check if possible, optional?) 
+      // Admin usually allows checking. Since we use Firebase, collision might happen if phone already linked.
+
+      const result = await linkPhone(phoneToUse, recaptchaContainerId);
+      setConfirmationResult(result);
+      setStage("verify");
+      toast.success("Security code sent!");
+
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to send code");
+    }
+  };
+
+
+
+  // 2. Verify OTP & Finalize Registration
+  const handleVerifyOtp = async () => {
+    const code = otp.join("");
+    if (code.length !== 6) {
+      toast.error("Please enter full code");
       return;
     }
 
+    if (!confirmationResult) return;
+
     try {
-      const response = await setPhoneMutation.mutateAsync({
-        userId,
-        phone: data.phoneNumber,
-        countryCode: data.countryCode,
-      });
+      // A. Verify with Firebase
+      const userCred = await verifyPhoneLink(confirmationResult, code);
+      const idToken = await userCred.user.getIdToken();
 
-      toast.success(response.message || "Phone number added successfully!");
+      let payload: any = {};
 
-      // Navigate to next step (e.g., verify phone or dashboard)
-      router.push(
-        `/vendor/verify-phone?userId=${encodeURIComponent(
-          userId
-        )}&phone=${encodeURIComponent(data.countryCode + data.phoneNumber)}`
-      );
-    } catch (error) {
-      console.log(error);
+      if (savedData) {
+        // Registration
+        payload = {
+          idToken,
+          name: savedData.name,
+          username: savedData.username,
+          email: savedData.email,
+          userType: 'vendor',
+          phone: form.getValues().phoneNumber,
+          countryCode: form.getValues().countryCode
+        };
+      } else {
+        // Probably just adding phone
+        payload = {
+          idToken,
+          phone: form.getValues().phoneNumber,
+          countryCode: form.getValues().countryCode,
+        };
+      }
 
-      const axiosError = error as AxiosError<{
-        message?: string;
-        error?: string;
-      }>;
-      const errorMessage =
-        axiosError?.response?.data?.error ||
-        axiosError?.response?.data?.message ||
-        axiosError?.message ||
-        "Failed to add phone number. Please try again.";
-      toast.error(errorMessage);
+      const response = await api.post("/auth/firebase/register", payload);
+      const { status, data, message } = response.data;
+
+      if (status && data) {
+        // Store Tokens
+        if (data.accessToken && data.refreshToken) {
+          vendorAuthService.setTokens(data.accessToken, data.refreshToken);
+        }
+        if (data.user) {
+          vendorAuthService.setUserDetails(data.user);
+        }
+
+        // Cleanup
+        localStorage.removeItem('vendor_reg_form');
+        toast.success("Account created successfully!");
+
+        // Redirect to Onboarding (Company Info)
+        router.push("/vendor/company-information");
+      } else {
+        throw new Error(message || "Registration failed");
+      }
+
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.message || error.message || "Verification failed");
     }
+  };
+
+  // OTP Helpers
+  const handleChange = (index: number, value: string) => {
+    if (value.length > 1) return;
+    if (value && !/^\d$/.test(value)) return;
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+  };
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) inputRefs.current[index - 1]?.focus();
+    if (e.key === "Enter") handleVerifyOtp();
   };
 
   return (
@@ -201,160 +236,173 @@ function AddPhoneContent() {
       <Card className="bg-bg-light border-0 gap-3 shadow-lg  px-10 py-8 w-full max-w-lg">
         <CardHeader className="pb-2 pt-0 px-0">
           <h1 className="text-xl sm:text-2xl font-bold text-black uppercase tracking-wide text-center font-heading">
-            ADD YOUR PHONE NUMBER
+            {stage === 'input' ? 'ADD YOUR PHONE NUMBER' : 'ENTER SECURITY CODE'}
           </h1>
           <p className="text-sm text-black/80 text-center mt-2">
-            We&apos;ll text a security code to your mobile phone to finish
-            setting up your account.
+            {stage === 'input'
+              ? "We'll text a security code to your mobile phone to finish setting up your account."
+              : "We sent a security code to your phone."
+            }
           </p>
         </CardHeader>
 
-        <CardContent className="px-0 pb-0">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="phoneNumber"
-                render={({ field }) => (
-                  <FormItem className="space-y-0">
-                    <FormControl>
-                      <div className="flex items-center border border-black/20 focus-within:border-black/40 transition-all bg-bg-light">
-                        {/* Country Code Selector */}
-                        <div
-                          ref={dropdownRef}
-                          className="relative flex items-center border-r border-black/20 bg-bg-light"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setIsCountryOpen(!isCountryOpen)}
-                            className="flex items-center gap-1 bg-bg-medium pl-3 pr-2 py-3 text-sm text-black focus:outline-none cursor-pointer h-12 min-w-[100px]"
-                          >
-                            <span>{selectedCountry?.flag}</span>
-                            <span>{selectedCountry?.value}</span>
-                            <ChevronDown
-                              className={cn(
-                                "h-4 w-4 text-black/50 transition-transform ml-1",
-                                isCountryOpen && "rotate-180"
-                              )}
-                            />
-                          </button>
+        <div id={recaptchaContainerId}></div>
 
-                          {/* Searchable Dropdown */}
-                          {isCountryOpen && (
-                            <div className="absolute top-[calc(100%+4px)] left-0 z-100 w-72 rounded-md border border-black/20 bg-white shadow-lg">
-                              {/* Search Input */}
-                              <div className="p-2 border-b border-black/10">
-                                <div className="relative">
-                                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-black/50" />
-                                  <input
-                                    ref={searchInputRef}
-                                    type="text"
-                                    value={countrySearch}
-                                    onChange={(e) =>
-                                      setCountrySearch(e.target.value)
-                                    }
-                                    placeholder="Search countries..."
-                                    className="w-full h-9 pl-8 pr-2 text-sm border border-black/20 rounded bg-white focus:outline-none focus:border-black/40"
-                                  />
-                                </div>
-                              </div>
-                              {/* Country List */}
-                              <div className="max-h-60 overflow-y-auto">
-                                {filteredCountries.length === 0 ? (
-                                  <div className="px-3 py-2 text-sm text-black/50 text-center">
-                                    No countries found
+        <CardContent className="px-0 pb-0">
+          {stage === 'input' ? (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+                {/* Existing Phone Input UI Code ... */}
+                <FormField
+                  control={form.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0">
+                      <FormControl>
+                        <div className="flex items-center border border-black/20 focus-within:border-black/40 transition-all bg-bg-light">
+                          {/* Country Code Selector */}
+                          <div
+                            ref={dropdownRef}
+                            className="relative flex items-center border-r border-black/20 bg-bg-light"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setIsCountryOpen(!isCountryOpen)}
+                              className="flex items-center gap-1 bg-bg-medium pl-3 pr-2 py-3 text-sm text-black focus:outline-none cursor-pointer h-12 min-w-[100px]"
+                            >
+                              <span>{selectedCountry?.flag}</span>
+                              <span>{selectedCountry?.value}</span>
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 text-black/50 transition-transform ml-1",
+                                  isCountryOpen && "rotate-180"
+                                )}
+                              />
+                            </button>
+
+                            {/* Searchable Dropdown */}
+                            {isCountryOpen && (
+                              <div className="absolute top-[calc(100%+4px)] left-0 z-10 w-72 rounded-md border border-black/20 bg-white shadow-lg">
+                                <div className="p-2 border-b border-black/10">
+                                  <div className="relative">
+                                    <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-black/50" />
+                                    <input
+                                      ref={searchInputRef}
+                                      type="text"
+                                      value={countrySearch}
+                                      onChange={(e) => setCountrySearch(e.target.value)}
+                                      placeholder="Search countries..."
+                                      className="w-full h-9 pl-8 pr-2 text-sm border border-black/20 rounded bg-white focus:outline-none focus:border-black/40"
+                                    />
                                   </div>
-                                ) : (
-                                  filteredCountries.map((country) => (
+                                </div>
+                                <div className="max-h-60 overflow-y-auto">
+                                  {filteredCountries.map((country) => (
                                     <button
                                       key={country.countryCode}
                                       type="button"
-                                      onClick={() =>
-                                        handleCountrySelect(country)
-                                      }
+                                      onClick={() => handleCountrySelect(country)}
                                       className={cn(
                                         "w-full px-3 py-2 text-sm text-left hover:bg-black/5 flex items-center gap-2 transition-colors",
-                                        selectedCountry?.countryCode ===
-                                          country.countryCode && "bg-black/5"
+                                        selectedCountry?.countryCode === country.countryCode && "bg-black/5"
                                       )}
                                     >
                                       <span>{country.flag}</span>
-                                      <span className="flex-1 truncate">
-                                        {country.name}
-                                      </span>
-                                      <span className="text-black/50">
-                                        {country.value}
-                                      </span>
+                                      <span className="flex-1 truncate">{country.name}</span>
+                                      <span className="text-black/50">{country.value}</span>
                                     </button>
-                                  ))
-                                )}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
+
+                          {/* Phone Number Input */}
+                          <Input
+                            type="tel"
+                            placeholder="Phone number"
+                            maxLength={15}
+                            className={cn(
+                              "border-0 focus:outline-none focus:ring-0 focus:border-0",
+                              "focus-visible:outline-none focus-visible:ring-0",
+                              "text-black placeholder:text-black/50 h-12 text-sm flex-1"
+                            )}
+                            {...field}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, "");
+                              field.onChange(value.slice(0, 15));
+                              form.trigger("phoneNumber");
+                            }}
+                          />
                         </div>
-
-                        {/* Phone Number Input */}
-                        <Input
-                          type="tel"
-                          placeholder="Phone number"
-                          maxLength={15}
-                          className={cn(
-                            "border-0 focus:outline-none focus:ring-0 focus:border-0",
-                            "focus-visible:outline-none focus-visible:ring-0",
-                            "text-black placeholder:text-black/50 h-12 text-sm flex-1"
-                          )}
-                          {...field}
-                          onChange={(e) => {
-                            // Only allow digits
-                            const value = e.target.value.replace(/\D/g, "");
-                            // Limit to max 15 digits (ITU-T E.164 standard)
-                            const limitedValue = value.slice(0, 15);
-                            field.onChange(limitedValue);
-                            // Trigger validation
-                            form.trigger("phoneNumber");
-                          }}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-red-600 text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              {/* Disclaimer Text */}
-              <p className="text-xs text-black/70 text-center mt-4">
-                By selecting Continue, you agree to receive a text message with
-                a security code. Standard rates may apply.
-              </p>
-
-              <div className="relative w-full mt-6">
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  disabled={setPhoneMutation.isPending}
-                  className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 relative overflow-visible"
-                  style={{
-                    clipPath:
-                      "polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%)",
-                  }}
-                >
-                  {setPhoneMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <span className="flex items-center justify-center gap-2">
-                        CONTINUE
-                        <ArrowRight className="w-5 h-5" />
-                      </span>
-                    </>
+                      </FormControl>
+                      <FormMessage className="text-red-600 text-xs" />
+                    </FormItem>
                   )}
+                />
+
+                <p className="text-xs text-black/70 text-center mt-4">
+                  By selecting Continue, you agree to receive a text message with
+                  a security code. Standard rates may apply.
+                </p>
+
+                <div className="relative w-full mt-6">
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    disabled={firebaseLoading}
+                    className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 relative overflow-visible"
+                    style={{ clipPath: "polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%)" }}
+                  >
+                    {firebaseLoading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">CONTINUE <ArrowRight className="w-5 h-5" /></span>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          ) : (
+            <div className="space-y-6">
+              {/* OTP UI */}
+              <div className="flex justify-center gap-3 my-6">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => { inputRefs.current[index] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold bg-bg-medium border border-black/20 focus:outline-none focus:border-black/50 transition-all"
+                  />
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={handleVerifyOtp}
+                  disabled={firebaseLoading}
+                  className="w-full font-bold uppercase tracking-wider py-6 text-sm"
+                  style={{ clipPath: "polygon(10px 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0% 50%)" }}
+                >
+                  {firebaseLoading ? "Verifying..." : "Verify & Create Account"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setStage("input")}
+                  disabled={firebaseLoading}
+                  className="w-full"
+                >
+                  Back
                 </Button>
               </div>
-            </form>
-          </Form>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -363,23 +411,7 @@ function AddPhoneContent() {
 
 export default function AddPhonePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-bg-medium px-8 py-8">
-          <Card className="bg-bg-light border-0 shadow-lg overflow-hidden px-10 py-8 w-full max-w-lg">
-            <CardContent className="p-0">
-              <div className="text-center">
-                <div
-                  className="inline-block h-8 w-8 animate-spin border-4 border-solid border-primary border-r-transparent"
-                  style={{ borderRadius: "50%" }}
-                ></div>
-                <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      }
-    >
+    <Suspense fallback={<div>Loading...</div>}>
       <AddPhoneContent />
     </Suspense>
   );

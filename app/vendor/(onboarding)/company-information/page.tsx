@@ -184,7 +184,7 @@ export default function CompanyInformationPage() {
 
       form.reset({
         countryOfRegistration: p.country_of_registration || "United Arab Emirates",
-        registeredCompanyName: p.registered_company_name || profileData.user?.name || "",
+        registeredCompanyName: p.registered_company_name || "",
         yearOfEstablishment: p.year_of_establishment ? String(p.year_of_establishment) : "",
         tradeBrandName: p.trade_brand_name || "",
         legalEntityId: p.legal_entity_id || "",
@@ -227,9 +227,6 @@ export default function CompanyInformationPage() {
         const dummyFile = new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" });
         form.setValue("vatCertificate", dummyFile);
       }
-    } else if (profileData?.user && !isProfileLoading && !form.getValues("registeredCompanyName")) {
-      // Fallback for just name if profile doesn't exist yet
-      form.setValue("registeredCompanyName", profileData.user.name);
     }
   }, [profileData, isProfileLoading, form]);
 
@@ -407,7 +404,7 @@ export default function CompanyInformationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left Column */}
                 <div className="space-y-6">
-                  {/* Registered Company Name - Read Only */}
+                  {/* Registered Company Name */}
                   <FormField
                     control={form.control}
                     name="registeredCompanyName"
@@ -421,10 +418,8 @@ export default function CompanyInformationPage() {
                         <FormControl>
                           <div className="relative">
                             <Input
-                              className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed text-gray-900 pr-10"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary pr-10"
                               {...field}
-                              readOnly
-                              disabled
                             />
                             {isProfileLoading && (
                               <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -662,7 +657,81 @@ export default function CompanyInformationPage() {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column - VAT Registration Certificate */}
+                  {/* Left Column - Tax/VAT Number and Dates */}
+                  <div className="space-y-6">
+                    {/* Tax / VAT Number */}
+                    <FormField
+                      control={form.control}
+                      name="taxVatNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                            Tax / VAT Number{" "}
+                            <span className="text-red-500">*</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="eg: 100123456700003"
+                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Dates Row - Issuing Date and Expiry Date */}
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Issuing Date */}
+                      <FormField
+                        control={form.control}
+                        name="taxIssueDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                              Issuing Date <span className="text-red-500">*</span>
+                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                            </FormLabel>
+                            <FormControl>
+                              <DateSelector
+                                value={field.value || {}}
+                                onChange={field.onChange}
+                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Expiry Date */}
+                      <FormField
+                        control={form.control}
+                        name="taxExpiryDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                              Expiry Date
+                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                            </FormLabel>
+                            <FormControl>
+                              <DateSelector
+                                value={field.value || {}}
+                                onChange={field.onChange}
+                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                                includeFutureYears={true}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column - VAT Registration Certificate */}
                   <FormField
                     control={form.control}
                     name="vatCertificate"
@@ -722,80 +791,6 @@ export default function CompanyInformationPage() {
                       </FormItem>
                     )}
                   />
-
-                  {/* Right Column - Tax/VAT Number and Dates */}
-                  <div className="space-y-6">
-                    {/* Tax / VAT Number */}
-                    <FormField
-                      control={form.control}
-                      name="taxVatNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Tax / VAT Number{" "}
-                            <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="eg: 100123456700003"
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Dates Row - Issuing Date and Expiry Date */}
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Issuing Date */}
-                      <FormField
-                        control={form.control}
-                        name="taxIssueDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                              Issuing Date <span className="text-red-500">*</span>
-                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                            </FormLabel>
-                            <FormControl>
-                              <DateSelector
-                                value={field.value || {}}
-                                onChange={field.onChange}
-                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Expiry Date */}
-                      <FormField
-                        control={form.control}
-                        name="taxExpiryDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                              Expiry Date
-                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                            </FormLabel>
-                            <FormControl>
-                              <DateSelector
-                                value={field.value || {}}
-                                onChange={field.onChange}
-                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                                includeFutureYears={true}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
             </form>

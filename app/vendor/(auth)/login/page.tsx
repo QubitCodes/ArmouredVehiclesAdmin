@@ -1,76 +1,219 @@
+
+
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { AxiosError } from "axios";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
-import * as z from "zod";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useLoginStart } from "@/hooks/admin/(auth)/use-login";
-import { ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import Link from "next/link";
+import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
+import api from "@/lib/api";
+import { vendorAuthService } from "@/services/vendor/auth.service";
 
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Please enter a valid email address"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-
-export default function VendorLoginPage() {
+function VendorLoginContent() {
   const router = useRouter();
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-    },
-  });
+  const searchParams = useSearchParams();
+  const [identifier, setIdentifier] = useState("");
+  const [stage, setStage] = useState<"start" | "verify" | "magic_link_sent">("start");
+  const [loading, setLoading] = useState(false);
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const loginMutation = useLoginStart();
+  // Firebase Hook
+  const { sendPhoneOtp, verifyPhoneOtp, sendMagicLink, verifyMagicLink, isMagicLink } = useFirebaseAuth();
+  const [confirmationResult, setConfirmationResult] = useState<any>(null); // Store Firebase confirmation result
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const isEmail = (value: string) => value.includes("@");
+
+  // Magic Link Verification Effect
+  useEffect(() => {
+    const checkMagicLink = async () => {
+      if (isMagicLink(window.location.href)) {
+        setLoading(true);
+        try {
+          // Try to get email from storage
+          let email = window.localStorage.getItem('emailForSignIn');
+          if (!email) {
+            email = window.prompt('Please provide your email for confirmation');
+          }
+          if (!email) {
+            setLoading(false);
+            return;
+          }
+
+          const credential = await verifyMagicLink(email);
+          const idToken = await credential.user.getIdToken();
+          await completeLogin(idToken);
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || "Failed to verify magic link");
+          setLoading(false);
+        }
+      }
+    };
+    checkMagicLink();
+  }, []);
+
+  // ... imports
+
+  // 1. Redirect Logic
+  const handleRedirect = (user: any) => {
+    // Check critical flags
+    // Adjust these based on your exact User model structure
+    if (user.email && !user.email_verified) {
+      router.push('/vendor/verify-email');
+      return;
+    }
+    if (!user.phone) {
+      router.push('/vendor/add-phone');
+      return;
+    }
+    // If phone exists but not verified? Usually backend won't save phone unless verified or we track it.
+    // Assuming if phone is present, it's verified or we trust it for now.
+
+    // Check Onboarding
+    // If vendor specific fields are missing
+    if (user.vendor_status === 'pending_onboarding' || !user.has_company_info) {
+      // Ideally backend sends a specific step or flag
+      router.push('/vendor/company-information');
+      return;
+    }
+
+    router.push("/vendor");
+  };
+
+  const completeLogin = async (idToken: string) => {
     try {
-      const response = await loginMutation.mutateAsync({
-        identifier: data.email,
-      });
+      const response = await api.post("/auth/firebase/verify", { idToken });
+      const { status, data, message } = response.data;
 
-      toast.success(
-        response.message || "OTP sent successfully! Please check your email."
-      );
+      if (status && data) {
+        if (data.accessToken && data.refreshToken) {
+          vendorAuthService.setTokens(data.accessToken, data.refreshToken);
+        } else if (data.token) {
+          vendorAuthService.setAccessToken(data.token);
+        }
 
-      // Navigate to OTP verification page with email parameter
-      router.push(
-        `/vendor/login/verify-email?email=${encodeURIComponent(data.email)}`
-      );
-    } catch (error) {
-      console.log(error);
+        if (data.user) {
+          vendorAuthService.setUserDetails(data.user);
+          toast.success("Login Successful!");
+          handleRedirect(data.user);
+        } else {
+          // Fallback
+          toast.success("Login Successful!");
+          router.push("/vendor");
+        }
+      } else {
+        throw new Error(message || "Login failed");
+      }
 
-      const axiosError = error as AxiosError<{
-        message?: string;
-        error?: string;
-      }>;
-      const errorMessage =
-        axiosError?.response?.data?.error ||
-        axiosError?.response?.data?.message ||
-        axiosError?.message ||
-        "Failed to send OTP. Please try again.";
-      toast.error(errorMessage);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || err.message || "Login failed on server");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleContinue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let input = identifier.trim();
+    if (!input) {
+      toast.error("Please enter your email or phone number.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // 1. Check if user exists & get formatted identifier
+      let cleanIdentifier = input;
+      try {
+        const checkRes = await api.post("/auth/user-exists", { identifier: input });
+        // Response structure: { status: true, data: { exists: true, identifier: "+971..." } }
+        // Or if 404, axios throws error (handled below) or returns status 404 depending on interceptor?
+        // Standard axios throws on 4xx.
+
+        if (checkRes.data?.data?.identifier) {
+          cleanIdentifier = checkRes.data.data.identifier;
+        }
+
+      } catch (e: any) {
+        if (e.response?.status === 404) {
+          toast.error("User not found. Please register first.");
+          router.push('/vendor/create-account');
+          return;
+        }
+        // If other error, proceed with input as is (maybe backend is down, let firebase try)
+        console.warn("User check failed, proceeding with raw input", e);
+      }
+
+      // 2. Trigger Firebase Auth
+      if (isEmail(cleanIdentifier)) {
+        await sendMagicLink(cleanIdentifier, window.location.href);
+        setStage("magic_link_sent");
+        toast.success(`Magic link sent to ${cleanIdentifier}.`);
+      } else {
+        // Phone: Use the clean, standardized identifier from backend
+        // This prevents format mismatch errors (e.g. 050 vs +97150)
+        const phoneToUse = cleanIdentifier.startsWith('+') ? cleanIdentifier : `+${cleanIdentifier.replace(/\D/g, '')}`;
+
+        const res = await sendPhoneOtp(phoneToUse, 'recaptcha-container');
+        setConfirmationResult(res);
+        setStage("verify");
+        toast.success("OTP Sent!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to start login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const code = otp.join("");
+    if (code.length !== 6) {
+      toast.error("Please enter the 6-digit OTP");
+      return;
+    }
+
+    if (!confirmationResult) {
+      toast.error("Session expired.");
+      setStage('start');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const credential = await verifyPhoneOtp(confirmationResult, code);
+      const idToken = await credential.user.getIdToken();
+      await completeLogin(idToken);
+    } catch (err: any) {
+      toast.error(err.message || "Invalid Code");
+      setLoading(false);
+    }
+  };
+
+  // OTP Helpers
+  const handleOtpChange = (index: number, value: string) => {
+    const val = value.replace(/[^0-9]/g, "").slice(0, 1);
+    const updated = [...otp];
+    updated[index] = val;
+    setOtp(updated);
+    if (val && index < 5) inputRefs.current[index + 1]?.focus();
+  };
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) inputRefs.current[index - 1]?.focus();
+  };
+
 
   return (
     <div
@@ -89,70 +232,110 @@ export default function VendorLoginPage() {
               Vendor Login
             </h1>
             <p className=" text-muted-foreground text-center">
-              Enter your details to get started
+              {stage === 'start' && "Enter your details to get started"}
+              {stage === 'verify' && "Enter the security code sent to your phone"}
+              {stage === 'magic_link_sent' && "Check your inbox"}
             </p>
           </CardHeader>
 
           <CardContent className="px-6 pb-6">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem className="space-y-1.5">
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="Email Address"
-                          className="bg-input border border-border focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-foreground placeholder:text-muted-foreground h-11 text-sm transition-all"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-600 text-xs" />
-                    </FormItem>
-                  )}
-                />
 
+            {/* Hidden Recaptcha */}
+            <div id="recaptcha-container"></div>
+
+            {stage === 'magic_link_sent' ? (
+              <div className="text-center space-y-4">
+                <div className="p-4 bg-green-50 text-green-700 rounded-md text-sm">
+                  We sent a login link to <strong>{identifier}</strong>.<br />
+                  Click the link in the email to sign in.
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setStage('start')}
+                  className="w-full"
+                >
+                  Back to Login
+                </Button>
+              </div>
+            ) : stage === 'verify' ? (
+              <div className="space-y-4">
+                <div className="flex justify-center gap-2">
+                  {otp.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => { inputRefs.current[index] = el; }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      className="w-12 h-12 border border-gray-400 text-center text-lg font-bold rounded-md bg-white text-black focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent transition-all"
+                    />
+                  ))}
+                </div>
+                <Button
+                  onClick={() => handleVerifyOtp()}
+                  disabled={loading}
+                  className="w-full font-bold uppercase py-3"
+                >
+                  {loading ? <Loader2 className="animate-spin mr-2" /> : null}
+                  {loading ? "Verifying..." : "Verify"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setStage('start')}
+                  className="w-full"
+                >
+                  Back
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleContinue} className="space-y-4">
+                <Input
+                  type="text"
+                  placeholder="Email or Phone (e.g. +971...)"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="h-11"
+                  autoFocus
+                />
                 <Button
                   type="submit"
-                  variant="secondary"
-                  disabled={loginMutation.isPending}
-                  className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full font-bold uppercase py-3"
+                  disabled={loading}
                 >
-                  {loginMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending OTP...
-                    </>
-                  ) : (
-                    <>
-                      Continue
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
+                  {loading ? <Loader2 className="animate-spin mr-2" /> : null}
+                  {loading ? "Checking..." : "Continue"}
                 </Button>
               </form>
-            </Form>
+            )}
 
             {/* Registration Link */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Don&apos;t have an account?{" "}
-                <Link
-                  href="/vendor/create-account"
-                  className="text-secondary font-semibold hover:text-secondary/80 underline-offset-2 hover:underline transition-colors"
-                >
-                  Register as Vendor
-                </Link>
-              </p>
-            </div>
+            {stage === 'start' && (
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Don&apos;t have an account?{" "}
+                  <Link
+                    href="/vendor/create-account"
+                    className="text-secondary font-semibold hover:text-secondary/80 underline-offset-2 hover:underline transition-colors"
+                  >
+                    Register as Vendor
+                  </Link>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function VendorLoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VendorLoginContent />
+    </Suspense>
   );
 }

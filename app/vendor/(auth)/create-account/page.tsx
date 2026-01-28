@@ -18,6 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useVendorRegistration } from "@/hooks/vendor/(auth)/use-vendor-registration";
+import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
+import api from "@/lib/api";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
@@ -51,36 +53,49 @@ export default function CreateSupplierAccountPage() {
 
   const registrationMutation = useVendorRegistration();
 
+  const { sendMagicLink, loading: firebaseLoading } = useFirebaseAuth();
+
   const onSubmit = async (data: RegistrationFormValues) => {
     try {
-      const response = await registrationMutation.mutateAsync({
+      // 1. Check if user exists
+      try {
+        const checkRes = await api.post("/auth/user-exists", { identifier: data.email });
+        if (checkRes.status === 200) {
+          toast.error("User with this email already exists. Please login.");
+          return;
+        }
+      } catch (e: any) {
+        // 404 means user not found (good), other errors are bad
+        if (e.response?.status !== 404) {
+          throw e;
+        }
+      }
+
+      // 2. Save form data for later recovery
+      const formData = {
         name: data.name,
         email: data.email,
         username: data.username,
-        userType: "vendor",
-      });
+        userType: "vendor"
+      };
+      localStorage.setItem('vendor_reg_form', JSON.stringify(formData));
 
-      toast.success(
-        response.message || "OTP sent successfully! Please check your email."
-      );
+      // 3. Send Magic Link
+      await sendMagicLink(data.email, `${window.location.origin}/vendor/verify-email`);
 
-      // Navigate to OTP verification page with email, username, and userId parameters
-      const userId = response.data?.userId || "";
-      router.push(
-        `/vendor/verify-email?email=${encodeURIComponent(data.email)}&username=${encodeURIComponent(data.username)}${userId ? `&userId=${encodeURIComponent(userId)}` : ""}`
-      );
+      toast.success("Magic Link sent! Please check your email.");
+
+      // 4. Redirect to verify-email
+      // Pass email in query param for better UX (though it handles local storage too)
+      router.push(`/vendor/verify-email?email=${encodeURIComponent(data.email)}`);
+
     } catch (error) {
-      console.log(error);
-
-      const axiosError = error as AxiosError<{
-        message?: string;
-        error?: string;
-      }>;
-      const errorMessage =
-        axiosError?.response?.data?.error ||
+      console.error(error);
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      const errorMessage = axiosError?.response?.data?.error ||
         axiosError?.response?.data?.message ||
         axiosError?.message ||
-        "Failed to send OTP. Please try again.";
+        "Failed to start registration.";
       toast.error(errorMessage);
     }
   };
@@ -118,12 +133,12 @@ export default function CreateSupplierAccountPage() {
                   render={({ field }) => (
                     <FormItem className="space-y-0">
                       <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="Enter Your Name"
-                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
-                            {...field}
-                          />
+                        <Input
+                          type="text"
+                          placeholder="Enter Your Name"
+                          className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage className="text-red-600 text-xs" />
                     </FormItem>
@@ -136,12 +151,12 @@ export default function CreateSupplierAccountPage() {
                   render={({ field }) => (
                     <FormItem className="space-y-0 mt-4">
                       <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="Email Address"
-                            className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
-                            {...field}
-                          />
+                        <Input
+                          type="email"
+                          placeholder="Email Address"
+                          className="border border-black/20 focus:border-blue-500/50 focus:ring-0 text-black placeholder:text-black/50 h-12 text-sm transition-all"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage className="text-red-600 text-xs" />
                     </FormItem>
