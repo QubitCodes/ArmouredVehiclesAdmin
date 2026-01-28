@@ -28,9 +28,14 @@ function AdminLoginContent() {
     const isEmail = (value: string) => value.includes("@");
 
     // Magic Link Verification Effect
+    const processingRef = useRef(false);
+
     useEffect(() => {
         const checkMagicLink = async () => {
+            if (processingRef.current) return;
+
             if (isMagicLink(window.location.href)) {
+                processingRef.current = true;
                 setLoading(true);
                 try {
                     // Try to get email from storage
@@ -40,6 +45,7 @@ function AdminLoginContent() {
                     }
                     if (!email) {
                         setLoading(false);
+                        processingRef.current = false; // Reset if cancelled so they can try again if they reload properly? Actually no, usually strict mode is instant.
                         return;
                     }
 
@@ -48,8 +54,15 @@ function AdminLoginContent() {
                     await completeLogin(idToken);
                 } catch (err: any) {
                     console.error(err);
-                    toast.error(err.message || "Failed to verify magic link");
+                    // If error is "invalid-action-code" (used), we shouldn't have prompted.
+                    // But since we prompt BEFORE verify, this is fine.
+
+                    if (err.code !== 'auth/invalid-action-code') {
+                        toast.error(err.message || "Failed to verify magic link");
+                    }
+
                     setLoading(false);
+                    // Don't reset processingRef here usually, as the link is consumed.
                 }
             }
         };
