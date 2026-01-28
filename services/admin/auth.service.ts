@@ -169,59 +169,6 @@ class AuthService {
 
     return false;
   }
-
-  /**
-   * Check if user exists (Firebase Flow)
-   */
-  async checkUser(identifier: string): Promise<{ exists: boolean; data?: any }> {
-    try {
-       // Using fetch directly to avoid circular dependency if api depends on authService
-       // But wait, api depends on authService for headers. 
-       // Login flows generally don't need auth headers (public endpoints).
-       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
-       const response = await fetch(`${baseUrl}/auth/user-exists`, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ identifier }),
-       });
-       
-       const data = await response.json();
-       if (response.status === 200) return { exists: true, data: data.data };
-       if (response.status === 404) return { exists: false };
-       throw new Error(data.message || 'Check user failed');
-    } catch (err) {
-        console.error('Check user error', err);
-        return { exists: false };
-    }
-  }
-
-  /**
-   * Verify Firebase Token and Login
-   */
-  async verifyFirebase(idToken: string): Promise<any> {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
-      const response = await fetch(`${baseUrl}/auth/firebase/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-      });
-
-      const res = await response.json();
-      if (!response.ok) {
-          throw new Error(res.message || 'Firebase verification failed');
-      }
-
-      // Unwrap data envelope (BaseController returns { data: ... })
-      const payload = res.data ?? res;
-
-      // Store tokens
-      if (payload.accessToken) {
-          this.setTokens(payload.accessToken, payload.refreshToken);
-          this.setUserDetails(payload.user);
-      }
-      
-      return payload;
-  }
 }
 
 export const authService = new AuthService();
