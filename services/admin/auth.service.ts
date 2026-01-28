@@ -169,6 +169,57 @@ class AuthService {
 
     return false;
   }
+  /**
+   * Check if user exists (backend)
+   */
+  async checkUserExists(identifier: string) {
+    // We use a clean axios call or the interceptor one? 
+    // Since we don't have a token, interceptor works fine (no token attached).
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
+    
+    // Using fetch to avoid circular dependency if I import 'api' here (since 'api' imports 'authService')
+    // Wait, 'api' imports 'authService'. If I import 'api' here, circular dependency.
+    // So I must use fetch or raw axios.
+    
+    const response = await fetch(`${baseUrl}/auth/user-exists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier })
+    });
+    
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to check user');
+    }
+    return data;
+  }
+
+  /**
+   * Login with Firebase ID Token
+   */
+  async loginWithFirebase(idToken: string) {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
+
+      const response = await fetch(`${baseUrl}/auth/firebase/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+          throw new Error(data.message || 'Login failed');
+      }
+
+      if (data.success && data.data) {
+          const { accessToken, refreshToken, user } = data.data;
+          this.setTokens(accessToken, refreshToken);
+          this.setUserDetails(user);
+      }
+      
+      return data;
+  }
 }
 
 export const authService = new AuthService();
