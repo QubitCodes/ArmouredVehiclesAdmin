@@ -776,7 +776,7 @@ export default function DeclarationPage() {
                                             onCheckedChange={(checked) => {
                                               return checked
                                                 ? field.onChange([
-                                                  ...field.value,
+                                                  ...(field.value || []),
                                                   option.value,
                                                 ])
                                                 : field.onChange(
@@ -904,7 +904,7 @@ export default function DeclarationPage() {
                                               onCheckedChange={(checked) => {
                                                 return checked
                                                   ? field.onChange([
-                                                    ...field.value,
+                                                    ...(field.value || []),
                                                     option.name,
                                                   ])
                                                   : field.onChange(
