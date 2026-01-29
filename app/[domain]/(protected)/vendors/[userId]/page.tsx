@@ -214,6 +214,8 @@ export default function VendorDetailPage() {
   const router = useRouter();
   const userId = params.userId as string;
 
+  // console.log('[DEBUG] VendorPage Render', { userId }); // Commented out to reduce noise, enable if needed
+
   const { data: vendor, isLoading, error } = useVendor(userId);
 
   // Handle 404 errors - Display error but don't redirect

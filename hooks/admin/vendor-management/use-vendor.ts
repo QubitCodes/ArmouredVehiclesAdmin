@@ -16,7 +16,10 @@ export function useVendor(userId: string, enabled: boolean = true) {
       return response;
     },
     enabled: !!userId && enabled,
-    retry: false, // Don't retry on error to prevent unnecessary requests
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 5 * 60 * 1000, // 5 mins
   });
 }
 
