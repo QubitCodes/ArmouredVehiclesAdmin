@@ -2,7 +2,7 @@
 import api from "@/lib/api";
 
 export interface UploadResponse {
-    success: boolean;
+    status: boolean;
     data: string[]; // Array of file paths
     message: string;
 }

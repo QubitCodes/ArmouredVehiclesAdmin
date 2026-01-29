@@ -75,7 +75,7 @@ export function AdDialog({ open, onOpenChange, item, onSuccess }: AdDialogProps)
 
             if (imageFile) {
                 const uploadRes = await uploadService.uploadFile(imageFile, 'FRONTEND_AD');
-                if (uploadRes.success && Array.isArray(uploadRes.data) && uploadRes.data.length > 0) {
+                if (uploadRes.status && Array.isArray(uploadRes.data) && uploadRes.data.length > 0) {
                     imageUrl = uploadRes.data[0];
                 } else {
                     throw new Error("Image upload failed");

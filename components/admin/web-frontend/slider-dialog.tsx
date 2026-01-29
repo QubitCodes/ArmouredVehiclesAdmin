@@ -80,7 +80,7 @@ export function SliderDialog({ open, onOpenChange, item, onSuccess }: SliderDial
 
             if (imageFile) {
                 const uploadRes = await uploadService.uploadFile(imageFile, 'FRONTEND_SLIDER');
-                if (uploadRes.success && Array.isArray(uploadRes.data) && uploadRes.data.length > 0) {
+                if (uploadRes.status && Array.isArray(uploadRes.data) && uploadRes.data.length > 0) {
                     imageUrl = uploadRes.data[0];
                 } else {
                     throw new Error("Image upload failed");
