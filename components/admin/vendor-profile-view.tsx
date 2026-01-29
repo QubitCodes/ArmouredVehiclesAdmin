@@ -516,7 +516,6 @@ export function VendorProfileView({ user, profile }: VendorProfileViewProps) {
                             {renderField("end_use_markets")}
                             {renderField("operating_countries")}
                             {renderField("business_license_url", "Business License")}
-                            {renderField("company_profile_url", "Company Profile")}
                         </div>
                     </CardContent>
                 </Card>
