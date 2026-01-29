@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { FrontendSlider, webFrontendService } from "@/services/admin/web-frontend.service";
+import { uploadService } from "@/services/admin/upload.service";
 import { Loader2, Upload } from "lucide-react";
 import Image from "next/image";
 
@@ -75,25 +76,49 @@ export function SliderDialog({ open, onOpenChange, item, onSuccess }: SliderDial
         setLoading(true);
 
         try {
-            const data = new FormData();
-            if (imageFile) data.append("files", imageFile);
-            data.append("title", formData.title);
-            data.append("subtitle", formData.subtitle);
-            data.append("link", formData.link);
-            data.append("button_text", formData.button_text);
-            data.append("sort_order", formData.sort_order.toString());
-            data.append("is_active", formData.is_active.toString());
-            if (formData.valid_till) {
-                // Adjust for ISO string requirement possibly
-                data.append("valid_till", new Date(formData.valid_till).toISOString());
+            let imageUrl = item?.image_url;
+
+            if (imageFile) {
+                const uploadRes = await uploadService.uploadFile(imageFile, 'FRONTEND_SLIDER');
+                if (uploadRes.success && uploadRes.data?.url) {
+                    imageUrl = uploadRes.data.url; // Use the returned URL (or path if backend requires path, but Controller handles URL usually?)
+                    // Controller logic: if body.image_url is present, it uses it.
+                    // UploadHandler usually returns relative path or full URL? 
+                    // Let's check formatGetUrl. 
+                    // Controller: `imagePath = body.image_url`. 
+                    // UploadHandler returns `data` object. UploadController returns `result.data`.
+                    // UploadHandler `result.data` usually contains `url` (formatted) and `path` (relative).
+                    // If we save `url` to DB, it might be absolute.
+                    // If we save `path` to DB, getFileUrl handles it.
+                    // Best practice: Save relative path if possible, but UploadHandler might return full URL.
+                    // Let's use `path` if available, else `url`.
+                    // Looking at UploadResponse interface above: `url`, `path`.
+                    imageUrl = uploadRes.data.path || uploadRes.data.url;
+                } else {
+                    throw new Error("Image upload failed");
+                }
             }
 
+            if (!imageUrl) {
+                throw new Error("Image is required");
+            }
+
+            const payload = {
+                title: formData.title,
+                subtitle: formData.subtitle,
+                link: formData.link,
+                button_text: formData.button_text,
+                sort_order: formData.sort_order,
+                is_active: formData.is_active,
+                valid_till: formData.valid_till ? new Date(formData.valid_till).toISOString() : null,
+                image_url: imageUrl
+            };
+
             if (item) {
-                await webFrontendService.updateSlider(item.id, data);
+                await webFrontendService.updateSlider(item.id, payload);
                 toast.success("Slider updated");
             } else {
-                if (!imageFile) throw new Error("Image is required");
-                await webFrontendService.createSlider(data);
+                await webFrontendService.createSlider(payload);
                 toast.success("Slider created");
             }
             onSuccess();

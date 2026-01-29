@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FrontendAd, webFrontendService } from "@/services/admin/web-frontend.service";
+import { uploadService } from "@/services/admin/upload.service";
 import { Loader2, Upload } from "lucide-react";
 import Image from "next/image";
 
@@ -70,22 +71,38 @@ export function AdDialog({ open, onOpenChange, item, onSuccess }: AdDialogProps)
         setLoading(true);
 
         try {
-            const data = new FormData();
-            if (imageFile) data.append("files", imageFile);
-            data.append("location", formData.location);
-            data.append("title", formData.title);
-            data.append("link", formData.link);
-            data.append("is_active", formData.is_active.toString());
-            if (formData.valid_till) {
-                data.append("valid_till", new Date(formData.valid_till).toISOString());
+            let imageUrl = item?.image_url;
+
+            if (imageFile) {
+                const uploadRes = await uploadService.uploadFile(imageFile, 'FRONTEND_AD');
+                if (uploadRes.success && uploadRes.data?.url) {
+                    imageUrl = uploadRes.data.path || uploadRes.data.url;
+                } else {
+                    throw new Error("Image upload failed");
+                }
             }
 
+            if (!imageUrl && !formData.title) {
+                throw new Error("Image or Title is required");
+            }
+            // For Ads, image might be optional if title link? But usually required. 
+            // Existing logic said "Image or Title is required".
+            // If image is uploaded or existing, we use it.
+
+            const payload = {
+                location: formData.location,
+                title: formData.title,
+                link: formData.link,
+                is_active: formData.is_active,
+                valid_till: formData.valid_till ? new Date(formData.valid_till).toISOString() : null,
+                image_url: imageUrl
+            };
+
             if (item) {
-                await webFrontendService.updateAd(item.id, data);
+                await webFrontendService.updateAd(item.id, payload);
                 toast.success("Ad updated");
             } else {
-                if (!imageFile && !formData.title) throw new Error("Image or Title is required");
-                await webFrontendService.createAd(data);
+                await webFrontendService.createAd(payload);
                 toast.success("Ad created");
             }
             onSuccess();

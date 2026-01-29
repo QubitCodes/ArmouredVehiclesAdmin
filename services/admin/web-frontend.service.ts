@@ -30,48 +30,39 @@ export const webFrontendService = {
         return res.data.data;
     },
 
-    createSlider: async (data: FormData) => {
-        const res = await api.post('/admin/web-frontend/sliders', data, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return res.data;
+    async createSlider(data: any) {
+        const response = await api.post<FrontendSlider>('/admin/web-frontend/sliders', data);
+        return response.data;
     },
 
-    updateSlider: async (id: string, data: FormData) => {
-        const res = await api.put(`/admin/web-frontend/sliders/${id}`, data, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return res.data;
+    async updateSlider(id: string, data: any) {
+        const response = await api.patch<FrontendSlider>(`/admin/web-frontend/sliders/${id}`, data);
+        return response.data;
     },
 
-    deleteSlider: async (id: string) => {
-        const res = await api.delete(`/admin/web-frontend/sliders/${id}`);
-        return res.data;
+    async deleteSlider(id: string) {
+        const response = await api.delete(`/admin/web-frontend/sliders/${id}`);
+        return response.data;
     },
 
     // Ads
-    getAds: async (location?: string) => {
-        const url = location ? `/admin/web-frontend/ads?location=${location}` : '/admin/web-frontend/ads';
-        const res = await api.get(url);
-        return res.data.data;
+    async getAds(params: { location?: string } = {}) {
+        const response = await api.get<FrontendAd[]>('/admin/web-frontend/ads', { params });
+        return response.data;
     },
 
-    createAd: async (data: FormData) => {
-        const res = await api.post('/admin/web-frontend/ads', data, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return res.data;
+    async createAd(data: any) {
+        const response = await api.post<FrontendAd>('/admin/web-frontend/ads', data);
+        return response.data;
     },
 
-    updateAd: async (id: string, data: FormData) => {
-        const res = await api.put(`/admin/web-frontend/ads/${id}`, data, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return res.data;
+    async updateAd(id: string, data: any) {
+        const response = await api.patch<FrontendAd>(`/admin/web-frontend/ads/${id}`, data);
+        return response.data;
     },
 
-    deleteAd: async (id: string) => {
-        const res = await api.delete(`/admin/web-frontend/ads/${id}`);
-        return res.data;
+    async deleteAd(id: string) {
+        const response = await api.delete(`/admin/web-frontend/ads/${id}`);
+        return response.data;
     }
 };
