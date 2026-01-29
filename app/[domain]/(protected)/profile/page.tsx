@@ -22,6 +22,7 @@ export default function ProfilePage() {
         // Determine auth service and get user details
         const currentAuthService = domain === "vendor" ? vendorAuthService : authService;
         const user = currentAuthService.getUserDetails();
+        console.log('[DEBUG] ProfilePage useEffect', { domain, user });
         if (user) {
             setUserId(user.id);
             setUserRole(user.userType || (domain === 'vendor' ? 'vendor' : 'admin'));
@@ -34,46 +35,35 @@ export default function ProfilePage() {
         queryFn: async () => {
             if (!userId) return null;
 
+            console.log('[DEBUG] Fetching profile', { userId, userRole });
             if (userRole === "vendor") {
                 const response = await vendorService.getVendorByUserId(userId);
                 return response; // Vendor object
             } else {
                 // Admin
                 const response = await adminService.getAdmin(userId);
-                return response.data; // Admin response wrapped in { success, data } usually? Check service.
-                // adminService.getAdmin returns response.data which is { success, data: {...} }.
-                // Wait, adminService.getAdmin impl:
-                // const response = await api.get(...)
-                // return response.data;
-                // API response is { success: true, data: user }.
-                // So this returns the wrapper.
+                console.log('[DEBUG] Admin Response', response);
+                // adminService.getAdmin returns { success, data: {...} }
+                return response.data; // This is the actual Admin object if success is true? No, wait.
+                // If API returns { success: true, data: { ... } }, 
+                // adminService returns response.data (the wrapper).
+                // So here we return response.data.data?
+                // Let's check logic below.
             }
         },
         enabled: !!userId && !!userRole,
         retry: false,
     });
 
-    // Normalize user data from the different API responses
-    // Vendor API returns the Vendor object directly (or nested?)
-    // Admin API returns { success, data }.
-    // Let's inspect `adminService.getAdmin`.
-    // It fetches `/admin/admins/:id`.
-    // Controller returns { success: true, data: { ...attributes } }.
-    // So `response.data` in `useQuery` (from `adminService.getAdmin`) is the `{ success, data }` object.
-    // We need `response.data.data`.
-
-    // Checking `vendorService.getVendorByUserId`:
-    // Likely returns `Vendor` object directly or `response.data`.
-    // `useVendor` hook uses it directly as `Vendor`.
-    // Let's assume normalize logic needed.
-
     const userData = userRole === 'vendor'
         ? user
-        : (user as any)?.data;
+        : (user as any)?.data || (user as any); // Fallback if structure is different
 
     const userProfile = userRole === 'vendor'
         ? (userData?.userProfile || userData?.profile)
         : null; // Admins don't have userProfile usually
+
+    console.log('[DEBUG] ProfilePage Render', { userId, userRole, userData, error, isLoading });
 
     if (isLoading) {
         return (
@@ -88,7 +78,12 @@ export default function ProfilePage() {
         );
     }
 
-    if (!userData && !isLoading && userId) {
+    // Check if we have userData. 
+    // Note: if userRole is admin, userData might be the wrapper if logic above is wrong.
+    // But purely checking truthiness:
+    const hasData = !!userData;
+
+    if (!hasData && !isLoading && userId) {
         return (
             <div className="flex w-full flex-col gap-4 p-6">
                 <Card>
@@ -96,9 +91,22 @@ export default function ProfilePage() {
                         <div className="rounded-full bg-muted p-4">
                             <Info className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 items-center">
                             <span className="text-xl font-semibold">Profile Not Found</span>
                             <span className="text-muted-foreground">Could not load your profile information.</span>
+                            {error && (
+                                <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md text-sm font-mono text-left max-w-lg overflow-auto">
+                                    <strong>Error:</strong> {error instanceof Error ? error.message : String(error)}
+                                    {(error as any)?.response?.data?.message && (
+                                        <div className="mt-1">
+                                            Server Message: {(error as any).response.data.message}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-4 font-mono p-1 bg-muted rounded">
+                                Debug: ID={userId} | Role={userRole} | Data={String(!!userData)}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
