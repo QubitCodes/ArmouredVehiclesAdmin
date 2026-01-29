@@ -47,8 +47,8 @@ export const webFrontendService = {
 
     // Ads
     async getAds(params: { location?: string } = {}) {
-        const response = await api.get<FrontendAd[]>('/admin/web-frontend/ads', { params });
-        return response.data;
+        const response = await api.get<any>('/admin/web-frontend/ads', { params });
+        return response.data.data;
     },
 
     async createAd(data: any) {
