@@ -7,8 +7,8 @@ export function useVendorActions(userId: string) {
   const queryClient = useQueryClient();
 
   const updateOnboardingStatusMutation = useMutation({
-    mutationFn: ({ status, note }: { status: string; note?: string }) =>
-      vendorService.updateOnboardingStatus(userId, status, note),
+    mutationFn: ({ status, note, fieldsToClear }: { status: string; note?: string; fieldsToClear?: string[] }) =>
+      vendorService.updateOnboardingStatus(userId, status, note, fieldsToClear),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["vendor", userId] });
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
@@ -36,8 +36,8 @@ export function useVendorActions(userId: string) {
     approveVendor: (data: { status: string; note?: string }) =>
       updateOnboardingStatusMutation.mutateAsync(data),
     isApproving: updateOnboardingStatusMutation.isPending,
-    rejectVendor: (note: string) =>
-      updateOnboardingStatusMutation.mutateAsync({ status: "rejected", note }),
+    rejectVendor: (note: string, fieldsToClear?: string[]) =>
+      updateOnboardingStatusMutation.mutateAsync({ status: "rejected", note, fieldsToClear }),
     isRejecting: updateOnboardingStatusMutation.isPending,
   };
 }

@@ -150,11 +150,12 @@ class VendorService {
   /**
    * Update vendor onboarding status (approve or reject)
    */
-  async updateOnboardingStatus(userId: string, status: string, note?: string) {
+  async updateOnboardingStatus(userId: string, status: string, note?: string, fieldsToClear?: string[]) {
     try {
       const response = await api.put(`/admin/vendors/${userId}/onboarding`, {
         status,
         note: note || "",
+        fields_to_clear: fieldsToClear || [],
       });
       return response.data;
     } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
@@ -34,6 +34,27 @@ export default function VendorDetailPage() {
   const userId = params.userId as string;
 
   const { data: vendor, isLoading, error } = useVendor(userId);
+
+  // Marked fields for removal state
+  const [markedFields, setMarkedFields] = useState<Set<string>>(new Set());
+  const [canPerformActions, setCanPerformActions] = useState(false);
+
+  useEffect(() => {
+    const perm = authService.hasPermission("vendor.approve") || authService.hasPermission("vendor.controlled.approve");
+    setCanPerformActions(perm);
+  }, []);
+
+  const toggleMarkField = (field: string) => {
+    setMarkedFields(prev => {
+      const next = new Set(prev);
+      if (next.has(field)) {
+        next.delete(field);
+      } else {
+        next.add(field);
+      }
+      return next;
+    });
+  };
 
   console.log('[DEBUG] VendorPage Render', { userId, isLoading, hasVendor: !!vendor, error: error?.message });
 
@@ -100,10 +121,16 @@ export default function VendorDetailPage() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <VendorProfileView user={vendor} profile={vendorProfileData} />
+      <VendorProfileView
+        user={vendor}
+        profile={vendorProfileData}
+        markedFields={markedFields}
+        toggleMarkField={toggleMarkField}
+        canPerformActions={canPerformActions}
+      />
 
       {/* Admin Actions */}
-      <VendorApprovalActions vendor={vendor} />
+      <VendorApprovalActions vendor={vendor} markedFields={markedFields} />
       <VendorActions vendor={vendor} />
     </div>
   );
@@ -155,7 +182,6 @@ function VendorActions({ vendor }: { vendor: any }) {
             onChange={(e) => setSelectedAction(e.target.value)}
             className="font-semibold"
           >
-
             {vendor.is_active ? (
               <option value="suspend">Suspend Account</option>
             ) : (
@@ -228,7 +254,7 @@ function VendorActions({ vendor }: { vendor: any }) {
   );
 }
 
-function VendorApprovalActions({ vendor }: { vendor: any }) {
+function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFields?: Set<string> }) {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [comment, setComment] = useState("");
   const [canApproveControlled, setCanApproveControlled] = useState(false);
@@ -238,6 +264,18 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
     setCanApproveControlled(hasPermission);
     // No pre-selection logic
   }, [vendor]);
+
+  // Force rejection if fields are marked
+  const hasMarkedFields = markedFields && markedFields.size > 0;
+
+  useEffect(() => {
+    if (hasMarkedFields) {
+      if (selectedStatus !== "rejected" && selectedStatus !== "") {
+        toast.warning("You must reject the vendor when fields are marked for deletion.");
+        setSelectedStatus("rejected");
+      }
+    }
+  }, [hasMarkedFields, selectedStatus]);
 
   const { approveVendor, isApproving, rejectVendor, isRejecting } =
     useVendorActions(vendor.id);
@@ -249,9 +287,13 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
         return;
       }
       try {
-        await rejectVendor(comment);
+        await rejectVendor(comment, hasMarkedFields ? Array.from(markedFields!) : undefined);
         setSelectedStatus("");
         setComment("");
+        // Reset marked fields? Need to lift this reset up via prop or context if desired, 
+        // but typically page reload or re-render after mutation will handle it (since data changes).
+        // Also good UX to clear them.
+        // We can't clear them here easily without a callback. It's fine for now, they will persist until refresh or success which invalidates query.
       } catch (e) {
         // Error handled in hook
       }
@@ -282,11 +324,15 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
             onChange={(e) => setSelectedStatus(e.target.value)}
             className="font-semibold"
           >
+            {/* If fields are marked, only show Rejected option (or disable others) */}
 
-            {canApproveControlled && (
+            {(canApproveControlled && !hasMarkedFields) && (
               <option value="approved_controlled">Approved Controlled</option>
             )}
-            <option value="approved_general">Approved General</option>
+            {!hasMarkedFields && (
+              <option value="approved_general">Approved General</option>
+            )}
+
             <option value="rejected">Rejected</option>
           </Select>
         </div>
@@ -320,6 +366,12 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
                     : ""
                 )}
               />
+              {hasMarkedFields && selectedStatus === "rejected" && (
+                <p className="text-sm text-destructive font-medium flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  {markedFields!.size} field(s) marked for clearing will be removed upon rejection.
+                </p>
+              )}
             </div>
             <div className="flex gap-4">
               <Button
