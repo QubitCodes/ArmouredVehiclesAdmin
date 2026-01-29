@@ -39,14 +39,11 @@ export default function CustomerDetailPage() {
         if (error) {
             const axiosError = error as AxiosError<{ message?: string }>;
             console.error("Customer Fetch Error:", axiosError);
-            if (axiosError?.response?.status === 404) {
-                toast.error("Customer not found");
-                router.replace("/admin/customers");
-            } else {
+            if (axiosError?.response?.status !== 404) {
                 toast.error("Failed to fetch customer details");
             }
         }
-    }, [error, router]);
+    }, [error]);
 
     const handleTabChange = (tab: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -67,7 +64,25 @@ export default function CustomerDetailPage() {
         );
     }
 
-    if (!customer) return null;
+    if (!customer) {
+        return (
+            <div className="flex w-full flex-col gap-4">
+                <Button
+                    variant="outline"
+                    onClick={() => router.push("/admin/customers")}
+                    className="w-fit"
+                >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                </Button>
+                <Card>
+                    <CardContent className="p-8 text-center text-muted-foreground">
+                        Customer not found.
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen w-full flex-col gap-6 ">

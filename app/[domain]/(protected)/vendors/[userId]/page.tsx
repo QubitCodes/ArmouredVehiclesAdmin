@@ -216,25 +216,23 @@ export default function VendorDetailPage() {
 
   const { data: vendor, isLoading, error } = useVendor(userId);
 
-  // Handle 404 errors - redirect to listing page if vendor doesn't exist
+  // Handle 404 errors - Display error but don't redirect
   useEffect(() => {
     if (error) {
       const axiosError = error as AxiosError<{
         message?: string;
         error?: string;
       }>;
-      if (axiosError?.response?.status === 404) {
-        // Vendor doesn't exist, redirect to listing page
-        router.replace("/admin/vendors");
-        return;
+      // If 404, we let the UI handle the "Not Found" display
+      if (axiosError?.response?.status !== 404) {
+        const errorMessage =
+          axiosError?.response?.data?.message ||
+          axiosError?.message ||
+          "Failed to fetch vendor";
+        toast.error(errorMessage);
       }
-      const errorMessage =
-        axiosError?.response?.data?.message ||
-        axiosError?.message ||
-        "Failed to fetch vendor";
-      toast.error(errorMessage);
     }
-  }, [error, router]);
+  }, [error]);
 
   if (isLoading) {
     return (
