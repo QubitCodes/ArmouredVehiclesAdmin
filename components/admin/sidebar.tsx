@@ -211,21 +211,27 @@ export function Sidebar() {
 
       {/* Mini Profile Card & Logout */}
       <div className="border-t border-primary/20 p-4">
-        <div className="flex items-center gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10 transition-colors">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-            <Users className="h-5 w-5" />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <span className="truncate text-sm font-medium text-primary-foreground">
-              {userDetails?.name || defaultUserLabel}
-            </span>
-            <span className="truncate text-xs text-primary-foreground/70">
-              {userDetails?.email || defaultUserEmail}
-            </span>
-            <span className="truncate text-[10px] uppercase text-primary-foreground/50 tracking-wider">
-              {(userDetails?.userType || defaultUserRole).replace(/_/g, " ")}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 rounded-lg bg-white/5 p-2 pr-3">
+          <Link
+            href={`/${domain}/profile`}
+            className="flex flex-1 items-center gap-3 rounded-md p-1 hover:bg-white/10 transition-colors min-w-0 group"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground group-hover:scale-105 transition-transform">
+              <Users className="h-5 w-5" />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <span className="truncate text-sm font-medium text-primary-foreground">
+                {userDetails?.name || defaultUserLabel}
+              </span>
+              <span className="truncate text-xs text-primary-foreground/70">
+                {userDetails?.email || defaultUserEmail}
+              </span>
+              <span className="truncate text-[10px] uppercase text-primary-foreground/50 tracking-wider">
+                {(userDetails?.userType || defaultUserRole).replace(/_/g, " ")}
+              </span>
+            </div>
+          </Link>
+
           <button
             onClick={handleLogoutClick}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary-foreground/70 hover:bg-white/20 hover:text-white transition-colors"

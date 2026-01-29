@@ -75,6 +75,19 @@ class AdminService {
   }
 
   /**
+   * Get a single admin
+   */
+  async getAdmin(id: string) {
+    try {
+      const response = await api.get(`/admin/admins/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching admin:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a new admin
    */
   async createAdmin(data: CreateAdminRequest) {
