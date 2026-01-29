@@ -349,8 +349,8 @@ export function VendorProfileView({ user, profile }: VendorProfileViewProps) {
                             <p className="text-foreground mt-2">
                                 <span
                                     className={`text-sm font-medium ${user.is_active
-                                            ? "text-green-600 dark:text-green-500"
-                                            : "text-orange-600 dark:text-orange-500"
+                                        ? "text-green-600 dark:text-green-500"
+                                        : "text-orange-600 dark:text-orange-500"
                                         }`}
                                 >
                                     {user.is_active ? "Active" : "Inactive"}
@@ -375,13 +375,13 @@ export function VendorProfileView({ user, profile }: VendorProfileViewProps) {
                                     <p className="text-foreground mt-2">
                                         <span
                                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide ${profile?.onboarding_status === "approved_controlled" ||
-                                                    profile?.onboarding_status === "approved_general"
-                                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                                    : profile?.onboarding_status === "under_review"
-                                                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                                        : profile?.onboarding_status === "rejected"
-                                                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                                            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                                                profile?.onboarding_status === "approved_general"
+                                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                : profile?.onboarding_status === "under_review"
+                                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                                    : profile?.onboarding_status === "rejected"
+                                                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
                                                 }`}
                                         >
                                             {profile?.onboarding_status === "approved_controlled" && (
@@ -419,22 +419,23 @@ export function VendorProfileView({ user, profile }: VendorProfileViewProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {renderField("company_name")}
-                            {renderField("company_email")}
+                            {renderField("registered_company_name", "Company Name")}
+                            {renderField("contact_full_name", "Contact Person Name")}
+                            {renderField("contact_work_email", "Company Email")}
                             <div>
                                 <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                                     Company Phone
                                 </label>
                                 <div className="text-foreground mt-2">
-                                    {profile?.company_phone ? (
+                                    {profile?.contact_mobile ? (
                                         <a
-                                            href={`tel:${profile.company_phone as string}`}
+                                            href={`tel:${profile.contact_mobile as string}`}
                                             className="text-primary hover:underline flex items-center gap-2"
                                         >
                                             <Phone className="h-4 w-4" />
-                                            {(profile.company_phone_country_code as string) ||
+                                            {(profile.contact_mobile_country_code as string) ||
                                                 ""}{" "}
-                                            {profile.company_phone as string}
+                                            {profile.contact_mobile as string}
                                         </a>
                                     ) : (
                                         "—"
@@ -442,7 +443,6 @@ export function VendorProfileView({ user, profile }: VendorProfileViewProps) {
                                 </div>
                             </div>
                             {renderField("country_of_registration")}
-                            {renderField("registered_company_name")}
                             {renderField("trade_brand_name")}
                             {renderField("year_of_establishment")}
                             {renderField("entity_type")}
