@@ -18,6 +18,7 @@ import {
   FileCheck,
   Phone,
   Globe,
+  Info,
   Briefcase,
   MapPin,
   Hash,
@@ -214,9 +215,9 @@ export default function VendorDetailPage() {
   const router = useRouter();
   const userId = params.userId as string;
 
-  // console.log('[DEBUG] VendorPage Render', { userId }); // Commented out to reduce noise, enable if needed
-
   const { data: vendor, isLoading, error } = useVendor(userId);
+
+  console.log('[DEBUG] VendorPage Render', { userId, isLoading, hasVendor: !!vendor, error: error?.message });
 
   // Handle 404 errors - Display error but don't redirect
   useEffect(() => {
@@ -242,27 +243,34 @@ export default function VendorDetailPage() {
         <div className="flex flex-col items-center gap-4">
           <Spinner size="3xl" className="text-primary" />
           <p className="text-sm font-medium text-muted-foreground">
-            Loading vendor details...
+            Checking vendor status...
           </p>
         </div>
       </div>
     );
   }
 
-  if (!vendor) {
+  if (!vendor || error) {
     return (
-      <div className="flex w-full flex-col gap-4">
+      <div className="flex w-full flex-col gap-4 p-6">
         <Button
           variant="outline"
-          onClick={() => router.back()}
+          onClick={() => router.push("/admin/vendors")}
           className="w-fit"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Vendor not found.
+          <CardContent className="p-12 text-center flex flex-col items-center gap-4">
+            <div className="rounded-full bg-muted p-4">
+              <Info className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xl font-semibold">Vendor Not Found</span>
+              <span className="text-muted-foreground">The requested vendor could not be found or you do not have permission to access it.</span>
+            </div>
+            {error && <div className="mt-2 rounded bg-destructive/10 p-2 text-xs text-destructive font-mono">{(error as any).message || String(error)}</div>}
           </CardContent>
         </Card>
       </div>
