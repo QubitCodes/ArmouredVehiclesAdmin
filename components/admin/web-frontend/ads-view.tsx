@@ -32,7 +32,7 @@ export function AdsView() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const items = await webFrontendService.getAds(filterLocation);
+            const items = await webFrontendService.getAds({ location: filterLocation });
             setData(items);
         } catch (error) {
             toast.error("Failed to load ads");
