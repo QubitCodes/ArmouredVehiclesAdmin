@@ -155,7 +155,7 @@ function VendorActions({ vendor }: { vendor: any }) {
             onChange={(e) => setSelectedAction(e.target.value)}
             className="font-semibold"
           >
-            <option value="" disabled>Select Action...</option>
+
             {vendor.is_active ? (
               <option value="suspend">Suspend Account</option>
             ) : (
@@ -282,7 +282,7 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
             onChange={(e) => setSelectedStatus(e.target.value)}
             className="font-semibold"
           >
-            <option value="" disabled>Change Status...</option>
+
             {canApproveControlled && (
               <option value="approved_controlled">Approved Controlled</option>
             )}
