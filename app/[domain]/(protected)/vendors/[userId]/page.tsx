@@ -67,9 +67,28 @@ const getOnboardingStepName = (step: number | null | undefined): string => {
 };
 
 // Helper function to robustly parse and format field values
+const formatDate = (dateString: string | undefined | null) => {
+  if (!dateString) return "—";
+  try {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+};
+
 const formatValue = (value: unknown, fieldName: string): string | string[] => {
   if (value === undefined || value === null || value === "" || value === "—") {
     return "—";
+  }
+
+  if (fieldName.endsWith("_at") || fieldName.includes("_date") || fieldName === "date") {
+    if (typeof value === 'string' && !isNaN(Date.parse(value))) {
+      return formatDate(value);
+    }
   }
 
   if (typeof value === "boolean") {
@@ -90,12 +109,47 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
   ];
   const isListField = listFields.includes(fieldName);
 
-  // Deep parse function for JSON strings
+  // Deep parse function for JSON strings and Postgres Arrays
   const deepParse = (
     val: string
   ): string | string[] | Record<string, unknown> => {
     const trimmed = val.trim();
     if (!trimmed) return "—";
+
+    // Handle Postgres Array Syntax: {"Item 1", "Item 2"} or {Item1,Item2}
+    if (trimmed.startsWith("{") && trimmed.endsWith("}") && !trimmed.includes(":")) {
+      // Remove braces
+      const inner = trimmed.substring(1, trimmed.length - 1);
+      if (!inner) return [];
+
+      // Split by comma, respecting quotes
+      // Simple regex split might fail on nested commas, but for string arrays it's usually sufficient
+      // Or specific parser:
+      const items = [];
+      let current = '';
+      let inQuote = false;
+
+      for (let i = 0; i < inner.length; i++) {
+        const char = inner[i];
+        if (char === '"') {
+          inQuote = !inQuote;
+        } else if (char === ',' && !inQuote) {
+          items.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      items.push(current.trim());
+
+      // Clean up quotes
+      return items.map(item => {
+        if (item.startsWith('"') && item.endsWith('"')) {
+          return item.substring(1, item.length - 1).replace(/\\"/g, '"');
+        }
+        return item;
+      });
+    }
 
     // Try normal JSON parse
     try {
@@ -105,78 +159,9 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
       if (typeof parsed === "string") {
         return deepParse(parsed);
       }
-
-      // Handle case: {"[\"Manufacturer\",\"Distributor\"]"} or {"key": "[\"Manufacturer\",\"Distributor\"]"}
-      // Where we get an object with a single property that contains or is a JSON array string
-      if (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        !Array.isArray(parsed)
-      ) {
-        const entries = Object.entries(parsed);
-
-        // If object has a single property
-        if (entries.length === 1) {
-          const [key, value] = entries[0];
-          const keyTrimmed = key.trim();
-          const valueTrimmed = typeof value === "string" ? value.trim() : "";
-
-          // Check if the KEY looks like a JSON array/object
-          if (
-            (keyTrimmed.startsWith("[") && keyTrimmed.endsWith("]")) ||
-            (keyTrimmed.startsWith("{") && keyTrimmed.endsWith("}"))
-          ) {
-            try {
-              return deepParse(keyTrimmed);
-            } catch {
-              // If parsing the key fails, continue to check value
-            }
-          }
-
-          // Check if the VALUE looks like a JSON array/object
-          if (
-            valueTrimmed &&
-            ((valueTrimmed.startsWith("[") && valueTrimmed.endsWith("]")) ||
-              (valueTrimmed.startsWith("{") && valueTrimmed.endsWith("}")))
-          ) {
-            try {
-              return deepParse(valueTrimmed);
-            } catch {
-              // If parsing the value fails, return the original parsed object
-            }
-          }
-        }
-      }
-
       return parsed;
     } catch {
-      // If failed, try to handle escaped quotes or wrapped strings
-      try {
-        // Handle case like {"[\"Manufacturer\"]"} or "[\"Manufacturer\"]"
-        let cleaned = trimmed.replace(/\\"/g, '"');
-        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
-          cleaned = cleaned.substring(1, cleaned.length - 1);
-        }
-        if (
-          (cleaned.startsWith("[") && cleaned.endsWith("]")) ||
-          (cleaned.startsWith("{") && cleaned.endsWith("}"))
-        ) {
-          const parsed = JSON.parse(cleaned);
-          return typeof parsed === "string" ? deepParse(parsed) : parsed;
-        }
-
-        // Handle the specific weird case from screenshot: {[\"Manufacturer\"]}
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-          const inner = trimmed
-            .substring(1, trimmed.length - 1)
-            .replace(/\\"/g, '"');
-          if (inner.startsWith("[") && inner.endsWith("]")) {
-            return JSON.parse(inner);
-          }
-        }
-      } catch {
-        // Still failed
-      }
+      // fallback
     }
 
     // fallback to comma separation if it's a list field
@@ -197,23 +182,8 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
   if (typeof value === "string") {
     processed = deepParse(value);
   } else if (Array.isArray(value)) {
-    // Handle case where value is an array containing JSON strings
-    // e.g., ["[\"Military\",\"Government\"]"] or ["[\"\",\"authority_license\",\"eocn\"]"]
-    if (value.length === 1 && typeof value[0] === "string") {
-      const firstElement = value[0].trim();
-      // If the single element is a JSON string, parse it
-      if (
-        (firstElement.startsWith("[") && firstElement.endsWith("]")) ||
-        (firstElement.startsWith("{") && firstElement.endsWith("}"))
-      ) {
-        processed = deepParse(firstElement);
-      } else {
-        processed = value.filter((i) => i !== "" && i !== null);
-      }
-    } else {
-      // Regular array, just filter empty values
-      processed = value.filter((i) => i !== "" && i !== null);
-    }
+    // ... array handling ...
+    processed = value.filter((i) => i !== "" && i !== null);
   }
 
   // Ensure list fields are always arrays for tag rendering
@@ -668,14 +638,26 @@ function VendorActions({ vendor }: { vendor: any }) {
   const [reason, setReason] = useState("");
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    // Pre-select the logical action based on current status
+    if (vendor.is_active) {
+      setSelectedAction("suspend");
+    } else {
+      setSelectedAction("activate");
+    }
+  }, [vendor.is_active]);
+
   const { mutate: updateStatus, isPending } = useMutation({
     mutationFn: async ({ action, reason }: { action: 'activate' | 'suspend'; reason?: string }) => {
+      // ... existing mutationFn logic ...
       return vendorService.updateStatus(vendor.id, action, reason);
     },
+    // ... existing onSuccess/onError ...
     onSuccess: () => {
       toast.success("Vendor status updated successfully");
       queryClient.invalidateQueries({ queryKey: ["vendor", vendor.id] });
-      setSelectedAction("");
+      // Reset reason but keep action selected for clarity or reset? 
+      // User likely wants to see the new state's opposite action, which useEffect handles.
       setReason("");
     },
     onError: (error: any) => {
@@ -703,12 +685,7 @@ function VendorActions({ vendor }: { vendor: any }) {
             placeholder="Change Status..."
             value={selectedAction}
             onChange={(e) => setSelectedAction(e.target.value)}
-            className={cn(
-              "font-semibold bg-primary text-white",
-              selectedAction === "suspend"
-                ? "bg-destructive border-destructive/50"
-                : ""
-            )}
+            className="font-semibold"
           >
             {vendor.is_active ? (
               <option value="suspend">Suspend Account</option>
@@ -794,7 +771,15 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
   useEffect(() => {
     const hasPermission = authService.hasPermission("vendor.controlled.approve");
     setCanApproveControlled(hasPermission);
-  }, []);
+
+    // Pre-select current status if it matches an option
+    const profile = vendor.userProfile || vendor.profile;
+    if (profile?.onboarding_status) {
+      if (['approved_general', 'approved_controlled', 'rejected'].includes(profile.onboarding_status)) {
+        setSelectedStatus(profile.onboarding_status);
+      }
+    }
+  }, [vendor]);
 
   const { approveVendor, isApproving, rejectVendor, isRejecting } =
     useVendorActions(vendor.id);
@@ -837,12 +822,7 @@ function VendorApprovalActions({ vendor }: { vendor: any }) {
             placeholder="Change Status..."
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className={cn(
-              "font-semibold bg-primary text-white",
-              selectedStatus === "rejected"
-                ? "bg-destructive border-destructive/50"
-                : ""
-            )}
+            className="font-semibold"
           >
             {canApproveControlled && (
               <option value="approved_controlled">Approved Controlled</option>
