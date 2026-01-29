@@ -80,20 +80,8 @@ export function SliderDialog({ open, onOpenChange, item, onSuccess }: SliderDial
 
             if (imageFile) {
                 const uploadRes = await uploadService.uploadFile(imageFile, 'FRONTEND_SLIDER');
-                if (uploadRes.success && uploadRes.data?.url) {
-                    imageUrl = uploadRes.data.url; // Use the returned URL (or path if backend requires path, but Controller handles URL usually?)
-                    // Controller logic: if body.image_url is present, it uses it.
-                    // UploadHandler usually returns relative path or full URL? 
-                    // Let's check formatGetUrl. 
-                    // Controller: `imagePath = body.image_url`. 
-                    // UploadHandler returns `data` object. UploadController returns `result.data`.
-                    // UploadHandler `result.data` usually contains `url` (formatted) and `path` (relative).
-                    // If we save `url` to DB, it might be absolute.
-                    // If we save `path` to DB, getFileUrl handles it.
-                    // Best practice: Save relative path if possible, but UploadHandler might return full URL.
-                    // Let's use `path` if available, else `url`.
-                    // Looking at UploadResponse interface above: `url`, `path`.
-                    imageUrl = uploadRes.data.path || uploadRes.data.url;
+                if (uploadRes.success && Array.isArray(uploadRes.data) && uploadRes.data.length > 0) {
+                    imageUrl = uploadRes.data[0];
                 } else {
                     throw new Error("Image upload failed");
                 }

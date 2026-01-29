@@ -3,13 +3,7 @@ import api from "@/lib/api";
 
 export interface UploadResponse {
     success: boolean;
-    data: {
-        url: string;
-        path: string;
-        filename: string;
-        mimetype: string;
-        size: number;
-    };
+    data: string[]; // Array of file paths
     message: string;
 }
 
