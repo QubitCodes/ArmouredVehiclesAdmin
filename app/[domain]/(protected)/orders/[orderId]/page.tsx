@@ -308,7 +308,7 @@ export default function OrderDetailPage() {
       {/* Order Request Alert Banner */}
       {(order as any).type === 'request' && (
         <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 shadow-sm">
-          <CardContent className="p-4 flex items-start gap-4">
+          <CardContent className="px-4 py-2 flex items-start gap-4">
             <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/50">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
             </div>
