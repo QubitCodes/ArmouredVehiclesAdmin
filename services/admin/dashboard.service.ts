@@ -2,8 +2,12 @@ import api, { ApiResponse } from '@/lib/api';
 
 export interface DashboardStats {
   totalSellers?: number;
+  monthlySellers?: number; // New
   activeSellers?: number;
-  pendingApprovals?: number;
+  
+  pendingVendorApprovals?: number; // Split
+  pendingCustomerApprovals?: number; // Split
+  pendingApprovals?: number; // Legacy total
   
   totalProducts?: number;
   lowStockProducts?: number; // New for Vendors

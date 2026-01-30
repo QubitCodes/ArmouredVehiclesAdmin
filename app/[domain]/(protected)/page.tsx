@@ -95,25 +95,41 @@ export default function AdminDashboard() {
     },
   ] : [
     {
-      title: "Total Sellers",
+      title: "Total Vendors",
       value: stats?.totalSellers ?? 0,
+      subValue: `${stats?.monthlySellers ?? 0} new this month`,
       icon: Store,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-50 dark:bg-blue-950/20",
     },
     {
-      title: "Active Sellers",
+      title: "Active Vendors",
       value: stats?.activeSellers ?? 0,
       icon: UserCheck,
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-50 dark:bg-green-950/20",
     },
     {
-      title: "Pending Approvals",
-      value: stats?.pendingApprovals ?? 0,
-      icon: AlertCircle,
+      title: "Pending Vendors",
+      value: stats?.pendingVendorApprovals ?? 0,
+      icon: Store,
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-50 dark:bg-amber-950/20",
+    },
+    {
+      title: "Pending Customers",
+      value: stats?.pendingCustomerApprovals ?? 0,
+      icon: Users,
       color: "text-yellow-600 dark:text-yellow-400",
       bgColor: "bg-yellow-50 dark:bg-yellow-950/20",
+    },
+    {
+      title: "Total Customers",
+      value: stats?.totalCustomers ?? 0,
+      subValue: `${stats?.monthlyCustomers ?? 0} new this month`,
+      icon: Users,
+      color: "text-indigo-600 dark:text-indigo-400",
+      bgColor: "bg-indigo-50 dark:bg-indigo-950/20",
     },
     {
       title: "Total Products",
@@ -137,21 +153,6 @@ export default function AdminDashboard() {
       icon: DollarSign,
       color: "text-emerald-600 dark:text-emerald-400",
       bgColor: "bg-emerald-50 dark:bg-emerald-950/20",
-    },
-    {
-      title: "Total Customers",
-      value: stats?.totalCustomers ?? 0,
-      subValue: `${stats?.monthlyCustomers ?? 0} this month`,
-      icon: Users,
-      color: "text-indigo-600 dark:text-indigo-400",
-      bgColor: "bg-indigo-50 dark:bg-indigo-950/20",
-    },
-    {
-      title: "Total Refunds",
-      value: stats?.totalRefunds ?? 0,
-      icon: RefreshCw,
-      color: "text-red-600 dark:text-red-400",
-      bgColor: "bg-red-50 dark:bg-red-950/20",
     },
   ];
 
