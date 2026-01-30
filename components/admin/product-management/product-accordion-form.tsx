@@ -529,6 +529,15 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     // Can publish validation
     const canPublish = !!(watchName && watchCategories && watchDesc && watchPrice !== undefined && watchPrice >= 0);
 
+    // Force revert to Draft if requirements are lost
+    useEffect(() => {
+        const currentStatus = form.getValues("status");
+        if (!canPublish && currentStatus === "published") {
+            form.setValue("status", "draft", { shouldValidate: true });
+            // toast.info("Status reverted to Draft due to missing required fields.");
+        }
+    }, [canPublish, form.watch("status")]);
+
     // Handle section save and unlock next
     const handleSectionSave = async (sectionId: number) => {
         const formData = form.getValues();
@@ -1594,7 +1603,31 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <Label className="text-base font-semibold">Gallery Images</Label>
+                        <div className="flex items-center gap-4">
+                            <Label className="text-base font-semibold">Gallery Images</Label>
+                            {galleryMedia.length > 0 && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => {
+                                        const allIds = galleryMedia.map((m: any) => String(m.id));
+                                        const allSelected = allIds.every((id: string) => selectedMediaIds.has(id));
+
+                                        if (allSelected) {
+                                            setSelectedMediaIds(new Set());
+                                        } else {
+                                            setSelectedMediaIds(new Set(allIds));
+                                        }
+                                    }}
+                                >
+                                    {galleryMedia.length > 0 && galleryMedia.every((m: any) => selectedMediaIds.has(String(m.id)))
+                                        ? "Deselect All"
+                                        : "Select All"}
+                                </Button>
+                            )}
+                        </div>
                         {selectedMediaIds.size > 0 && (
                             <Button
                                 type="button"
