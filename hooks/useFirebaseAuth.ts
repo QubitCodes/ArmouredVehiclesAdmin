@@ -6,10 +6,13 @@ import {
   isSignInWithEmailLink, 
   signInWithEmailLink,
   linkWithPhoneNumber,
+  updatePhoneNumber,
+  PhoneAuthProvider,
   ConfirmationResult,
   UserCredential,
   User,
-  onAuthStateChanged
+  onAuthStateChanged,
+  PhoneAuthCredential
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -21,6 +24,10 @@ interface UseFirebaseAuthReturn {
   // Account Linking (Phone)
   linkPhone: (phoneNumber: string, containerId: string) => Promise<ConfirmationResult>;
   verifyPhoneLink: (confirmationResult: ConfirmationResult, code: string) => Promise<UserCredential>;
+
+  // Phone Update (for existing users)
+  verifyAndGetCredential: (confirmationResult: ConfirmationResult, code: string) => PhoneAuthCredential;
+  updateUserPhone: (credential: PhoneAuthCredential) => Promise<void>;
 
   // Magic Link Auth
   sendMagicLink: (email: string, redirectUrl?: string) => Promise<void>;
@@ -134,6 +141,29 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
       }
   };
 
+  // 5. Get Phone Auth Credential without signing in (for updating existing user's phone)
+  const verifyAndGetCredential = (confirmationResult: ConfirmationResult, code: string): PhoneAuthCredential => {
+      // Create credential from verification ID and OTP code
+      const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, code);
+      return credential;
+  };
+
+  // 6. Update current user's phone number using credential
+  const updateUserPhone = async (credential: PhoneAuthCredential) => {
+      setLoading(true);
+      setError(null);
+      try {
+          if (!auth.currentUser) throw new Error("No user signed in");
+          await updatePhoneNumber(auth.currentUser, credential);
+      } catch (err: any) {
+          console.error("Firebase Update Phone Error:", err);
+          setError(err.message || "Failed to update phone number");
+          throw err;
+      } finally {
+          setLoading(false);
+      }
+  };
+
   // 5. Send Magic Link
   const sendMagicLink = async (email: string, redirectUrl = window.location.href) => {
     setLoading(true);
@@ -199,6 +229,8 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
     verifyPhoneOtp,
     linkPhone,
     verifyPhoneLink,
+    verifyAndGetCredential,
+    updateUserPhone,
     sendMagicLink,
     verifyMagicLink,
     isMagicLink,

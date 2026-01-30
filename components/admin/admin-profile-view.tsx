@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import { adminService } from "@/services/admin/admin.service";
+import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,7 +56,7 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
 
     // Re-auth State
     const [showReauthModal, setShowReauthModal] = useState(false);
-    const [reauthStep, setReauthStep] = useState<"method" | "otp" | "verifying">("method");
+    const [reauthStep, setReauthStep] = useState<"method" | "otp" | "email_sent" | "verifying">("method");
     const [confirmationResult, setConfirmationResult] = useState<any>(null);
     const [reauthOtp, setReauthOtp] = useState("");
 
@@ -75,9 +76,9 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
     const [loading, setLoading] = useState(false);
 
     // Hooks
-    const { sendPhoneOtp, verifyPhoneOtp, user: firebaseUser, reauthenticate } = useFirebaseAuth();
+    const { sendPhoneOtp, verifyPhoneOtp, verifyAndGetCredential, updateUserPhone, sendMagicLink, isMagicLink, verifyMagicLink, user: firebaseUser, reauthenticate } = useFirebaseAuth();
 
-    // Timer Effect
+    // Timer Effect - Only clear editingField on expiry, NOT when closing edit dialog
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isEditingEnabled && editExpiry) {
@@ -88,6 +89,7 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                     setIsEditingEnabled(false);
                     setEditExpiry(null);
                     setEditingField(null);
+                    setRemainingTime("");
                     toast.info("Edit session expired. Please re-authenticate.");
                 } else {
                     const m = Math.floor(diff / 60000);
@@ -98,6 +100,38 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
         }
         return () => clearInterval(interval);
     }, [isEditingEnabled, editExpiry]);
+
+    // Detect Magic Link return from email verification
+    useEffect(() => {
+        const handleMagicLinkReturn = async () => {
+            const currentUrl = window.location.href;
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Check if this is a magic link return AND it's for re-auth
+            if (isMagicLink(currentUrl) && urlParams.get('reauth') === 'true') {
+                try {
+                    setLoading(true);
+                    await verifyMagicLink(user.email, currentUrl);
+
+                    // Enable editing after successful verification
+                    setIsEditingEnabled(true);
+                    setEditExpiry(Date.now() + EDIT_WINDOW_MS);
+                    toast.success("Identity verified. You have 10 minutes to edit.");
+
+                    // Clean up URL
+                    const cleanUrl = window.location.pathname;
+                    window.history.replaceState({}, '', cleanUrl);
+                } catch (e: any) {
+                    console.error("Magic link verification failed:", e);
+                    toast.error("Email verification failed. Please try again.");
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        handleMagicLinkReturn();
+    }, []);
 
     // --- Re-Authentication Logic ---
 
@@ -119,6 +153,26 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
             toast.success("Security code sent!");
         } catch (e: any) {
             toast.error(e.message || "Failed to send OTP");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /**
+     * Send magic link email for re-authentication
+     */
+    const sendReauthEmail = async () => {
+        try {
+            setLoading(true);
+            // Create a redirect URL that includes a flag indicating this is a re-auth flow
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('reauth', 'true');
+
+            await sendMagicLink(user.email, currentUrl.toString());
+            setReauthStep("email_sent");
+            toast.success(`Verification link sent to ${user.email}`);
+        } catch (e: any) {
+            toast.error(e.message || "Failed to send verification email");
         } finally {
             setLoading(false);
         }
@@ -182,11 +236,30 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
             toast.error("Phone number required");
             return;
         }
-        // 2. Open Verify Modal
-        setShowVerifyModal(true);
-        setLoading(true);
+
+        const fullPhone = `${formData.countryCode}${formData.phone}`.replace(/\s/g, '');
+
+        // 2. Check if phone number already exists in DB
         try {
-            const fullPhone = `${formData.countryCode}${formData.phone}`.replace(/\s/g, '');
+            setLoading(true);
+            const checkRes = await api.post("/auth/user-exists", { identifier: fullPhone });
+            if (checkRes.status === 200) {
+                toast.error("This phone number is already linked to another account.");
+                setLoading(false);
+                return;
+            }
+        } catch (e: any) {
+            // 404 means phone doesn't exist - that's what we want
+            if (e.response?.status !== 404) {
+                toast.error("Failed to verify phone number availability.");
+                setLoading(false);
+                return;
+            }
+        }
+
+        // 3. Open Verify Modal and send OTP
+        setShowVerifyModal(true);
+        try {
             const res = await sendPhoneOtp(fullPhone, "recaptcha-container-verify");
             setVerifyConfirmationResult(res);
             toast.success(`OTP Sent to ${fullPhone}`);
@@ -201,21 +274,18 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
     const confirmUpdatePhone = async () => {
         try {
             setLoading(true);
-            // Verify OTP
-            const cred = await verifyPhoneOtp(verifyConfirmationResult, verifyOtp);
-            // Successful OTP implies ownership.
 
-            // 3. Update DB
+            // Get credential without signing in as a new user
+            const credential = verifyAndGetCredential(verifyConfirmationResult, verifyOtp);
+
+            // Update Firebase phone number on current user
+            await updateUserPhone(credential);
+
+            // Update DB
             await adminService.updateAdmin(user.id, {
                 phone: formData.phone,
                 country_code: formData.countryCode
             });
-
-            // 4. Update Firebase (Optional, backend tries it too, but we have credential here)
-            // If verifyPhoneOtp signed us in as the "new" phone user, we might be in a weird state if it was a different UID.
-            // But since we are "updating", we used linkWithPhoneNumber conceptually?
-            // Actually verifyPhoneOtp uses signInWithCredential.
-            // If the number is NEW, it's fine.
 
             toast.success("Phone Number updated successfully");
             setShowVerifyModal(false);
@@ -224,7 +294,8 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
             window.location.reload();
 
         } catch (e: any) {
-            toast.error("Verification Failed");
+            console.error("Phone update error:", e);
+            toast.error(e.message || "Verification Failed");
         } finally {
             setLoading(false);
         }
@@ -408,6 +479,10 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
                                 Verify via SMS ({user.country_code} {user.phone.slice(-4).padStart(user.phone.length, '*')})
                             </Button>
+                            <Button variant="outline" onClick={sendReauthEmail} disabled={loading}>
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                                Verify via Email ({user.email.replace(/(.{2}).*(@.*)/, '$1***$2')})
+                            </Button>
                         </div>
                     )}
 
@@ -425,6 +500,27 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Verify Identity
                             </Button>
+                        </div>
+                    )}
+
+                    {reauthStep === 'email_sent' && (
+                        <div className="flex flex-col items-center gap-4 py-4 text-center">
+                            <div className="p-4 rounded-full bg-green-100 dark:bg-green-900/30">
+                                <Mail className="h-8 w-8 text-green-600 dark:text-green-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-lg">Check Your Email</h3>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    We've sent a verification link to <strong>{user.email}</strong>.
+                                    Click the link in the email to verify your identity.
+                                </p>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                Didn't receive it?{' '}
+                                <button onClick={sendReauthEmail} className="text-primary underline" disabled={loading}>
+                                    {loading ? "Sending..." : "Resend email"}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </DialogContent>
