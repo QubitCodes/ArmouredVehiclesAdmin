@@ -30,7 +30,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const params = useParams();
-  const domain = (params?.domain as string) || "admin";
+  const domain = (params?.domain as string) || (pathname?.startsWith("/vendor") ? "vendor" : "admin");
 
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
