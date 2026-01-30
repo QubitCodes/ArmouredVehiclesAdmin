@@ -824,7 +824,7 @@ export default function ProductAccordionForm({ productId, isVendor = false }: Pr
                                 <FormItem><FormLabel>Stock Quantity *</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="productionLeadTime" render={({ field }) => (
-                                <FormItem><FormLabel>Lead Time (Days)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Lead Time (Days)</FormLabel><FormControl><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
 
