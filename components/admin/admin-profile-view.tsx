@@ -26,8 +26,8 @@ interface AdminProfileViewProps {
     profile?: any; // Admins might not have profile, but keeping interface flexible
 }
 
-// 10 Minutes in MS
-const EDIT_WINDOW_MS = 10 * 60 * 1000;
+// 5 Minutes in MS
+const EDIT_WINDOW_MS = 5 * 60 * 1000;
 
 // Helper function to map onboarding step to step name
 const getOnboardingStepName = (step: number | null | undefined): string => {
@@ -78,7 +78,21 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
     // Hooks
     const { sendPhoneOtp, verifyPhoneOtp, verifyAndGetCredential, updateUserPhone, sendEmailUpdateLink, sendMagicLink, isMagicLink, verifyMagicLink, user: firebaseUser, reauthenticate } = useFirebaseAuth();
 
-    // Timer Effect - Only clear editingField on expiry, NOT when closing edit dialog
+    // Helper to enable editing (memory-based session)
+    const enableEditing = (expiryMs: number = EDIT_WINDOW_MS) => {
+        setEditExpiry(Date.now() + expiryMs);
+        setIsEditingEnabled(true);
+    };
+
+    // Helper to disable editing
+    const disableEditing = () => {
+        setIsEditingEnabled(false);
+        setEditExpiry(null);
+        setEditingField(null);
+        setRemainingTime("");
+    };
+
+    // Timer Effect
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isEditingEnabled && editExpiry) {
@@ -86,10 +100,7 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                 const now = Date.now();
                 const diff = editExpiry - now;
                 if (diff <= 0) {
-                    setIsEditingEnabled(false);
-                    setEditExpiry(null);
-                    setEditingField(null);
-                    setRemainingTime("");
+                    disableEditing();
                     toast.info("Edit session expired. Please re-authenticate.");
                 } else {
                     const m = Math.floor(diff / 60000);
@@ -107,10 +118,9 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
             // 1. Security re-auth verification (Magic Link)
             const reauthVerified = localStorage.getItem('reauth_verified');
             if (reauthVerified === 'true') {
-                setIsEditingEnabled(true);
-                setEditExpiry(Date.now() + EDIT_WINDOW_MS);
+                enableEditing();
                 setShowReauthModal(false);
-                toast.success("Identity verified via Firebase. You have 10 minutes to edit.");
+                toast.success("Identity verified via Firebase. You have 5 minutes to edit.");
                 localStorage.removeItem('reauth_verified');
                 localStorage.removeItem('reauth_verified_at');
             }
@@ -151,9 +161,8 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                 const storedToken = localStorage.getItem('reauth_token');
                 const storedExpiry = localStorage.getItem('reauth_token_expiry');
                 if (storedToken === reauthToken && storedExpiry && Date.now() < parseInt(storedExpiry)) {
-                    setIsEditingEnabled(true);
-                    setEditExpiry(Date.now() + EDIT_WINDOW_MS);
-                    toast.success("Identity verified. You have 10 minutes to edit.");
+                    enableEditing();
+                    toast.success("Identity verified. You have 5 minutes to edit.");
                     localStorage.removeItem('reauth_token');
                     localStorage.removeItem('reauth_token_expiry');
                     window.history.replaceState({}, '', window.location.pathname);
@@ -242,11 +251,10 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
             // This counts as a fresh login context in Firebase 9+.
 
             // We assume success here implies re-auth.
-            setIsEditingEnabled(true);
-            setEditExpiry(Date.now() + EDIT_WINDOW_MS);
+            enableEditing();
             setShowReauthModal(false);
             setReauthOtp("");
-            toast.success("Identity verified. You have 10 minutes to edit.");
+            toast.success("Identity verified. You have 5 minutes to edit.");
         } catch (e: any) {
             console.error(e);
             toast.error("Invalid Code or Verification Failed");
