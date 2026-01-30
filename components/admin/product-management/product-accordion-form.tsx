@@ -588,415 +588,417 @@ export default function ProductAccordionForm({ productId, isVendor = false }: Pr
     if (isLoadingProduct && productId) return <div className="flex h-64 items-center justify-center"><Spinner size="xl" /></div>;
 
     return (
-        <div className="max-w-4xl mx-auto pb-20">
-            <Accordion className="space-y-4">
-                {/* SECTION 1: BASIC INFO */}
-                <AccordionItem
-                    id="basic-info"
-                    title="Basic Information"
-                    icon={Package}
-                    isOpen={openSection === "basic-info"}
-                    isLocked={!unlockedSections.has("basic-info")}
-                    onToggle={() => handleToggle("basic-info")}
-                >
-                    <div className="space-y-6">
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Product Name *</FormLabel>
-                                <FormControl><Input {...field} placeholder="e.g. Armored Toyota Land Cruiser" onChange={e => {
-                                    field.onChange(e);
-                                    if (!currentProductId && !form.getValues("sku")) generateSku();
-                                }} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <div className="grid gap-6 md:grid-cols-3">
-                            <FormField control={form.control} name="mainCategoryId" render={({ field }) => (
+        <Form {...form}>
+            <div className="max-w-4xl mx-auto pb-20">
+                <Accordion className="space-y-4">
+                    {/* SECTION 1: BASIC INFO */}
+                    <AccordionItem
+                        id="basic-info"
+                        title="Basic Information"
+                        icon={Package}
+                        isOpen={openSection === "basic-info"}
+                        isLocked={!unlockedSections.has("basic-info")}
+                        onToggle={() => handleToggle("basic-info")}
+                    >
+                        <div className="space-y-6">
+                            <FormField control={form.control} name="name" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Main Category *</FormLabel>
-                                    <Select value={field.value?.toString()} onValueChange={v => {
-                                        field.onChange(parseInt(v));
-                                        form.setValue("categoryId", undefined);
-                                        form.setValue("subCategoryId", undefined);
-                                    }}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
-                                        <SelectContent>{mainCategories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                                    </Select>
+                                    <FormLabel>Product Name *</FormLabel>
+                                    <FormControl><Input {...field} placeholder="e.g. Armored Toyota Land Cruiser" onChange={e => {
+                                        field.onChange(e);
+                                        if (!currentProductId && !form.getValues("sku")) generateSku();
+                                    }} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField control={form.control} name="categoryId" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Category</FormLabel>
-                                    <Select value={field.value?.toString()} onValueChange={v => {
-                                        field.onChange(parseInt(v));
-                                        form.setValue("subCategoryId", undefined);
-                                    }} disabled={!mainCategoryId}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
-                                        <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="subCategoryId" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Subcategory</FormLabel>
-                                    <Select value={field.value?.toString()} onValueChange={v => field.onChange(parseInt(v))} disabled={!categoryId}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
-                                        <SelectContent>{subCategories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        </div>
 
-                        {/* Brand / Model / Year */}
-                        <div className="grid gap-6 md:grid-cols-3">
-                            <FormField control={form.control} name="brandId" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Brand</FormLabel>
-                                    <Select value={field.value?.toString()} onValueChange={v => field.onChange(parseInt(v))}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl>
-                                        <SelectContent>{brands.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="model" render={({ field }) => (
-                                <FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="year" render={({ field }) => (
-                                <FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                        </div>
-
-                        {/* Additional Fields: Certificate, Controlled Item, Vehicle Comp, Country */}
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="md:col-span-1">
-                                <Label className="mb-2 block">Certifications / Standards</Label>
-                                {(form.watch("certifications") || []).map((item: string, index: number) => (
-                                    <div key={index} className="flex gap-2 mb-2">
-                                        <Input value={item} placeholder="e.g., CEN BR6" onChange={e => updateArrayItem("certifications", index, e.target.value)} />
-                                        <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem("certifications", index)}><X className="h-4 w-4" /></Button>
-                                    </div>
-                                ))}
-                                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem("certifications")}><Plus className="mr-2 h-4 w-4" /> Add Certification</Button>
-                            </div>
-
-                            <div className="space-y-4">
-                                {isControlledItemVisible && (
-                                    <FormField control={form.control} name="controlledItemType" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-destructive font-medium">Controlled Item Type *</FormLabel>
-                                            <FormControl><Input placeholder="e.g. ITAR / Dual-Use" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                )}
-
-                                <FormField control={form.control} name="vehicleCompatibility" render={({ field }) => (
+                            <div className="grid gap-6 md:grid-cols-3">
+                                <FormField control={form.control} name="mainCategoryId" render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Vehicle Compatibility</FormLabel>
-                                        <FormControl><Input placeholder="Toyota Land Cruiser" {...field} /></FormControl>
+                                        <FormLabel>Main Category *</FormLabel>
+                                        <Select value={field.value?.toString()} onValueChange={v => {
+                                            field.onChange(parseInt(v));
+                                            form.setValue("categoryId", undefined);
+                                            form.setValue("subCategoryId", undefined);
+                                        }}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
+                                            <SelectContent>{mainCategories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
+                                <FormField control={form.control} name="categoryId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Category</FormLabel>
+                                        <Select value={field.value?.toString()} onValueChange={v => {
+                                            field.onChange(parseInt(v));
+                                            form.setValue("subCategoryId", undefined);
+                                        }} disabled={!mainCategoryId}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
+                                            <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="subCategoryId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Subcategory</FormLabel>
+                                        <Select value={field.value?.toString()} onValueChange={v => field.onChange(parseInt(v))} disabled={!categoryId}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
+                                            <SelectContent>{subCategories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
 
-                                <FormField control={form.control} name="countryOfOrigin" render={({ field }) => {
-                                    const [showCountry, setShowCountry] = useState(false);
-                                    const countrySearch = field.value || "";
-                                    const filtered = COUNTRY_LIST.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).slice(0, 10);
+                            {/* Brand / Model / Year */}
+                            <div className="grid gap-6 md:grid-cols-3">
+                                <FormField control={form.control} name="brandId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Brand</FormLabel>
+                                        <Select value={field.value?.toString()} onValueChange={v => field.onChange(parseInt(v))}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl>
+                                            <SelectContent>{brands.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="model" render={({ field }) => (
+                                    <FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="year" render={({ field }) => (
+                                    <FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                            </div>
 
-                                    return (
-                                        <FormItem className="relative">
-                                            <FormLabel>Country of Origin</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Input
-                                                        placeholder="Search country..."
-                                                        value={field.value || ""}
-                                                        onChange={e => { field.onChange(e.target.value); setShowCountry(true); }}
-                                                        onFocus={() => setShowCountry(true)}
-                                                        onBlur={() => setTimeout(() => setShowCountry(false), 200)}
-                                                    />
-                                                    {showCountry && filtered.length > 0 && (
-                                                        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                                                            {filtered.map(c => (
-                                                                <div key={c.countryCode} className="px-3 py-2 cursor-pointer hover:bg-accent flex items-center gap-2"
-                                                                    onMouseDown={(e) => { e.preventDefault(); field.onChange(c.name); setShowCountry(false); }}>
-                                                                    <span>{c.flag}</span><span>{c.name}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </FormControl>
+                            {/* Additional Fields: Certificate, Controlled Item, Vehicle Comp, Country */}
+                            <div className="grid gap-6 md:grid-cols-2">
+                                <div className="md:col-span-1">
+                                    <Label className="mb-2 block">Certifications / Standards</Label>
+                                    {(form.watch("certifications") || []).map((item: string, index: number) => (
+                                        <div key={index} className="flex gap-2 mb-2">
+                                            <Input value={item} placeholder="e.g., CEN BR6" onChange={e => updateArrayItem("certifications", index, e.target.value)} />
+                                            <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem("certifications", index)}><X className="h-4 w-4" /></Button>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem("certifications")}><Plus className="mr-2 h-4 w-4" /> Add Certification</Button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {isControlledItemVisible && (
+                                        <FormField control={form.control} name="controlledItemType" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-destructive font-medium">Controlled Item Type *</FormLabel>
+                                                <FormControl><Input placeholder="e.g. ITAR / Dual-Use" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    )}
+
+                                    <FormField control={form.control} name="vehicleCompatibility" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Vehicle Compatibility</FormLabel>
+                                            <FormControl><Input placeholder="Toyota Land Cruiser" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
-                                    )
-                                }} />
+                                    )} />
+
+                                    <FormField control={form.control} name="countryOfOrigin" render={({ field }) => {
+                                        const [showCountry, setShowCountry] = useState(false);
+                                        const countrySearch = field.value || "";
+                                        const filtered = COUNTRY_LIST.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).slice(0, 10);
+
+                                        return (
+                                            <FormItem className="relative">
+                                                <FormLabel>Country of Origin</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Input
+                                                            placeholder="Search country..."
+                                                            value={field.value || ""}
+                                                            onChange={e => { field.onChange(e.target.value); setShowCountry(true); }}
+                                                            onFocus={() => setShowCountry(true)}
+                                                            onBlur={() => setTimeout(() => setShowCountry(false), 200)}
+                                                        />
+                                                        {showCountry && filtered.length > 0 && (
+                                                            <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                                                                {filtered.map(c => (
+                                                                    <div key={c.countryCode} className="px-3 py-2 cursor-pointer hover:bg-accent flex items-center gap-2"
+                                                                        onMouseDown={(e) => { e.preventDefault(); field.onChange(c.name); setShowCountry(false); }}>
+                                                                        <span>{c.flag}</span><span>{c.name}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )
+                                    }} />
+                                </div>
+                            </div>
+
+                            <FormField control={form.control} name="description" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Description *</FormLabel>
+                                    <FormControl><RichTextEditor value={field.value || ""} onChange={field.onChange} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+
+                            <div className="flex justify-end pt-4">
+                                <Button onClick={onSaveSection} disabled={isSaving || (!currentProductId && !canSaveBasics)}>
+                                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save & Continue
+                                </Button>
                             </div>
                         </div>
+                    </AccordionItem>
 
-                        <FormField control={form.control} name="description" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Description *</FormLabel>
-                                <FormControl><RichTextEditor value={field.value || ""} onChange={field.onChange} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                    {/* SECTION 2: TECHNICAL SPECS */}
+                    <AccordionItem
+                        id="technical"
+                        title="Technical Specifications"
+                        icon={Settings}
+                        isOpen={openSection === "technical"}
+                        isLocked={!unlockedSections.has("technical")}
+                        onToggle={() => handleToggle("technical")}
+                    >
+                        <div className="space-y-6">
+                            {currentProductId ? (
+                                <SpecsEditor localSpecs={localSpecs} setLocalSpecs={setLocalSpecs} />
+                            ) : <div className="p-4 bg-muted text-center rounded-md">Save Basic Info first to edit specifications.</div>}
 
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={onSaveSection} disabled={isSaving || (!currentProductId && !canSaveBasics)}>
-                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save & Continue
-                            </Button>
+                            <div className="grid gap-4 md:grid-cols-3 pt-4 border-t">
+                                <FormField control={form.control} name="dimensionLength" render={({ field }) => (
+                                    <FormItem><FormLabel>Length</FormLabel><FormControl><Input type="number" placeholder="Length" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="dimensionWidth" render={({ field }) => (
+                                    <FormItem><FormLabel>Width</FormLabel><FormControl><Input type="number" placeholder="Width" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="dimensionHeight" render={({ field }) => (
+                                    <FormItem><FormLabel>Height</FormLabel><FormControl><Input type="number" placeholder="Height" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                                )} />
+                            </div>
+
+                            <FormField control={form.control} name="technicalDescription" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Additional Technical Details</FormLabel>
+                                    <FormControl><RichTextEditor value={field.value || ""} onChange={field.onChange} /></FormControl>
+                                </FormItem>
+                            )} />
+
+                            <div className="flex justify-end pt-4">
+                                <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
+                            </div>
                         </div>
-                    </div>
-                </AccordionItem>
+                    </AccordionItem>
 
-                {/* SECTION 2: TECHNICAL SPECS */}
-                <AccordionItem
-                    id="technical"
-                    title="Technical Specifications"
-                    icon={Settings}
-                    isOpen={openSection === "technical"}
-                    isLocked={!unlockedSections.has("technical")}
-                    onToggle={() => handleToggle("technical")}
-                >
-                    <div className="space-y-6">
-                        {currentProductId ? (
-                            <SpecsEditor localSpecs={localSpecs} setLocalSpecs={setLocalSpecs} />
-                        ) : <div className="p-4 bg-muted text-center rounded-md">Save Basic Info first to edit specifications.</div>}
+                    {/* SECTION 3: PRICING */}
+                    <AccordionItem
+                        id="pricing"
+                        title="Pricing & Availability"
+                        icon={ShoppingCart}
+                        isOpen={openSection === "pricing"}
+                        isLocked={!unlockedSections.has("pricing")}
+                        onToggle={() => handleToggle("pricing")}
+                    >
+                        <div className="space-y-6">
+                            <div className="grid gap-6 md:grid-cols-2">
+                                <FormField control={form.control} name="basePrice" render={({ field }) => (
+                                    <FormItem><FormLabel>Base Price *</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="currency" render={({ field }) => (
+                                    <FormItem><FormLabel>Currency</FormLabel>
+                                        <Select value={field.value} onValueChange={field.onChange}>
+                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                            <SelectContent><SelectItem value="AED">AED</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
+                                        </Select>
+                                        <FormMessage /></FormItem>
+                                )} />
+                            </div>
 
-                        <div className="grid gap-4 md:grid-cols-3 pt-4 border-t">
-                            <FormField control={form.control} name="dimensionLength" render={({ field }) => (
-                                <FormItem><FormLabel>Length</FormLabel><FormControl><Input type="number" placeholder="Length" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name="dimensionWidth" render={({ field }) => (
-                                <FormItem><FormLabel>Width</FormLabel><FormControl><Input type="number" placeholder="Width" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name="dimensionHeight" render={({ field }) => (
-                                <FormItem><FormLabel>Height</FormLabel><FormControl><Input type="number" placeholder="Height" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                            )} />
+                            <div className="grid gap-6 md:grid-cols-2">
+                                <FormField control={form.control} name="stock" render={({ field }) => (
+                                    <FormItem><FormLabel>Stock Quantity *</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="productionLeadTime" render={({ field }) => (
+                                    <FormItem><FormLabel>Lead Time (Days)</FormLabel><FormControl><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                            </div>
+
+                            {/* Wholesale Pricing Tiers */}
+                            <div className="border p-4 rounded-md space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-base font-semibold">Wholesale Pricing Tiers</Label>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => {
+                                        const current = form.getValues("pricing_tiers") || [];
+                                        form.setValue("pricing_tiers", [...current, { min_quantity: 0, max_quantity: null, price: 0 }]);
+                                    }}><Plus className="h-4 w-4 mr-2" /> Add Tier</Button>
+                                </div>
+                                {form.watch("pricing_tiers")?.map((_, index) => (
+                                    <div key={index} className="flex gap-4 items-end">
+                                        <FormField control={form.control} name={`pricing_tiers.${index}.min_quantity`} render={({ field }) => (
+                                            <FormItem className="flex-1"><FormLabel className="text-xs">Min Qty</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>
+                                        )} />
+                                        <FormField control={form.control} name={`pricing_tiers.${index}.price`} render={({ field }) => (
+                                            <FormItem className="flex-1"><FormLabel className="text-xs">Price</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                                        )} />
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => {
+                                            const current = form.getValues("pricing_tiers") || [];
+                                            form.setValue("pricing_tiers", current.filter((_, i) => i !== index));
+                                        }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Individual Product Pricing (Combos) */}
+                            <div className="border p-4 rounded-md space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-base font-semibold">Individual Components (Combo Product)</Label>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => {
+                                        const current = form.getValues("individualProductPricing") || [];
+                                        form.setValue("individualProductPricing", [...current, { name: "", amount: 0 }]);
+                                    }}><Plus className="h-4 w-4 mr-2" /> Add Component</Button>
+                                </div>
+                                <div className="text-sm text-muted-foreground mb-2">If this is a bundled product (e.g. 4x Wheels + 4x Tires), list individual component prices here for invoicing.</div>
+                                {form.watch("individualProductPricing")?.map((_, index) => (
+                                    <div key={index} className="flex gap-4 items-end">
+                                        <FormField control={form.control} name={`individualProductPricing.${index}.name`} render={({ field }) => (
+                                            <FormItem className="flex-[2]"><FormLabel className="text-xs">Component Name</FormLabel><FormControl><Input placeholder="e.g. Front Right Wheel" {...field} /></FormControl></FormItem>
+                                        )} />
+                                        <FormField control={form.control} name={`individualProductPricing.${index}.amount`} render={({ field }) => (
+                                            <FormItem className="flex-1"><FormLabel className="text-xs">Price</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                                        )} />
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => {
+                                            const current = form.getValues("individualProductPricing") || [];
+                                            form.setValue("individualProductPricing", current.filter((_, i) => i !== index));
+                                        }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex justify-end pt-4">
+                                <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
+                            </div>
                         </div>
+                    </AccordionItem>
 
-                        <FormField control={form.control} name="technicalDescription" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Additional Technical Details</FormLabel>
-                                <FormControl><RichTextEditor value={field.value || ""} onChange={field.onChange} /></FormControl>
-                            </FormItem>
-                        )} />
+                    {/* SECTION 4: UPLOADS */}
+                    <AccordionItem
+                        id="uploads"
+                        title="Uploads & Media"
+                        icon={ImageIcon}
+                        isOpen={openSection === "uploads"}
+                        isLocked={!unlockedSections.has("uploads")}
+                        onToggle={() => handleToggle("uploads")}
+                    >
+                        <div className="space-y-6">
+                            <div>
+                                <Label className="text-base mb-2 block">Cover Image</Label>
+                                <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => document.getElementById('cover-upload')?.click()}>
+                                    {coverImageFile ? (
+                                        <img src={URL.createObjectURL(coverImageFile)} className="h-40 object-contain mb-2" />
+                                    ) : form.getValues("image") ? (
+                                        <img src={form.getValues("image") || ""} className="h-40 object-contain mb-2" />
+                                    ) : (
+                                        <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
+                                    )}
+                                    <p className="text-sm text-muted-foreground">Click to upload cover image</p>
+                                    <Input id="cover-upload" type="file" className="hidden" accept="image/*" onChange={e => {
+                                        if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'cover');
+                                    }} />
+                                </div>
+                            </div>
 
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
+                            <div>
+                                <Label className="text-base mb-2 block">Gallery</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {/* Existing Gallery */}
+                                    {form.watch("gallery")?.map((url, i) => (
+                                        <div key={i} className="relative aspect-square border rounded-md overflow-hidden group">
+                                            <img src={url} className="w-full h-full object-cover" />
+                                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => {
+                                                // Handle delete logic via API usually, locally for now remove from array
+                                                // For complex logic refer to original file
+                                                removeArrayItem("gallery", i);
+                                            }}><X className="h-3 w-3" /></Button>
+                                        </div>
+                                    ))}
+                                    {/* New Files */}
+                                    {galleryFiles.map((file, i) => (
+                                        <div key={`new-${i}`} className="relative aspect-square border rounded-md overflow-hidden">
+                                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                                            <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground text-[10px] px-1 rounded">New</div>
+                                        </div>
+                                    ))}
+                                    {/* Add Button */}
+                                    <label className="border-2 border-dashed rounded-md flex items-center justify-center cursor-pointer hover:bg-muted/50 aspect-square">
+                                        <Plus className="h-6 w-6 text-muted-foreground" />
+                                        <Input type="file" className="hidden" multiple accept="image/*" onChange={e => {
+                                            if (e.target.files) Array.from(e.target.files).forEach(f => handleImageUpload(f, 'gallery'));
+                                        }} />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-4">
+                                <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
+                            </div>
                         </div>
-                    </div>
-                </AccordionItem>
+                    </AccordionItem>
 
-                {/* SECTION 3: PRICING */}
-                <AccordionItem
-                    id="pricing"
-                    title="Pricing & Availability"
-                    icon={ShoppingCart}
-                    isOpen={openSection === "pricing"}
-                    isLocked={!unlockedSections.has("pricing")}
-                    onToggle={() => handleToggle("pricing")}
-                >
-                    <div className="space-y-6">
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <FormField control={form.control} name="basePrice" render={({ field }) => (
-                                <FormItem><FormLabel>Base Price *</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="currency" render={({ field }) => (
-                                <FormItem><FormLabel>Currency</FormLabel>
+                    {/* SECTION 5: DECLARATIONS */}
+                    <AccordionItem
+                        id="declarations"
+                        title="Declarations"
+                        icon={Shield}
+                        isOpen={openSection === "declarations"}
+                        isLocked={!unlockedSections.has("declarations")}
+                        onToggle={() => handleToggle("declarations")}
+                    >
+                        <div className="space-y-6">
+                            <FormField control={form.control} name="manufacturingSource" render={({ field }) => (
+                                <FormItem><FormLabel>Manufacturing Source</FormLabel>
                                     <Select value={field.value} onValueChange={field.onChange}>
                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent><SelectItem value="AED">AED</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
+                                        <SelectContent><SelectItem value="In-house">In-house</SelectItem><SelectItem value="Sourced">Sourced</SelectItem></SelectContent>
                                     </Select>
-                                    <FormMessage /></FormItem>
+                                </FormItem>
                             )} />
-                        </div>
 
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <FormField control={form.control} name="stock" render={({ field }) => (
-                                <FormItem><FormLabel>Stock Quantity *</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="productionLeadTime" render={({ field }) => (
-                                <FormItem><FormLabel>Lead Time (Days)</FormLabel><FormControl><Input type="number" value={field.value ?? ""} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                        </div>
-
-                        {/* Wholesale Pricing Tiers */}
-                        <div className="border p-4 rounded-md space-y-4">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold">Wholesale Pricing Tiers</Label>
-                                <Button type="button" variant="outline" size="sm" onClick={() => {
-                                    const current = form.getValues("pricing_tiers") || [];
-                                    form.setValue("pricing_tiers", [...current, { min_quantity: 0, max_quantity: null, price: 0 }]);
-                                }}><Plus className="h-4 w-4 mr-2" /> Add Tier</Button>
+                            <div className="grid gap-6 md:grid-cols-2">
+                                <FormField control={form.control} name="supplierSignature" render={({ field }) => (
+                                    <FormItem><FormLabel>Digital Signature *</FormLabel><FormControl><Input {...field} placeholder="Type full name" /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="signatureDate" render={({ field }) => (
+                                    <FormItem><FormLabel>Date</FormLabel><DateSelector value={field.value} onChange={field.onChange} /></FormItem>
+                                )} />
                             </div>
-                            {form.watch("pricing_tiers")?.map((_, index) => (
-                                <div key={index} className="flex gap-4 items-end">
-                                    <FormField control={form.control} name={`pricing_tiers.${index}.min_quantity`} render={({ field }) => (
-                                        <FormItem className="flex-1"><FormLabel className="text-xs">Min Qty</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name={`pricing_tiers.${index}.price`} render={({ field }) => (
-                                        <FormItem className="flex-1"><FormLabel className="text-xs">Price</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                                    )} />
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => {
-                                        const current = form.getValues("pricing_tiers") || [];
-                                        form.setValue("pricing_tiers", current.filter((_, i) => i !== index));
-                                    }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                </div>
-                            ))}
-                        </div>
 
-                        {/* Individual Product Pricing (Combos) */}
-                        <div className="border p-4 rounded-md space-y-4">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold">Individual Components (Combo Product)</Label>
-                                <Button type="button" variant="outline" size="sm" onClick={() => {
-                                    const current = form.getValues("individualProductPricing") || [];
-                                    form.setValue("individualProductPricing", [...current, { name: "", amount: 0 }]);
-                                }}><Plus className="h-4 w-4 mr-2" /> Add Component</Button>
-                            </div>
-                            <div className="text-sm text-muted-foreground mb-2">If this is a bundled product (e.g. 4x Wheels + 4x Tires), list individual component prices here for invoicing.</div>
-                            {form.watch("individualProductPricing")?.map((_, index) => (
-                                <div key={index} className="flex gap-4 items-end">
-                                    <FormField control={form.control} name={`individualProductPricing.${index}.name`} render={({ field }) => (
-                                        <FormItem className="flex-[2]"><FormLabel className="text-xs">Component Name</FormLabel><FormControl><Input placeholder="e.g. Front Right Wheel" {...field} /></FormControl></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name={`individualProductPricing.${index}.amount`} render={({ field }) => (
-                                        <FormItem className="flex-1"><FormLabel className="text-xs">Price</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                                    )} />
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => {
-                                        const current = form.getValues("individualProductPricing") || [];
-                                        form.setValue("individualProductPricing", current.filter((_, i) => i !== index));
-                                    }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                </div>
-                            ))}
-                        </div>
+                            <FormField control={form.control} name="status" render={({ field }) => (
+                                <FormItem className="p-4 bg-muted/30 rounded-lg border">
+                                    <FormLabel className="text-base">Publish Status</FormLabel>
+                                    <FormControl>
+                                        <RadioGroup value={field.value} onValueChange={field.onChange} className="flex gap-4 mt-2">
+                                            <RadioGroupItem value="draft" id="draft" label="Draft" />
+                                            <RadioGroupItem value="published" id="published" label="Published" />
+                                        </RadioGroup>
+                                    </FormControl>
+                                </FormItem>
+                            )} />
 
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
-                        </div>
-                    </div>
-                </AccordionItem>
-
-                {/* SECTION 4: UPLOADS */}
-                <AccordionItem
-                    id="uploads"
-                    title="Uploads & Media"
-                    icon={ImageIcon}
-                    isOpen={openSection === "uploads"}
-                    isLocked={!unlockedSections.has("uploads")}
-                    onToggle={() => handleToggle("uploads")}
-                >
-                    <div className="space-y-6">
-                        <div>
-                            <Label className="text-base mb-2 block">Cover Image</Label>
-                            <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => document.getElementById('cover-upload')?.click()}>
-                                {coverImageFile ? (
-                                    <img src={URL.createObjectURL(coverImageFile)} className="h-40 object-contain mb-2" />
-                                ) : form.getValues("image") ? (
-                                    <img src={form.getValues("image") || ""} className="h-40 object-contain mb-2" />
-                                ) : (
-                                    <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
-                                )}
-                                <p className="text-sm text-muted-foreground">Click to upload cover image</p>
-                                <Input id="cover-upload" type="file" className="hidden" accept="image/*" onChange={e => {
-                                    if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'cover');
-                                }} />
+                            <div className="flex justify-end pt-4 gap-4">
+                                <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
+                                <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Finish & Save</Button>
                             </div>
                         </div>
-
-                        <div>
-                            <Label className="text-base mb-2 block">Gallery</Label>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {/* Existing Gallery */}
-                                {form.watch("gallery")?.map((url, i) => (
-                                    <div key={i} className="relative aspect-square border rounded-md overflow-hidden group">
-                                        <img src={url} className="w-full h-full object-cover" />
-                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => {
-                                            // Handle delete logic via API usually, locally for now remove from array
-                                            // For complex logic refer to original file
-                                            removeArrayItem("gallery", i);
-                                        }}><X className="h-3 w-3" /></Button>
-                                    </div>
-                                ))}
-                                {/* New Files */}
-                                {galleryFiles.map((file, i) => (
-                                    <div key={`new-${i}`} className="relative aspect-square border rounded-md overflow-hidden">
-                                        <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
-                                        <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground text-[10px] px-1 rounded">New</div>
-                                    </div>
-                                ))}
-                                {/* Add Button */}
-                                <label className="border-2 border-dashed rounded-md flex items-center justify-center cursor-pointer hover:bg-muted/50 aspect-square">
-                                    <Plus className="h-6 w-6 text-muted-foreground" />
-                                    <Input type="file" className="hidden" multiple accept="image/*" onChange={e => {
-                                        if (e.target.files) Array.from(e.target.files).forEach(f => handleImageUpload(f, 'gallery'));
-                                    }} />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
-                        </div>
-                    </div>
-                </AccordionItem>
-
-                {/* SECTION 5: DECLARATIONS */}
-                <AccordionItem
-                    id="declarations"
-                    title="Declarations"
-                    icon={Shield}
-                    isOpen={openSection === "declarations"}
-                    isLocked={!unlockedSections.has("declarations")}
-                    onToggle={() => handleToggle("declarations")}
-                >
-                    <div className="space-y-6">
-                        <FormField control={form.control} name="manufacturingSource" render={({ field }) => (
-                            <FormItem><FormLabel>Manufacturing Source</FormLabel>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent><SelectItem value="In-house">In-house</SelectItem><SelectItem value="Sourced">Sourced</SelectItem></SelectContent>
-                                </Select>
-                            </FormItem>
-                        )} />
-
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <FormField control={form.control} name="supplierSignature" render={({ field }) => (
-                                <FormItem><FormLabel>Digital Signature *</FormLabel><FormControl><Input {...field} placeholder="Type full name" /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name="signatureDate" render={({ field }) => (
-                                <FormItem><FormLabel>Date</FormLabel><DateSelector value={field.value} onChange={field.onChange} /></FormItem>
-                            )} />
-                        </div>
-
-                        <FormField control={form.control} name="status" render={({ field }) => (
-                            <FormItem className="p-4 bg-muted/30 rounded-lg border">
-                                <FormLabel className="text-base">Publish Status</FormLabel>
-                                <FormControl>
-                                    <RadioGroup value={field.value} onValueChange={field.onChange} className="flex gap-4 mt-2">
-                                        <RadioGroupItem value="draft" id="draft" label="Draft" />
-                                        <RadioGroupItem value="published" id="published" label="Published" />
-                                    </RadioGroup>
-                                </FormControl>
-                            </FormItem>
-                        )} />
-
-                        <div className="flex justify-end pt-4 gap-4">
-                            <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-                            <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Finish & Save</Button>
-                        </div>
-                    </div>
-                </AccordionItem>
-            </Accordion>
-        </div>
+                    </AccordionItem>
+                </Accordion>
+            </div>
+        </Form>
     );
 }
 
