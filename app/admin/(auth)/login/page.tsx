@@ -15,9 +15,14 @@ import { authService } from "@/services/admin/auth.service";
 function AdminLoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+
+    // Detect Magic Link URL immediately
+    const isMagicLinkRedirect = searchParams.get('mode') === 'signIn' && !!searchParams.get('oobCode');
+
     const [identifier, setIdentifier] = useState("");
     const [stage, setStage] = useState<"start" | "verify" | "magic_link_sent">("start");
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(isMagicLinkRedirect);
+    const [isVerifyingLink, setIsVerifyingLink] = useState(isMagicLinkRedirect);
     const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -34,9 +39,12 @@ function AdminLoginContent() {
         const checkMagicLink = async () => {
             if (processingRef.current) return;
 
+            // Use the hook or our derived state? Hook is safer for parsing details
             if (isMagicLink(window.location.href)) {
                 processingRef.current = true;
                 setLoading(true);
+                setIsVerifyingLink(true);
+
                 try {
                     // Try to get email from storage
                     let email = window.localStorage.getItem('emailForSignIn');
@@ -45,7 +53,8 @@ function AdminLoginContent() {
                     }
                     if (!email) {
                         setLoading(false);
-                        processingRef.current = false; // Reset if cancelled so they can try again if they reload properly? Actually no, usually strict mode is instant.
+                        setIsVerifyingLink(false);
+                        processingRef.current = false;
                         return;
                     }
 
@@ -54,15 +63,11 @@ function AdminLoginContent() {
                     await completeLogin(idToken);
                 } catch (err: any) {
                     console.error(err);
-                    // If error is "invalid-action-code" (used), we shouldn't have prompted.
-                    // But since we prompt BEFORE verify, this is fine.
-
                     if (err.code !== 'auth/invalid-action-code') {
                         toast.error(err.message || "Failed to verify magic link");
                     }
-
                     setLoading(false);
-                    // Don't reset processingRef here usually, as the link is consumed.
+                    setIsVerifyingLink(false);
                 }
             }
         };
@@ -99,7 +104,7 @@ function AdminLoginContent() {
         } catch (err: any) {
             console.error(err);
             toast.error(err.response?.data?.message || err.message || "Login failed on server");
-            // If unauthorized, maybe logout firebase too?
+            setIsVerifyingLink(false); // Show login form on failure
         } finally {
             setLoading(false);
         }
@@ -216,9 +221,10 @@ function AdminLoginContent() {
                             Admin Login
                         </h1>
                         <p className=" text-muted-foreground text-center">
-                            {stage === 'start' && "Enter your credentials"}
-                            {stage === 'verify' && "Enter the secure code"}
-                            {stage === 'magic_link_sent' && "Check your inbox"}
+                            {isVerifyingLink ? "Authenticating..." :
+                                stage === 'start' ? "Enter your credentials" :
+                                    stage === 'verify' ? "Enter the secure code" :
+                                        "Check your inbox"}
                         </p>
                     </CardHeader>
 
@@ -227,7 +233,15 @@ function AdminLoginContent() {
                         {/* Hidden Recaptcha */}
                         <div id="recaptcha-container"></div>
 
-                        {stage === 'magic_link_sent' ? (
+                        {isVerifyingLink ? (
+                            <div className="flex flex-col items-center justify-center py-10 space-y-6">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                <div className="text-center space-y-2">
+                                    <p className="font-medium text-lg">Verifying Access</p>
+                                    <p className="text-sm text-muted-foreground">Please wait while we log you in...</p>
+                                </div>
+                            </div>
+                        ) : stage === 'magic_link_sent' ? (
                             <div className="text-center space-y-4">
                                 <div className="p-4 bg-green-50 text-green-700 rounded-md text-sm">
                                     We sent a login link to <strong>{identifier}</strong>.<br />
