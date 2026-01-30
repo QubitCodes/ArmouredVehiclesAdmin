@@ -110,14 +110,14 @@ export default function AdminDashboard() {
       bgColor: "bg-green-50 dark:bg-green-950/20",
     },
     {
-      title: "Pending Vendors",
+      title: "Pending Vendor Approvals",
       value: stats?.pendingVendorApprovals ?? 0,
       icon: Store,
       color: "text-amber-600 dark:text-amber-400",
       bgColor: "bg-amber-50 dark:bg-amber-950/20",
     },
     {
-      title: "Pending Customers",
+      title: "Pending Customer Approvals",
       value: stats?.pendingCustomerApprovals ?? 0,
       icon: Users,
       color: "text-yellow-600 dark:text-yellow-400",
