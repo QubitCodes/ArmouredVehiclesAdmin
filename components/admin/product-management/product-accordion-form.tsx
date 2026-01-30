@@ -328,6 +328,8 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
             // Unlock all sections for existing products
             setUnlockedSections([1, 2, 3, 4, 5]);
+            // Open all sections for existing products (user requested unlocked sections stay open)
+            setOpenSections(SECTIONS.map(s => s.slug));
         }
     }, [product, currentProductId, form]);
 
@@ -661,15 +663,13 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
             <Form {...form}>
                 <form className="space-y-4">
                     <Accordion
-                        type="single"
-                        collapsible
-                        value={openSections[0]}
-                        onValueChange={(value) => {
-                            if (value) {
-                                setOpenSections([value]);
-                                window.history.replaceState(null, "", `#${value}`);
-                            } else {
-                                setOpenSections([]);
+                        type="multiple"
+                        value={openSections}
+                        onValueChange={(values) => {
+                            setOpenSections(values);
+                            // Update URL hash to the first open section
+                            if (values.length > 0) {
+                                window.history.replaceState(null, "", `#${values[values.length - 1]}`);
                             }
                         }}
                         className="space-y-4"
