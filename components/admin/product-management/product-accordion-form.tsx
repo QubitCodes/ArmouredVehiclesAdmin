@@ -779,7 +779,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                     >
                                         <AccordionTrigger
                                             className={cn(
-                                                "px-6 py-4 hover:no-underline hover:bg-muted/50",
+                                                "px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:border-b",
                                                 !isUnlocked && "cursor-not-allowed"
                                             )}
                                             disabled={!isUnlocked}
@@ -1028,37 +1028,39 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                         <FormItem>
                             <FormLabel>Description *</FormLabel>
                             <FormControl>
-                                <RichTextEditor
-                                    value={field.value || ""}
-                                    onChange={(val) => field.onChange(val)}
-                                    onFileUpload={async (file) => {
-                                        if (!currentProductId) {
-                                            toast.error("Please save the basic information first before uploading files.");
-                                            throw new Error("Product ID required");
-                                        }
+                                <div className="border border-input rounded-md overflow-hidden">
+                                    <RichTextEditor
+                                        value={field.value || ""}
+                                        onChange={(val) => field.onChange(val)}
+                                        onFileUpload={async (file) => {
+                                            if (!currentProductId) {
+                                                toast.error("Please save the basic information first before uploading files.");
+                                                throw new Error("Product ID required");
+                                            }
 
-                                        const formData = new FormData();
-                                        formData.append('file', file);
-                                        formData.append('label', 'PRODUCT_DESCRIPTION_MEDIA');
-                                        formData.append('data', JSON.stringify({ product_id: currentProductId }));
+                                            const formData = new FormData();
+                                            formData.append('file', file);
+                                            formData.append('label', 'PRODUCT_DESCRIPTION_MEDIA');
+                                            formData.append('data', JSON.stringify({ product_id: currentProductId }));
 
-                                        const response = await api.post('/upload/files', formData, {
-                                            headers: { 'Content-Type': 'multipart/form-data' }
-                                        });
+                                            const response = await api.post('/upload/files', formData, {
+                                                headers: { 'Content-Type': 'multipart/form-data' }
+                                            });
 
-                                        if (response.data?.status && Array.isArray(response.data?.data) && response.data.data.length > 0) {
-                                            const filePath = response.data.data[0];
-                                            const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
-                                            const baseUrl = apiBase.replace(/\/api\/v1\/?$/, '');
-                                            return {
-                                                url: `${baseUrl}/${filePath}`,
-                                                type: file.type.startsWith('image/') ? 'image' : 'file',
-                                                name: file.name
-                                            };
-                                        }
-                                        throw new Error("Invalid response from server");
-                                    }}
-                                />
+                                            if (response.data?.status && Array.isArray(response.data?.data) && response.data.data.length > 0) {
+                                                const filePath = response.data.data[0];
+                                                const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
+                                                const baseUrl = apiBase.replace(/\/api\/v1\/?$/, '');
+                                                return {
+                                                    url: `${baseUrl}/${filePath}`,
+                                                    type: file.type.startsWith('image/') ? 'image' : 'file',
+                                                    name: file.name
+                                                };
+                                            }
+                                            throw new Error("Invalid response from server");
+                                        }}
+                                    />
+                                </div>
                             </FormControl>
                         </FormItem>
                     )}
@@ -1534,7 +1536,10 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     function renderUploadsSection() {
         const coverPreview = coverImageFile
             ? URL.createObjectURL(coverImageFile)
-            : form.watch('image');
+            : (form.watch('image') || "");
+
+        const serverMedia = (product as any)?.media || [];
+        const galleryMedia = serverMedia.filter((m: any) => !m.is_cover);
 
         return (
             <div className="space-y-6">
@@ -1588,23 +1593,79 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                 />
 
                 <div className="space-y-4">
-                    <Label className="text-base font-semibold">Gallery Images</Label>
+                    <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Gallery Images</Label>
+                        {selectedMediaIds.size > 0 && (
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={async () => {
+                                    if (confirm(`Delete ${selectedMediaIds.size} images?`)) {
+                                        try {
+                                            await bulkDeleteMedia({
+                                                productId: currentProductId || "",
+                                                mediaIds: Array.from(selectedMediaIds).map(Number)
+                                            });
+                                            setSelectedMediaIds(new Set());
+                                            toast.success("Selected images deleted");
+                                        } catch (e) {
+                                            toast.error("Failed to delete selected images");
+                                        }
+                                    }
+                                }}
+                            >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Selected ({selectedMediaIds.size})
+                            </Button>
+                        )}
+                    </div>
+
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {gallery.map((item, index) => (
-                            <div key={`existing-${index}`} className="group relative aspect-square border rounded-xl overflow-hidden bg-background shadow-sm">
-                                <img src={item} alt={`Gallery ${index}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                        {/* Server Images */}
+                        {galleryMedia.map((item: any) => (
+                            <div key={item.id} className="group relative aspect-square border rounded-xl overflow-hidden bg-background shadow-sm">
+                                <img src={item.url} alt="Gallery" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+
+                                <div className="absolute top-2 left-2 z-10">
+                                    <Checkbox
+                                        checked={selectedMediaIds.has(String(item.id))}
+                                        onCheckedChange={() => {
+                                            const newSet = new Set(selectedMediaIds);
+                                            const idStr = String(item.id);
+                                            if (newSet.has(idStr)) newSet.delete(idStr);
+                                            else newSet.add(idStr);
+                                            setSelectedMediaIds(newSet);
+                                        }}
+                                        className="bg-white/90 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground shadow-sm"
+                                    />
+                                </div>
+
                                 <Button
                                     type="button"
                                     variant="destructive"
                                     size="icon"
                                     className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
-                                    onClick={() => removeArrayItem('gallery', index)}
+                                    onClick={async () => {
+                                        if (confirm("Delete this image?")) {
+                                            try {
+                                                await deleteMedia({
+                                                    productId: currentProductId || "",
+                                                    mediaId: String(item.id)
+                                                });
+                                                toast.success("Image deleted");
+                                            } catch (e) {
+                                                toast.error("Failed to delete image");
+                                            }
+                                        }
+                                    }}
                                 >
-                                    <X className="h-3.5 w-3.5" />
+                                    <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         ))}
 
+                        {/* New Local Files */}
                         {galleryFiles.map((file, i) => (
                             <div key={`new-${i}`} className="group relative aspect-square border-2 border-primary/50 rounded-xl overflow-hidden bg-background shadow-sm">
                                 <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover" />
@@ -1639,12 +1700,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                 className="hidden"
                                 onChange={(e) => {
                                     if (e.target.files) {
-                                        // Prevent duplicates
-                                        const existingUrls = new Set(gallery);
-                                        const newFiles = Array.from(e.target.files).filter(file => {
-                                            const url = URL.createObjectURL(file);
-                                            return !existingUrls.has(url);
-                                        });
+                                        const newFiles = Array.from(e.target.files);
                                         setGalleryFiles(prev => [...prev, ...newFiles]);
                                     }
                                 }}
@@ -1655,6 +1711,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
             </div>
         );
     }
+
 
     function renderDeclarationsSection() {
         return (
