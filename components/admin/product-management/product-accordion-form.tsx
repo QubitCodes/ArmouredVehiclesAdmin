@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,10 +23,9 @@ import { DateSelector } from "@/components/ui/date-selector";
 import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/spinner";
 import RichTextEditor from "@/components/ui/rich-text-editor";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { COUNTRY_LIST } from "@/lib/countries";
-import { EXTERNAL_COLORS } from "@/lib/external-colors";
 import api from "@/lib/api";
+
 
 import { useCreateProduct, useUpdateProduct, useDeleteProductMedia, useBulkDeleteProductMedia } from "@/hooks/admin/product-management/use-products";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
@@ -782,11 +782,66 @@ export default function ProductAccordionForm({ productId, isVendor = false }: Pr
                                     <FormItem><FormLabel>Height</FormLabel><FormControl><Input type="number" placeholder="Height" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
                                 )} />
                             </div>
+                            <div className="space-y-6 pt-4 border-t">
+                                {['materials', 'features', 'performance', 'specifications'].map(key => (
+                                    <div key={key}>
+                                        <Label className="capitalize mb-2 block">{key}</Label>
+                                        {(form.watch(key as any) || []).map((item: string, index: number) => (
+                                            <div key={index} className="flex gap-2 mb-2">
+                                                <Input value={item} onChange={e => updateArrayItem(key, index, e.target.value)} />
+                                                <Button type="button" variant="outline" size="icon" onClick={() => removeArrayItem(key, index)}><X className="h-4 w-4" /></Button>
+                                            </div>
+                                        ))}
+                                        <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem(key as any)}><Plus className="mr-2 h-4 w-4" /> Add {key.slice(0, -1)}</Button>
+                                    </div>
+                                ))}
+                            </div>
+
 
                             <FormField control={form.control} name="technicalDescription" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Additional Technical Details</FormLabel>
-                                    <FormControl><RichTextEditor value={field.value || ""} onChange={field.onChange} /></FormControl>
+                                    <FormControl>
+                                        <RichTextEditor
+                                            value={field.value || ""}
+                                            onChange={field.onChange}
+                                            onFileUpload={async (file) => {
+                                                if (!currentProductId) {
+                                                    toast.error("Please save the basic information first before uploading files.");
+                                                    throw new Error("Product ID required");
+                                                }
+
+                                                const formData = new FormData();
+                                                formData.append('file', file);
+                                                formData.append('label', 'PRODUCT_DESCRIPTION_MEDIA');
+                                                formData.append('data', JSON.stringify({ product_id: currentProductId }));
+
+                                                try {
+                                                    const response = await api.post('/upload/files', formData, {
+                                                        headers: { 'Content-Type': 'multipart/form-data' }
+                                                    });
+
+                                                    if (response.data?.status && Array.isArray(response.data?.data) && response.data.data.length > 0) {
+                                                        const filePath = response.data.data[0];
+                                                        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
+                                                        const baseUrl = apiBase.replace(/\/api\/v1\/?$/, '');
+                                                        const fullUrl = `${baseUrl}/${filePath}`;
+
+                                                        return {
+                                                            url: fullUrl,
+                                                            type: file.type.startsWith('image/') ? 'image' : 'file',
+                                                            name: file.name
+                                                        };
+                                                    } else {
+                                                        throw new Error("Invalid response from server");
+                                                    }
+                                                } catch (error) {
+                                                    console.error("Upload failed", error);
+                                                    throw error;
+                                                }
+                                            }}
+                                        />
+                                    </FormControl>
                                 </FormItem>
                             )} />
 
@@ -794,14 +849,15 @@ export default function ProductAccordionForm({ productId, isVendor = false }: Pr
                                 <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
                             </div>
                         </div>
-                    </AccordionItem>
+                    </AccordionItem >
 
                     {/* SECTION 3: PRICING */}
-                    <AccordionItem
+                    < AccordionItem
                         id="pricing"
                         title="Pricing & Availability"
                         icon={ShoppingCart}
-                        isOpen={openSection === "pricing"}
+                        isOpen={openSection === "pricing"
+                        }
                         isLocked={!unlockedSections.has("pricing")}
                         onToggle={() => handleToggle("pricing")}
                     >
@@ -884,10 +940,10 @@ export default function ProductAccordionForm({ productId, isVendor = false }: Pr
                                 <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
                             </div>
                         </div>
-                    </AccordionItem>
+                    </AccordionItem >
 
                     {/* SECTION 4: UPLOADS */}
-                    <AccordionItem
+                    < AccordionItem
                         id="uploads"
                         title="Uploads & Media"
                         icon={ImageIcon}
@@ -948,10 +1004,10 @@ export default function ProductAccordionForm({ productId, isVendor = false }: Pr
                                 <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save & Continue</Button>
                             </div>
                         </div>
-                    </AccordionItem>
+                    </AccordionItem >
 
                     {/* SECTION 5: DECLARATIONS */}
-                    <AccordionItem
+                    < AccordionItem
                         id="declarations"
                         title="Declarations"
                         icon={Shield}
@@ -995,152 +1051,406 @@ export default function ProductAccordionForm({ productId, isVendor = false }: Pr
                                 <Button onClick={onSaveSection} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Finish & Save</Button>
                             </div>
                         </div>
-                    </AccordionItem>
-                </Accordion>
-            </div>
-        </Form>
+                    </AccordionItem >
+                </Accordion >
+            </div >
+        </Form >
     );
 }
 
 
-// Subcomponent for Specs Table (Simplified for brevity but mirroring logic)
+// Subcomponent for Specs Table (Legacy Feature Parity)
 function SpecsEditor({ localSpecs, setLocalSpecs }: { localSpecs: ProductSpecification[], setLocalSpecs: any }) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [showPaste, setShowPaste] = useState(false);
+    const [rowsToAdd, setRowsToAdd] = useState(1);
 
-    const handlePaste = (e: React.ClipboardEvent) => {
+    const handlePaste = (e: React.ClipboardEvent, startIndex: number, startField: 'label' | 'value') => {
         e.preventDefault();
         const clipboardData = e.clipboardData.getData('text');
-        processPasteData(clipboardData);
-    };
+        if (!clipboardData) return;
 
-    const processPasteData = (data: string) => {
-        const rows = data.split(/\r\n|\n|\r/).filter(row => row.trim() !== '');
-        const newSpecs: ProductSpecification[] = [];
-        let currentSort = localSpecs.length > 0 ? Math.max(...localSpecs.map(s => s.sort)) + 1 : 0;
+        const rows = clipboardData.split(/\r\n|\n/).filter(row => row.trim() !== '');
+        if (rows.length === 0) return;
 
-        rows.forEach((row, index) => {
-            const cols = row.split(/\t|,/).map(col => col.trim()); // Split by tab or comma
+        const newSpecs = [...localSpecs];
 
-            if (cols.length === 1 && cols[0]) {
-                // Likely a title
+        // Legacy function helper mock
+        const getNextSuggestedType = (specs: ProductSpecification[], index: number) => {
+            // Find previous type
+            for (let i = index - 1; i >= 0; i--) {
+                if (specs[i].type === 'title_only') return 'general'; // Default after title is general
+                return specs[i].type;
+            }
+            return 'title_only'; // First one
+        };
+
+        rows.forEach((row, i) => {
+            const cols = row.split('\t');
+            const currentIndex = startIndex + i;
+
+            // Create new row if needed
+            if (currentIndex >= newSpecs.length) {
                 newSpecs.push({
-                    label: cols[0],
+                    label: '',
                     value: '',
-                    type: 'title_only',
-                    active: false,
-                    sort: currentSort++
-                });
-            } else if (cols.length >= 2) {
-                newSpecs.push({
-                    label: cols[0],
-                    value: cols[1] || '',
-                    type: 'general',
-                    active: false,
-                    sort: currentSort++
+                    type: getNextSuggestedType(newSpecs, currentIndex) as any,
+                    active: true,
+                    sort: newSpecs.length,
                 });
             }
+
+            const spec = newSpecs[currentIndex];
+
+            // Map columns based on startField
+            if (startField === 'label') {
+                if (cols[0] !== undefined) spec.label = cols[0].trim();
+                if (cols[1] !== undefined) spec.value = cols[1].trim();
+                // Optional: Try to map 3rd column to Type
+                if (cols[2] !== undefined) {
+                    const typeVal = cols[2].trim().toLowerCase();
+                    if (currentIndex === 0) {
+                        spec.type = 'title_only';
+                    } else if (['general', 'title_only', 'value_only'].includes(typeVal)) {
+                        spec.type = typeVal as any;
+                    } else if (typeVal === 'title') {
+                        spec.type = 'title_only';
+                    } else if (typeVal === 'value') {
+                        spec.type = 'value_only';
+                    }
+                }
+            } else { // startField === 'value'
+                if (cols[0] !== undefined) spec.value = cols[0].trim();
+            }
+
+            // Auto-activate
+            spec.active = !!(spec.label || spec.value);
+
+            // Sanitize based on Type
+            if (spec.type === 'value_only') spec.label = "";
+            if (spec.type === 'title_only') spec.value = "";
+
+            // First row MUST be title_only regardless of paste content
+            if (currentIndex === 0) spec.type = 'title_only';
+
+            // Update sort order just in case
+            spec.sort = currentIndex;
         });
 
-        if (newSpecs.length > 0) {
-            setLocalSpecs((prev: any) => [...prev, ...newSpecs]);
-            toast.success(`Imported ${newSpecs.length} specifications`);
-            setShowPaste(false);
+        setLocalSpecs(newSpecs);
+        toast.success(`Imported ${rows.length} specifications`);
+        setShowPaste(false);
+    };
+
+    const updateLocalSpec = (index: number, field: keyof ProductSpecification, val: any) => {
+        const updated = [...localSpecs];
+        (updated[index] as any)[field] = val;
+        if (field === 'label' || field === 'value') {
+            updated[index].active = !!(updated[index].label || updated[index].value);
         }
+        setLocalSpecs(updated);
+    };
+
+    const addSpecRows = () => {
+        const newSpecs = [...localSpecs];
+        const getNextSuggestedType = (specs: ProductSpecification[], index: number) => {
+            for (let i = index - 1; i >= 0; i--) {
+                if (specs[i].type === 'title_only') return 'general';
+                return specs[i].type;
+            }
+            return 'title_only';
+        };
+
+        for (let i = 0; i < rowsToAdd; i++) {
+            const nextIndex = newSpecs.length;
+            newSpecs.push({
+                label: '',
+                value: '',
+                type: getNextSuggestedType(newSpecs, nextIndex) as any,
+                active: false,
+                sort: nextIndex,
+            });
+        }
+        setLocalSpecs(newSpecs);
     };
 
     return (
-        <div className="border rounded-md p-4 bg-background">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold flex items-center gap-2"><Settings className="h-4 w-4" /> Specifications</h3>
-                <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => setShowPaste(!showPaste)}>
-                        {showPaste ? 'Cancel Paste' : 'Bulk Paste from Excel'}
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setLocalSpecs([...localSpecs, { label: '', value: '', type: 'general', active: false, sort: localSpecs.length }])}>
-                        <Plus className="h-4 w-4 mr-2" /> Add Row
+        <div className="space-y-6">
+            <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm table-fixed">
+                    <thead className="bg-muted">
+                        <tr>
+                            <th className="w-10 px-2 py-2 text-center">Act.</th>
+                            <th className="px-2 py-2 text-left">Label</th>
+                            <th className="px-2 py-2 text-left">Value</th>
+                            <th className="w-32 px-2 py-2 text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {localSpecs.map((spec, index) => (
+                            <tr key={index} className="border-t">
+                                <td className="px-2 py-2 text-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={spec.active}
+                                        onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
+                                        className="h-4 w-4"
+                                    />
+                                </td>
+                                {spec.type === 'title_only' || spec.type === 'value_only' ? (
+                                    <td colSpan={2} className="px-2 py-2">
+                                        <div className="relative">
+                                            <Input
+                                                value={spec.type === 'title_only' ? spec.label || '' : spec.value || ''}
+                                                onChange={(e) => updateLocalSpec(index, spec.type === 'title_only' ? 'label' : 'value', e.target.value)}
+                                                onPaste={(e) => handlePaste(e, index, spec.type === 'title_only' ? 'label' : 'value')}
+                                                className={`${spec.type === 'title_only' ? 'font-bold bg-muted/50 pl-10 border-primary/20' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all`}
+                                                placeholder={spec.type === 'title_only' ? 'Section Title' : 'Value'}
+                                            />
+                                            {spec.type === 'title_only' && (
+                                                <div className="absolute top-0 left-0 bg-primary text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-80 z-10">
+                                                    <Hash className="w-4 h-4" />
+                                                </div>
+                                            )}
+                                            {spec.type === 'value_only' && (
+                                                <div className="absolute top-0 left-0 bg-primary/20 text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                ) : (
+                                    <>
+                                        <td className="px-2 py-2 align-top">
+                                            <div className="relative group">
+                                                <Input
+                                                    value={spec.label || ''}
+                                                    onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                                    onPaste={(e) => handlePaste(e, index, 'label')}
+                                                    placeholder="Label"
+                                                    className="w-full font-medium border-primary/30 bg-muted/10"
+                                                    list={`suggestions-${index}`}
+                                                />
+                                                <datalist id={`suggestions-${index}`}>
+                                                    {["Condition", "Color", "Size"]
+                                                        .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
+                                                        .map(opt => <option key={opt} value={opt} />)
+                                                    }
+                                                </datalist>
+                                            </div>
+                                        </td>
+                                        <td className="px-2 py-2 align-top">
+                                            {(() => {
+                                                const label = spec.label?.trim();
+                                                if (label === 'Condition') {
+                                                    return (
+                                                        <select
+                                                            value={spec.value || ''}
+                                                            onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <option value="" disabled>Select Condition</option>
+                                                            <option value="New">New</option>
+                                                            <option value="Used">Used</option>
+                                                            <option value="Refurbished">Refurbished</option>
+                                                        </select>
+                                                    );
+                                                }
+                                                if (label === 'Color') {
+                                                    const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                    return (
+                                                        <MultiSelect
+                                                            options={EXTERNAL_COLORS}
+                                                            selected={selectedColors}
+                                                            onChange={(selected) => updateLocalSpec(index, 'value', selected.join(', '))}
+                                                            placeholder="Select or add Colors..."
+                                                            creatable={true}
+                                                        />
+                                                    );
+                                                }
+                                                if (label === 'Size') {
+                                                    const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
+                                                    const dimensions = match ? match[1] : (spec.value || '');
+                                                    const unit = match ? match[2] : 'mm';
+                                                    const updateSizeValue = (newDims: string, newUnit: string) => {
+                                                        updateLocalSpec(index, 'value', `${newDims} ${newUnit}`.trim());
+                                                    };
+                                                    return (
+                                                        <MaskedSizeInput
+                                                            value={dimensions}
+                                                            unit={unit}
+                                                            onChange={(dims, u) => updateSizeValue(dims, u)}
+                                                        />
+                                                    );
+                                                }
+                                                return (
+                                                    <Input
+                                                        value={spec.value || ''}
+                                                        onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                        onPaste={(e) => handlePaste(e, index, 'value')}
+                                                        placeholder="Value"
+                                                        className="w-full"
+                                                    />
+                                                );
+                                            })()}
+                                        </td>
+                                    </>
+                                )}
+                                <td className="px-2 py-2">
+                                    <div className="flex gap-1 items-center">
+                                        <Select
+                                            value={spec.type}
+                                            onValueChange={(v) => updateLocalSpec(index, 'type', v)}
+                                        >
+                                            <SelectTrigger className="h-8 px-1 text-xs border rounded bg-background w-20"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {index === 0 ? (
+                                                    <SelectItem value="title_only">Title</SelectItem>
+                                                ) : (
+                                                    <>
+                                                        <SelectItem value="title_only">Title</SelectItem>
+                                                        <SelectItem value="general">General</SelectItem>
+                                                        <SelectItem value="value_only">Value</SelectItem>
+                                                    </>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button
+                                            type="button" variant="outline" size="icon"
+                                            className="h-8 w-8 p-0 aspect-square shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-black dark:hover:text-white"
+                                            onClick={() => setLocalSpecs(localSpecs.filter((_, idx) => idx !== index))}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="flex justify-between mt-4 items-center">
+                <div className="flex items-center gap-2">
+                    <Input
+                        type="number" min="1"
+                        value={rowsToAdd}
+                        onChange={(e) => setRowsToAdd(parseInt(e.target.value) || 1)}
+                        className="w-16 h-9"
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={addSpecRows}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Rows
                     </Button>
                 </div>
             </div>
 
-            {showPaste && (
-                <div className="mb-4 p-4 border border-dashed rounded-md bg-muted/50">
-                    <Label className="mb-2 block">Paste data from Excel or CSV here:</Label>
-                    <textarea
-                        ref={textareaRef}
-                        className="w-full h-32 p-2 border rounded-md font-mono text-sm bg-background"
-                        placeholder={`Paste format:\nLabel\tValue\nTitle Row\nLabel\tValue`}
-                        onPaste={handlePaste}
-                    />
-                    <div className="text-xs text-muted-foreground mt-2">
-                        * Tips: Single column = Section Title. Two columns = Label & Value.
-                    </div>
+            <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 items-start">
+                <Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                    <p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
+                    <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+                        <li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
+                        <li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
+                        <li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
+                    </ul>
                 </div>
-            )}
-
-            <div className="space-y-2">
-                {localSpecs.length === 0 && !showPaste && (
-                    <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-md">
-                        No specifications added. Add a row or paste from Excel.
-                    </div>
-                )}
-                {localSpecs.map((spec, i) => (
-                    <div key={i} className="flex gap-2 items-center group">
-                        <div className="cursor-move text-muted-foreground px-1"><Hash className="h-3 w-3" /></div>
-                        <Select value={spec.type} onValueChange={(v: "title_only" | "general" | "value_only") => {
-                            const newSpecs = [...localSpecs];
-                            newSpecs[i].type = v;
-                            // Clear irrelevant fields based on type
-                            if (v === 'title_only') newSpecs[i].value = '';
-                            if (v === 'value_only') newSpecs[i].label = '';
-                            setLocalSpecs(newSpecs);
-                        }}>
-                            <SelectTrigger className="w-[110px] h-9"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="title_only">Section Title</SelectItem>
-                                <SelectItem value="general">Label : Value</SelectItem>
-                                <SelectItem value="value_only">Value Only</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {spec.type !== 'value_only' && (
-                            <Input
-                                value={spec.label || ''}
-                                placeholder={spec.type === 'title_only' ? "Section Title (e.g. Dimensions)" : "Label (e.g. Length)"}
-                                onChange={e => {
-                                    const newSpecs = [...localSpecs];
-                                    newSpecs[i].label = e.target.value;
-                                    setLocalSpecs(newSpecs);
-                                }}
-                                className={spec.type === 'title_only' ? 'font-bold flex-1 h-9' : 'h-9 w-1/3'}
-                            />
-                        )}
-
-                        {spec.type !== 'title_only' && (
-                            <Input
-                                value={spec.value || ''}
-                                placeholder="Value (e.g. 500mm)"
-                                onChange={e => {
-                                    const newSpecs = [...localSpecs];
-                                    newSpecs[i].value = e.target.value;
-                                    setLocalSpecs(newSpecs);
-                                }}
-                                className="flex-1 h-9"
-                            />
-                        )}
-
-                        <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-9 w-9 text-muted-foreground hover:text-destructive transition-colors"
-                            onClick={() => setLocalSpecs(localSpecs.filter((_, idx) => idx !== i))}
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                ))}
             </div>
         </div>
     )
 }
+
+const MaskedSizeInput = ({
+    value,
+    unit,
+    onChange
+}: {
+    value: string,
+    unit: string,
+    onChange: (dims: string, unit: string) => void
+}) => {
+    // Value format: "LxWxH"
+    const parts = value.split('x');
+    const l = parts[0] || '';
+    const w = parts[1] || '';
+    const h = parts[2] || '';
+
+    // Refs for focus management
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    const updatePart = (index: number, val: string) => {
+        // Only allow digits
+        if (val && !/^\d*$/.test(val)) return;
+
+        const newParts = [l, w, h];
+        newParts[index] = val;
+        onChange(newParts.join('x'), unit);
+
+        // Auto-focus next input if length reaches 4
+        if (val.length === 4 && index < 2) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+        if (e.key === 'x') {
+            e.preventDefault();
+            // Focus next input
+            if (index < 2) {
+                inputRefs.current[index + 1]?.focus();
+            }
+        }
+        // Handle Backspace at start of input to jump back
+        if (e.key === 'Backspace' && (e.currentTarget.value === '')) {
+            if (index > 0) {
+                e.preventDefault();
+                inputRefs.current[index - 1]?.focus();
+            }
+        }
+    };
+
+    return (
+        <div className="flex gap-2">
+            <div className="flex-1 flex items-center border rounded-md bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background transition-all overflow-hidden h-10 w-full">
+                <Input
+                    ref={(el) => { inputRefs.current[0] = el }}
+                    value={l}
+                    onChange={(e) => updatePart(0, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 0)}
+                    placeholder="000"
+                    className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+                    maxLength={4}
+                />
+                <span className="text-muted-foreground font-medium select-none text-xs">x</span>
+                <Input
+                    ref={(el) => { inputRefs.current[1] = el }}
+                    value={w}
+                    onChange={(e) => updatePart(1, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 1)}
+                    placeholder="000"
+                    className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+                    maxLength={4}
+                />
+                <span className="text-muted-foreground font-medium select-none text-xs">x</span>
+                <Input
+                    ref={(el) => { inputRefs.current[2] = el }}
+                    value={h}
+                    onChange={(e) => updatePart(2, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 2)}
+                    placeholder="000"
+                    className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+                    maxLength={4}
+                />
+            </div>
+
+            <select
+                value={unit}
+                onChange={(e) => onChange(value, e.target.value)}
+                className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+                <option value="mm">mm</option>
+                <option value="cm">cm</option>
+                <option value="m">m</option>
+            </select>
+        </div>
+    );
+};
