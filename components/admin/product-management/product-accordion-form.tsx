@@ -430,7 +430,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                         window.history.replaceState(null, "", `#${nextSection.slug}`);
                     }
                     // Navigate to edit URL
-                    router.replace(`/${domain}/product/${newId}#${nextSection?.slug || 'technical'}`);
+                    router.replace(`/${domain}/product/${newId}/update#${nextSection?.slug || 'technical'}`);
                 }
             } else {
                 // Update existing
