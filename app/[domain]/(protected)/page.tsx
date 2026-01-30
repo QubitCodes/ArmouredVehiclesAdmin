@@ -49,7 +49,51 @@ export default function AdminDashboard() {
     );
   }
 
-  const statCards = [
+  const formatCurrency = (val: number | undefined) => {
+    const num = typeof val === 'number' ? val : parseFloat(String(val || '0'));
+    return `AED ${num.toFixed(2)}`;
+  };
+
+  const statCards = domain === 'vendor' ? [
+    {
+      title: "Total Revenue",
+      value: formatCurrency(stats?.totalRevenue),
+      subValue: `${formatCurrency(stats?.monthlyRevenue)} this month`,
+      icon: DollarSign,
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-50 dark:bg-emerald-950/20",
+    },
+    {
+      title: "Total Orders",
+      value: stats?.totalOrders ?? 0,
+      subValue: `${stats?.monthlyOrders ?? 0} this month`,
+      icon: ShoppingCart,
+      color: "text-orange-600 dark:text-orange-400",
+      bgColor: "bg-orange-50 dark:bg-orange-950/20",
+    },
+    {
+      title: "Total Customers",
+      value: stats?.totalCustomers ?? 0,
+      subValue: `${stats?.monthlyCustomers ?? 0} served this month`,
+      icon: Users,
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-950/20",
+    },
+    {
+      title: "Total Products",
+      value: stats?.totalProducts ?? 0,
+      icon: Package,
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-950/20",
+    },
+    {
+      title: "Low Stock Products",
+      value: stats?.lowStockProducts ?? 0,
+      icon: AlertCircle,
+      color: "text-red-600 dark:text-red-400",
+      bgColor: "bg-red-50 dark:bg-red-950/20",
+    },
+  ] : [
     {
       title: "Total Sellers",
       value: stats?.totalSellers ?? 0,
@@ -81,15 +125,15 @@ export default function AdminDashboard() {
     {
       title: "Total Orders",
       value: stats?.totalOrders ?? 0,
+      subValue: `${stats?.monthlyOrders ?? 0} this month`,
       icon: ShoppingCart,
       color: "text-orange-600 dark:text-orange-400",
       bgColor: "bg-orange-50 dark:bg-orange-950/20",
     },
     {
       title: "Total Revenue",
-      value: `AED ${typeof stats?.totalRevenue === 'number'
-        ? stats.totalRevenue.toFixed(2)
-        : parseFloat(String(stats?.totalRevenue || '0')).toFixed(2)}`,
+      value: formatCurrency(stats?.totalRevenue),
+      subValue: `${formatCurrency(stats?.monthlyRevenue)} this month`,
       icon: DollarSign,
       color: "text-emerald-600 dark:text-emerald-400",
       bgColor: "bg-emerald-50 dark:bg-emerald-950/20",
@@ -97,6 +141,7 @@ export default function AdminDashboard() {
     {
       title: "Total Customers",
       value: stats?.totalCustomers ?? 0,
+      subValue: `${stats?.monthlyCustomers ?? 0} this month`,
       icon: Users,
       color: "text-indigo-600 dark:text-indigo-400",
       bgColor: "bg-indigo-50 dark:bg-indigo-950/20",
@@ -165,6 +210,9 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-bold text-foreground">
                       {stat.value}
                     </div>
+                    {stat.subValue && (
+                      <p className="text-xs text-muted-foreground mt-1">{stat.subValue}</p>
+                    )}
                   </CardContent>
                 </Card>
               );

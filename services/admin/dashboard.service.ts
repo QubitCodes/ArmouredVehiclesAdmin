@@ -4,11 +4,22 @@ export interface DashboardStats {
   totalSellers?: number;
   activeSellers?: number;
   pendingApprovals?: number;
+  
   totalProducts?: number;
+  lowStockProducts?: number; // New for Vendors
+
   totalOrders?: number;
+  monthlyOrders?: number; // New
+
   totalRevenue?: number;
+  monthlyRevenue?: number; // New
+
   totalCustomers?: number;
+  monthlyCustomers?: number; // New
+
   totalRefunds?: number;
+  totalUsers?: number;
+  
   [key: string]: unknown;
 }
 
