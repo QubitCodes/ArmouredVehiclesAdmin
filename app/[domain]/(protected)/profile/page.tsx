@@ -12,6 +12,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Info } from "lucide-react";
 
+import { AdminProfileView } from "@/components/admin/admin-profile-view";
+
+// ... existing imports
+
 export default function ProfilePage() {
     const params = useParams();
     const domain = (params?.domain as string) || "admin";
@@ -43,12 +47,7 @@ export default function ProfilePage() {
                 // Admin
                 const response = await adminService.getAdmin(userId);
                 console.log('[DEBUG] Admin Response', response);
-                // adminService.getAdmin returns { success, data: {...} }
-                return response.data; // This is the actual Admin object if success is true? No, wait.
-                // If API returns { success: true, data: { ... } }, 
-                // adminService returns response.data (the wrapper).
-                // So here we return response.data.data?
-                // Let's check logic below.
+                return response.data;
             }
         },
         enabled: !!userId && !!userRole,
@@ -79,8 +78,6 @@ export default function ProfilePage() {
     }
 
     // Check if we have userData. 
-    // Note: if userRole is admin, userData might be the wrapper if logic above is wrong.
-    // But purely checking truthiness:
     const hasData = !!userData;
 
     if (!hasData && !isLoading && userId) {
@@ -125,7 +122,11 @@ export default function ProfilePage() {
                 </p>
             </div>
 
-            <VendorProfileView user={userData} profile={userProfile} />
+            {userRole === 'admin' || userRole === 'super_admin' ? (
+                <AdminProfileView user={userData} />
+            ) : (
+                <VendorProfileView user={userData} profile={userProfile} />
+            )}
         </div>
     );
 }

@@ -7,7 +7,9 @@ import {
   signInWithEmailLink,
   linkWithPhoneNumber,
   ConfirmationResult,
-  UserCredential
+  UserCredential,
+  User,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -25,7 +27,11 @@ interface UseFirebaseAuthReturn {
   verifyMagicLink: (email: string, windowUrl?: string) => Promise<UserCredential>;
   isMagicLink: (windowUrl: string) => boolean;
   
+  // Helpers
+  reauthenticate: (phoneNumber: string, containerId: string) => Promise<ConfirmationResult>;
+
   // State
+  user: User | null;
   loading: boolean;
   error: string | null;
   recaptchaVerifier: RecaptchaVerifier | null;
@@ -34,7 +40,15 @@ interface UseFirebaseAuthReturn {
 export function useFirebaseAuth(): UseFirebaseAuthReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(auth.currentUser);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+  useEffect(() => {
+     const unsubscribe = onAuthStateChanged(auth, (u) => {
+         setUser(u);
+     });
+     return () => unsubscribe();
+  }, []);
 
   // Helper to get verifier
   const getVerifier = (containerId: string) => {
@@ -177,6 +191,9 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
     }
   };
 
+  // Alias sendPhoneOtp as reauthenticate for now, assuming SMS proof is sufficient
+  const reauthenticate = sendPhoneOtp;
+
   return {
     sendPhoneOtp,
     verifyPhoneOtp,
@@ -185,6 +202,8 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
     sendMagicLink,
     verifyMagicLink,
     isMagicLink,
+    reauthenticate,
+    user,
     loading,
     error,
     recaptchaVerifier: recaptchaVerifierRef.current

@@ -51,10 +51,10 @@ export interface CreateAdminRequest {
 }
 
 export interface UpdateAdminRequest {
-  name: string;
-  email: string;
-  phone: string;
-  country_code: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  country_code?: string;
   is_active?: boolean;
 }
 
