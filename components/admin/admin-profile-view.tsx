@@ -479,7 +479,7 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
                                 Verify via SMS ({user.country_code} {user.phone.slice(-4).padStart(user.phone.length, '*')})
                             </Button>
-                            <Button variant="outline" onClick={sendReauthEmail} disabled={loading}>
+                            <Button onClick={sendReauthEmail} disabled={loading}>
                                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
                                 Verify via Email ({user.email.replace(/(.{2}).*(@.*)/, '$1***$2')})
                             </Button>
