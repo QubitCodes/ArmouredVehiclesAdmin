@@ -49,6 +49,7 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
+  const domain = (params?.domain as string) || "admin";
 
   const { data: order, isLoading, error } = useOrder(orderId);
   const { mutate: updateOrder, isPending: isUpdating } =
@@ -147,7 +148,7 @@ export default function OrderDetailPage() {
         error?: string;
       }>;
       if (axiosError?.response?.status === 404) {
-        router.replace("/admin/orders");
+        router.replace(`/${domain}/orders`);
         return;
       }
       const errorMessage =
@@ -495,7 +496,7 @@ export default function OrderDetailPage() {
                       <span className="text-muted-foreground mx-2">|</span>
                       {subOrder.vendor ? (
                         <a
-                          href={`/admin/vendors/${subOrder.vendor.id}`}
+                          href={`/${domain}/vendors/${subOrder.vendor.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-600 hover:underline flex items-center gap-1"

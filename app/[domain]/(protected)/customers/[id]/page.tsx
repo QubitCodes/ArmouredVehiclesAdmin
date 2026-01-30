@@ -26,6 +26,7 @@ export default function CustomerDetailPage() {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const customerId = params.id as string;
+    const domain = (params?.domain as string) || "admin";
     const currentTab = searchParams.get('tab') || 'details';
 
     const { data: customer, isLoading, error } = useQuery({
@@ -69,7 +70,7 @@ export default function CustomerDetailPage() {
             <div className="flex w-full flex-col gap-4">
                 <Button
                     variant="outline"
-                    onClick={() => router.push("/admin/customers")}
+                    onClick={() => router.push(`/${domain}/customers`)}
                     className="w-fit"
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -91,7 +92,7 @@ export default function CustomerDetailPage() {
                 <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => router.push("/admin/customers")}
+                    onClick={() => router.push(`/${domain}/customers`)}
                     className="h-9 w-9"
                 >
                     <ArrowLeft className="h-4 w-4" />
@@ -135,7 +136,7 @@ export default function CustomerDetailPage() {
             {/* Content */}
             <div className="pb-10">
                 {currentTab === 'details' && <CustomerProfile customer={customer} />}
-                {currentTab === 'orders' && <CustomerOrders customerId={customerId} />}
+                {currentTab === 'orders' && <CustomerOrders customerId={customerId} basePath={`/${domain}/orders`} />}
             </div>
 
         </div>

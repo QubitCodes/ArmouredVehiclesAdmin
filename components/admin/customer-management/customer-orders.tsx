@@ -10,9 +10,10 @@ import { Pagination } from "@/components/ui/pagination";
 
 interface CustomerOrdersProps {
     customerId: string;
+    basePath?: string;
 }
 
-export function CustomerOrders({ customerId }: CustomerOrdersProps) {
+export function CustomerOrders({ customerId, basePath = "/admin/orders" }: CustomerOrdersProps) {
     const [page, setPage] = useState(1);
     const limit = 10;
 
@@ -49,7 +50,7 @@ export function CustomerOrders({ customerId }: CustomerOrdersProps) {
 
     return (
         <div className="space-y-4">
-            <OrderTable orders={orders} basePath="/admin/orders" />
+            <OrderTable orders={orders} basePath={basePath} />
 
             {totalPages > 1 && (
                 <Pagination

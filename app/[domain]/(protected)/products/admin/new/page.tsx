@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -206,6 +206,8 @@ const SECTIONS = [
 
 export default function NewProductPage() {
   const router = useRouter();
+  const params = useParams();
+  const domain = (params?.domain as string) || "admin";
   const createProductMutation = useCreateProduct();
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -353,7 +355,7 @@ export default function NewProductPage() {
 
       await createProductMutation.mutateAsync(cleanedData);
       toast.success("Product created successfully!");
-      router.push("/admin/products/admin");
+      router.push(`/${domain}/products/admin`);
     } catch (error) {
       console.error(error);
       const axiosError = error as AxiosError<{
@@ -1796,13 +1798,12 @@ export default function NewProductPage() {
           {SECTIONS.map((section, index) => (
             <div key={section.id} className="flex items-center flex-shrink-0">
               <div
-                className={`px-4 py-2 text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${
-                  currentStep > section.id
+                className={`px-4 py-2 text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${currentStep > section.id
                     ? "bg-primary text-white"
                     : currentStep === section.id
-                    ? "bg-primary text-white"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
+                      ? "bg-primary text-white"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
                 onClick={() => {
                   // Allow clicking on completed or current sections
                   if (currentStep >= section.id) {
@@ -1815,9 +1816,8 @@ export default function NewProductPage() {
               </div>
               {index < SECTIONS.length - 1 && (
                 <div
-                  className={`w-2 h-2 mx-2 ${
-                    currentStep > section.id ? "bg-primary" : "bg-muted"
-                  }`}
+                  className={`w-2 h-2 mx-2 ${currentStep > section.id ? "bg-primary" : "bg-muted"
+                    }`}
                 />
               )}
             </div>

@@ -337,6 +337,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const productId = params.id as string;
+  const domain = (params?.domain as string) || "admin";
   const fromVendor = searchParams.get("from") === "vendor";
 
   const { data: product, isLoading, error } = useProduct(productId);
@@ -352,7 +353,7 @@ export default function ProductDetailPage() {
       }>;
       if (axiosError?.response?.status === 404) {
         // Product doesn't exist, redirect to listing page
-        router.replace("/admin/products");
+        router.replace(`/${domain}/products`);
         return;
       }
       const errorMessage =
@@ -511,7 +512,7 @@ export default function ProductDetailPage() {
             </Button>
             <Button
               variant="secondary"
-              onClick={() => router.push(`/admin/products/${product.id}/edit`)}
+              onClick={() => router.push(`/${domain}/products/${product.id}/edit`)}
             >
               <Edit className="mr-2 h-4 w-4" />
               Edit Product

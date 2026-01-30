@@ -14,6 +14,7 @@ function VendorOrdersContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const vendorId = params.userId as string;
+  const domain = (params?.domain as string) || "admin";
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
 
@@ -64,7 +65,7 @@ function VendorOrdersContent() {
         <>
           <OrderTable
             orders={orders}
-            basePath="/admin/orders"
+            basePath={`/${domain}/orders`}
           />
           <Pagination
             currentPage={pagination.page}

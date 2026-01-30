@@ -32,6 +32,7 @@ export default function VendorDetailPage() {
   const params = useParams();
   const router = useRouter();
   const userId = params.userId as string;
+  const domain = (params?.domain as string) || "admin";
 
   const { data: vendor, isLoading, error } = useVendor(userId);
 
@@ -94,7 +95,7 @@ export default function VendorDetailPage() {
       <div className="flex w-full flex-col gap-4 p-6">
         <Button
           variant="outline"
-          onClick={() => router.push("/admin/vendors")}
+          onClick={() => router.push(`/${domain}/vendors`)}
           className="w-fit"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

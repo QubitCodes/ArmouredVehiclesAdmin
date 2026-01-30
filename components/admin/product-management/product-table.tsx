@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
 import Image from "next/image";
 import { Package, Trash2, Pencil, Check, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -66,6 +66,8 @@ export function ProductTable({
 
 
   const searchParams = useSearchParams();
+  const params = useParams();
+  const domain = (params?.domain as string) || "admin";
   const showRestricted = isAdmin;
   const showVendorColumn = isAdmin && searchParams.get("scope") === "all" && !fromVendor;
 
@@ -263,7 +265,7 @@ export function ProductTable({
         <div className="w-full space-y-1">
           {products.map((product) => {
             const imageUrl = getImageUrl(product);
-            const productLink = `/admin/products/${product.id}${fromVendor ? "?from=vendor" : ""
+            const productLink = `/${domain}/products/${product.id}${fromVendor ? "?from=vendor" : ""
               }`;
 
             return (
@@ -303,7 +305,7 @@ export function ProductTable({
                     >
                       {product.vendor ? (
                         <Link
-                          href={`/admin/vendors/${product.vendor.id}`}
+                          href={`/${domain}/vendors/${product.vendor.id}`}
                           target="_blank"
                           className="text-primary hover:underline font-medium"
                         >
@@ -390,7 +392,7 @@ export function ProductTable({
                   )}
                   {showActions && (
                     <div className="flex items-center justify-center gap-2">
-                      <Link href={`/admin/products/${product.id}/edit${fromVendor ? "?from=vendor" : ""}`}>
+                      <Link href={`/${domain}/products/${product.id}/edit${fromVendor ? "?from=vendor" : ""}`}>
                         <Button
                           variant="ghost"
                           size="icon"
