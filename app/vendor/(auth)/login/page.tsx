@@ -81,43 +81,43 @@ function VendorLoginContent() {
 
   // 1. Redirect Logic
   const handleRedirect = (user: any) => {
-    // 1. Phone Missing
+    // 1. Phone Missing -> Add Phone
     if (!user.phone) {
       router.push(`/vendor/add-phone?email=${encodeURIComponent(user.email || '')}`);
       return;
     }
 
-    // 2. Phone Not Verified
+    // 2. Phone Not Verified -> Verify Phone
     if (!user.phone_verified) {
-      router.push(`/vendor/verify-phone?userId=${user.id}&phone=${encodeURIComponent(user.phone)}`);
+      // Pass email/phone to help verify page trigger OTP if needed
+      router.push(`/vendor/verify-phone?email=${encodeURIComponent(user.email || '')}&phone=${encodeURIComponent(user.phone)}`);
       return;
     }
 
-    // 3. Onboarding Status Check
+    // 3. Profile Check (Soft deleted or missing) -> Step 0
     const profile = user.profile;
-
-    // If no profile exists, start onboarding at Step 0
     if (!profile) {
-      router.push('/vendor/company-information');
+      router.push('/vendor/company-information'); // Step 0
       return;
     }
 
+    // 4. Onboarding Status / Step Check
     const status = profile.onboarding_status || 'not_started';
     const currentStep = profile.current_step ?? user.onboardingStep;
 
-    // If fully onboarded (or rejected/suspended), go to dashboard
-    if (['approved', 'pending_approval', 'rejected', 'suspended'].includes(status)) {
-      router.push("/vendor");
-      return;
-    }
+    // A. If status implies completion or review (or rejection/suspension), go to dashboard
+    // if (['approved', 'pending_approval', 'rejected', 'suspended'].includes(status)) {
+    //   router.push("/vendor");
+    //   return;
+    // }
 
-    // If step is unrecognized (null/undefined), fallback to dashboard
+    // B. If step is missing, default to Step 0
     if (currentStep === null || currentStep === undefined) {
-      router.push("/vendor");
+      router.push('/vendor');
       return;
     }
 
-    // Map steps for In Progress onboarding
+    // C. Map Steps
     switch (currentStep) {
       case 0: router.push('/vendor/company-information'); break;
       case 1: router.push('/vendor/contact-person'); break;
