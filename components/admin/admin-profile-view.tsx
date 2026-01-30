@@ -101,57 +101,31 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
         return () => clearInterval(interval);
     }, [isEditingEnabled, editExpiry]);
 
-    // Detect re-auth token from URL (for email verification)
+    // Detect Identity Verification Return (via Gateway Page or URL)
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const reauthToken = urlParams.get('reauth_token');
-
-        if (reauthToken) {
-            // Verify token matches what we stored
-            const storedToken = localStorage.getItem('reauth_token');
-            const storedExpiry = localStorage.getItem('reauth_token_expiry');
-
-            if (storedToken === reauthToken && storedExpiry && Date.now() < parseInt(storedExpiry)) {
-                // Valid token - enable editing
+        const checkVerification = async () => {
+            // 1. Security re-auth verification (Magic Link)
+            const reauthVerified = localStorage.getItem('reauth_verified');
+            if (reauthVerified === 'true') {
                 setIsEditingEnabled(true);
                 setEditExpiry(Date.now() + EDIT_WINDOW_MS);
-                toast.success("Identity verified. You have 10 minutes to edit.");
-
-                // Clean up
-                localStorage.removeItem('reauth_token');
-                localStorage.removeItem('reauth_token_expiry');
-
-                // Clean up URL
-                const cleanUrl = window.location.pathname;
-                window.history.replaceState({}, '', cleanUrl);
-            } else {
-                toast.error("Verification link expired or invalid. Please try again.");
+                setShowReauthModal(false);
+                toast.success("Identity verified via Firebase. You have 10 minutes to edit.");
+                localStorage.removeItem('reauth_verified');
+                localStorage.removeItem('reauth_verified_at');
             }
-        }
-    }, []);
 
-    // Detect Email Update return
-    useEffect(() => {
-        const handleEmailUpdateReturn = async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const emailVerified = urlParams.get('email_verified');
-            const newEmail = urlParams.get('new_email');
-
-            if (emailVerified === 'true' && newEmail) {
+            // 2. Email Update verification (Magic Link)
+            const emailUpdateVerified = localStorage.getItem('email_update_verified');
+            const newEmailPending = localStorage.getItem('new_email_pending');
+            if (emailUpdateVerified === 'true' && newEmailPending) {
                 try {
                     setLoading(true);
-                    // At this point, Firebase already updated the email if the user clicked the link.
-                    // We just need to sync it to our DB.
-                    await adminService.updateAdmin(user.id, {
-                        email: newEmail
-                    });
-
-                    toast.success("Email address updated successfully!");
-
-                    // Clean up URL
-                    const cleanUrl = window.location.pathname;
-                    window.history.replaceState({}, '', cleanUrl);
-
+                    // Sync to DB (Firebase is already updated via signInWithEmailLink in gateway)
+                    await adminService.updateAdmin(user.id, { email: newEmailPending });
+                    toast.success("Email address updated and verified!");
+                    localStorage.removeItem('email_update_verified');
+                    localStorage.removeItem('new_email_pending');
                     // Reload to show fresh data
                     setTimeout(() => window.location.reload(), 1500);
                 } catch (e: any) {
@@ -161,10 +135,30 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                     setLoading(false);
                 }
             }
+
+            // 3. Fallback for old URL-based verification (if any)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('reauth_token')) {
+                const reauthToken = urlParams.get('reauth_token');
+                const storedToken = localStorage.getItem('reauth_token');
+                const storedExpiry = localStorage.getItem('reauth_token_expiry');
+                if (storedToken === reauthToken && storedExpiry && Date.now() < parseInt(storedExpiry)) {
+                    setIsEditingEnabled(true);
+                    setEditExpiry(Date.now() + EDIT_WINDOW_MS);
+                    toast.success("Identity verified. You have 10 minutes to edit.");
+                    localStorage.removeItem('reauth_token');
+                    localStorage.removeItem('reauth_token_expiry');
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            }
         };
 
-        handleEmailUpdateReturn();
-    }, []);
+        checkVerification();
+
+        // Listen for storage changes (handles verification completed in a new tab)
+        window.addEventListener('storage', checkVerification);
+        return () => window.removeEventListener('storage', checkVerification);
+    }, [user.id]);
 
     // --- Re-Authentication Logic ---
 
@@ -193,36 +187,28 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
 
     /**
      * Send verification email for re-authentication
-     * Uses a simple token-based approach instead of Firebase magic links
+     * Now correctly uses Firebase Magic Links targeting the new public gateway
      */
     const sendReauthEmail = async () => {
         try {
             setLoading(true);
 
-            // Generate a simple token
-            const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-            const tokenExpiry = Date.now() + 10 * 60 * 1000; // 10 minute expiry
+            // 1. Create a redirect URL to our new public verification gateway
+            // We use /admin/verify-identity as it is whitelisted in middleware
+            const redirectUrl = new URL(window.location.origin + '/admin/verify-identity');
 
-            // Store token locally for verification
-            localStorage.setItem('reauth_token', token);
-            localStorage.setItem('reauth_token_expiry', tokenExpiry.toString());
+            // 2. Pass context params
+            redirectUrl.searchParams.set('returnUrl', window.location.pathname);
+            redirectUrl.searchParams.set('reauth', 'true');
 
-            // Create verification URL
-            const verifyUrl = new URL(window.location.href);
-            verifyUrl.searchParams.set('reauth_token', token);
-
-            // Send email via backend
-            await api.post('/auth/send-reauth-email', {
-                email: user.email,
-                verifyUrl: verifyUrl.toString(),
-                userName: user.name
-            });
+            // 3. Trigger Firebase Magic Link
+            await sendMagicLink(user.email, redirectUrl.toString());
 
             setReauthStep("email_sent");
             toast.success(`Verification link sent to ${user.email}`);
         } catch (e: any) {
             console.error("Failed to send reauth email:", e);
-            toast.error(e.response?.data?.message || e.message || "Failed to send verification email");
+            toast.error(e.message || "Failed to send verification email");
         } finally {
             setLoading(false);
         }
@@ -377,8 +363,9 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                 }
             }
 
-            // 2. Send Verification Link with Redirection
-            const redirectUrl = new URL(window.location.href);
+            // 2. Send Verification Link targeting the Gateway
+            const redirectUrl = new URL(window.location.origin + '/admin/verify-identity');
+            redirectUrl.searchParams.set('returnUrl', window.location.pathname);
             redirectUrl.searchParams.set('email_verified', 'true');
             redirectUrl.searchParams.set('new_email', formData.email);
 

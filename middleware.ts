@@ -11,6 +11,7 @@ const publicRoutes = [
   "/vendor/verify-phone",
   "/vendor/login",
   "/vendor/login/verify-email",
+  "/admin/verify-identity",
 ];
 
 // Onboarding routes that require authentication but are part of the onboarding flow
