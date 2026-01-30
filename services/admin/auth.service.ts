@@ -85,12 +85,18 @@ class AuthService {
   }
 
   /**
-   * Get user details
+   * Get user details (checks both admin and vendor storage keys for unified components)
    */
   getUserDetails(): any {
       if (typeof window === "undefined") return null;
-      const str = localStorage.getItem("admin_user_details");
-      return str ? JSON.parse(str) : null;
+      // Try admin first, then vendor (for unified components in [domain] routes)
+      const adminStr = localStorage.getItem("admin_user_details");
+      if (adminStr) return JSON.parse(adminStr);
+      
+      const vendorStr = localStorage.getItem("vendor_user_details");
+      if (vendorStr) return JSON.parse(vendorStr);
+      
+      return null;
   }
 
   /**

@@ -14,13 +14,8 @@ export function ProductActions() {
   const [canAddProduct, setCanAddProduct] = useState(false);
 
   useEffect(() => {
-    const user = authService.getUserDetails();
-    // Vendors can always add products, admins need product.manage permission
-    if (user?.userType === 'vendor' || user?.user_type === 'vendor') {
-      setCanAddProduct(true);
-    } else {
-      setCanAddProduct(authService.hasPermission("product.manage"));
-    }
+    // Allow vendors to add products (they manage their own)
+    setCanAddProduct(authService.hasPermission("product.manage", true));
   }, []);
 
   return (
