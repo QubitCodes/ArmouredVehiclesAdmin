@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -70,7 +70,7 @@ import {
     useBulkUpdateSpecifications,
     useDeleteSpecification,
 } from "@/hooks/admin/product-management/use-product-specifications";
-import { useBrands } from "@/hooks/admin/use-references";
+import { useBrands, useProductColors } from "@/hooks/admin/use-references";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { ProductSpecification } from "@/services/admin/product-specification.service";
 import type {
@@ -219,26 +219,27 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
     const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
     const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
-    const [localSpecs, setLocalSpecs] = useState<ProductSpecification[]>([]);
-    const [rowsToAdd, setRowsToAdd] = useState(1);
 
-    // Data fetching
-    const { data: product, isLoading: isLoadingProduct } = useProduct(currentProductId || "");
-    const { data: mainCategories = [], isLoading: isLoadingCategories } = useMainCategories();
+    // Data Fetching & Hooks
+    const { data: specificationsData = [], isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId || "");
+    const { data: productColors = [] } = useProductColors();
     const { data: brands = [], isLoading: isLoadingBrands } = useBrands();
-    const { data: existingSpecs, isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId || "");
+    const { data: mainCategories = [], isLoading: isLoadingCategories } = useMainCategories();
 
     // Mutations
-    const createProductMutation = useCreateProduct();
-    const updateProductMutation = useUpdateProduct();
-    const { mutateAsync: deleteMedia } = useDeleteProductMedia();
-    const { mutateAsync: bulkDeleteMedia } = useBulkDeleteProductMedia();
     const createSpec = useCreateSpecification(currentProductId || "");
     const updateSpec = useUpdateSpecification(currentProductId || "");
     const deleteSpec = useDeleteSpecification(currentProductId || "");
     const bulkUpdateSpecs = useBulkUpdateSpecifications(currentProductId || "");
+    const createProductMutation = useCreateProduct();
+    const updateProductMutation = useUpdateProduct();
+    const { mutateAsync: deleteMedia } = useDeleteProductMedia();
+    const { mutateAsync: bulkDeleteMedia } = useBulkDeleteProductMedia();
 
-    // Form
+    const [localSpecs, setLocalSpecs] = useState<ProductSpecification[]>([]);
+    const [rowsToAdd, setRowsToAdd] = useState<number>(1);
+
+    // Form Definition
     const form = useForm<ProductFormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         resolver: zodResolver(productSchema) as any,
@@ -257,6 +258,161 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
         },
     });
 
+    // Sync local specs with fetched data
+    useEffect(() => {
+        if (specificationsData.length > 0) {
+            setLocalSpecs(specificationsData);
+        } else if (currentProductId && localSpecs.length === 0) {
+            setLocalSpecs([{ label: '', value: '', type: 'title_only', active: false, sort: 0 }]);
+        }
+    }, [specificationsData, currentProductId]);
+
+    // Pricing Fields Arrays
+    const { fields: pricingTiers, append: appendPricingTier, remove: removePricingTier } = useFieldArray({
+        control: form.control,
+        name: "pricing_tiers"
+    });
+
+    // Helper to add pricing tier if empty
+    const addPricingTier = () => appendPricingTier({ min_quantity: 0, max_quantity: null, price: 0 });
+
+    const { fields: individualPricing, append: appendIndividual, remove: removeIndividual } = useFieldArray({
+        control: form.control,
+        name: "individualProductPricing"
+    });
+
+    const addIndividualProduct = () => appendIndividual({ name: "", amount: 0 });
+    const removeIndividualProduct = (index: number) => removeIndividual(index);
+
+    // Array Helpers
+    const addArrayItem = (field: any) => {
+        const current = form.getValues(field) || [];
+        form.setValue(field, [...current, ""], { shouldDirty: true, shouldValidate: true });
+    };
+    const removeArrayItem = (field: any, index: number) => {
+        const current = form.getValues(field) || [];
+        form.setValue(field, current.filter((_: any, i: number) => i !== index), { shouldDirty: true, shouldValidate: true });
+    };
+    const updateArrayItem = (field: any, index: number, value: string) => {
+        const current = form.getValues(field) || [];
+        const updated = [...current];
+        updated[index] = value;
+        form.setValue(field, updated, { shouldDirty: true, shouldValidate: true });
+    };
+
+    // Specs Helpers
+    const getNextSuggestedType = (specs: any[], index: number): 'general' | 'title_only' | 'value_only' => {
+        if (index === 0) return 'title_only';
+        const prev = specs[index - 1];
+        if (!prev) return 'general';
+        if (prev.type === 'title_only') return 'general';
+        return prev.type;
+    };
+
+    const validateSpecsRules = () => {
+        // Simple validation rule checks if needed, for now return true
+        return true;
+    };
+
+    const updateLocalSpec = (index: number, field: keyof ProductSpecification, val: any) => {
+        const updated = [...localSpecs];
+        if (!updated[index]) return;
+        (updated[index] as any)[field] = val;
+
+        if (field === 'label' || field === 'value') {
+            updated[index].active = !!(updated[index].label || updated[index].value);
+        }
+        setLocalSpecs(updated);
+    };
+
+    const saveSpecRow = async (index: number) => {
+        // if (!validateSpecsRules()) return; // Skip complex validation for inline edit
+        const spec = localSpecs[index];
+        const dataToSave = {
+            ...spec,
+            label: spec.type === 'value_only' ? null : spec.label,
+            value: spec.type === 'title_only' ? null : spec.value,
+        };
+
+        if (spec.id) {
+            await updateSpec.mutateAsync({ specId: spec.id, data: dataToSave });
+        } else {
+            await createSpec.mutateAsync(dataToSave);
+        }
+    };
+
+    const deleteSpecRow = async (index: number) => {
+        const spec = localSpecs[index];
+        if (spec.id) {
+            await deleteSpec.mutateAsync(spec.id);
+        }
+        setLocalSpecs(localSpecs.filter((_, i) => i !== index));
+    };
+
+    const addSpecRows = () => {
+        const newRows = [];
+        for (let i = 0; i < rowsToAdd; i++) {
+            newRows.push({
+                label: '',
+                value: '',
+                type: getNextSuggestedType(localSpecs, localSpecs.length + i),
+                active: true,
+                sort: localSpecs.length + i,
+            });
+        }
+        setLocalSpecs([...localSpecs, ...newRows as ProductSpecification[]]);
+    };
+
+    const handlePaste = (e: React.ClipboardEvent, startIndex: number, startField: 'label' | 'value') => {
+        e.preventDefault();
+        const pasteData = e.clipboardData.getData('text');
+        if (!pasteData) return;
+
+        const rows = pasteData.split(/\r\n|\n/).filter(row => row.trim() !== '');
+        if (rows.length === 0) return;
+        const newSpecs = [...localSpecs];
+
+        rows.forEach((row, i) => {
+            const cols = row.split('\t');
+            const currentIndex = startIndex + i;
+
+            if (currentIndex >= newSpecs.length) {
+                newSpecs.push({
+                    label: '',
+                    value: '',
+                    type: getNextSuggestedType(newSpecs, currentIndex),
+                    active: true,
+                    sort: newSpecs.length,
+                } as ProductSpecification);
+            }
+
+            const spec = newSpecs[currentIndex];
+
+            if (startField === 'label') {
+                if (cols[0] !== undefined) spec.label = cols[0].trim();
+                if (cols[1] !== undefined) spec.value = cols[1].trim();
+            } else {
+                if (cols[0] !== undefined) spec.value = cols[0].trim();
+            }
+
+            spec.active = !!(spec.label || spec.value);
+            if (currentIndex === 0) spec.type = 'title_only';
+        });
+
+        setLocalSpecs(newSpecs);
+    };
+
+    // Update base price handler placeholder
+    const updateBasePrice = () => {
+        // Logic to sum individual prices or similar
+        const total = individualPricing.reduce((sum, item: any) => sum + (parseFloat(item.amount) || 0), 0);
+        form.setValue("basePrice", total);
+    };
+
+    // Data fetching
+    const { data: product, isLoading: isLoadingProduct } = useProduct(currentProductId || "");
+    // Duplicates removed
+
     // Watch form values
     const mainCategoryId = form.watch("mainCategoryId");
     const categoryId = form.watch("categoryId");
@@ -266,7 +422,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     const watchPrice = form.watch("basePrice");
     const watchStock = form.watch("stock");
     const gallery = form.watch("gallery") || [];
-    const pricingTiers = form.watch("pricing_tiers") || [];
+    const watchedPricingTiers = form.watch("pricing_tiers") || [];
 
     // Cascading categories
     const { data: categories = [], isLoading: isLoadingSubCategories } = useCategoriesByParent(
@@ -333,12 +489,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
         }
     }, [product, currentProductId, form]);
 
-    // Initialize specs
-    useEffect(() => {
-        if (existingSpecs && Array.isArray(existingSpecs)) {
-            setLocalSpecs(existingSpecs.sort((a: any, b: any) => a.sort - b.sort));
-        }
-    }, [existingSpecs]);
+
 
     // Deep linking - scroll to section from URL hash
     useEffect(() => {
@@ -537,46 +688,6 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
         return cleanedData;
     };
 
-    // Array helpers
-    const addArrayItem = (fieldName: keyof ProductFormValues) => {
-        const current = form.getValues(fieldName) || [];
-        form.setValue(fieldName, [...(current as string[]), ""] as any);
-    };
-
-    const removeArrayItem = async (fieldName: keyof ProductFormValues, index: number) => {
-        const current = form.getValues(fieldName) || [];
-
-        if (fieldName === 'gallery') {
-            const itemToDelete = (current as string[])[index];
-            if (typeof itemToDelete === 'string' && itemToDelete.startsWith('http') && currentProductId) {
-                const mediaItem = (product as any)?.media?.find((m: any) =>
-                    m.url === itemToDelete || itemToDelete.endsWith(m.url)
-                );
-                if (mediaItem) {
-                    try {
-                        await deleteMedia({ productId: currentProductId, mediaId: String(mediaItem.id) });
-                        toast.success("Image deleted successfully");
-                    } catch (error) {
-                        toast.error("Failed to delete image");
-                        return;
-                    }
-                }
-            }
-        }
-
-        form.setValue(
-            fieldName,
-            (current as string[]).filter((_, i) => i !== index) as any
-        );
-    };
-
-    const updateArrayItem = (fieldName: keyof ProductFormValues, index: number, value: string) => {
-        const current = form.getValues(fieldName) || [];
-        const updated = [...(current as string[])];
-        updated[index] = value;
-        form.setValue(fieldName, updated as any);
-    };
-
     // SKU generator
     const generateSku = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -594,34 +705,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
         }
     };
 
-    // Pricing tier helpers
-    const addPricingTier = () => {
-        const current = form.getValues("pricing_tiers") || [];
-        form.setValue("pricing_tiers", [...current, { min_quantity: 0, max_quantity: null, price: 0 }]);
-    };
 
-    const removePricingTier = (index: number) => {
-        const current = form.getValues("pricing_tiers") || [];
-        form.setValue("pricing_tiers", current.filter((_, i) => i !== index));
-    };
-
-    // Individual product pricing helpers
-    const addIndividualProduct = () => {
-        const current = form.getValues("individualProductPricing") || [];
-        form.setValue("individualProductPricing", [...current, { name: "", amount: 0 }]);
-    };
-
-    const removeIndividualProduct = (index: number) => {
-        const current = form.getValues("individualProductPricing") || [];
-        form.setValue("individualProductPricing", current.filter((_, i) => i !== index));
-    };
-
-    const updateBasePrice = () => {
-        const items = form.getValues("individualProductPricing") || [];
-        const total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-        form.setValue("basePrice", total);
-        toast.success(`Base price updated to ${total} based on individual costs.`);
-    };
 
     // Render loading state
     if (productId !== "new" && isLoadingProduct) {
@@ -985,21 +1069,210 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
     function renderTechnicalSection() {
         return (
-            <div className="space-y-4">
+            <div className="space-y-6">
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex gap-3 items-start">
                     <Info className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                     <div className="space-y-1">
                         <p className="text-sm font-semibold text-primary">Technical Specifications</p>
                         <p className="text-xs text-muted-foreground">
-                            Add detailed specifications for your product. Use the specifications table below for structured data.
+                            Add detailed specifications for your product. The first row must be a Section Title.
                         </p>
                     </div>
                 </div>
 
-                {currentProductId && (
-                    <div className="text-sm text-muted-foreground">
-                        Specifications table is available for this product. Use the full form editor for detailed spec management.
-                    </div>
+                {isLoadingSpecs ? (
+                    <div className="flex justify-center py-8"><Spinner /></div>
+                ) : (
+                    <>
+                        <div className="border rounded-lg overflow-hidden bg-background">
+                            <table className="w-full text-sm table-fixed">
+                                <thead className="bg-muted">
+                                    <tr>
+                                        <th className="w-10 px-2 py-2 text-center">Act.</th>
+                                        <th className="px-2 py-2 text-left">Label</th>
+                                        <th className="px-2 py-2 text-left">Value</th>
+                                        <th className="w-32 px-2 py-2 text-left">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {localSpecs.map((spec, index) => (
+                                        <tr key={spec.id || `new-${index}`} className="border-t">
+                                            <td className="px-2 py-2 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={spec.active}
+                                                    onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
+                                                    className="h-4 w-4"
+                                                />
+                                            </td>
+                                            {spec.type === 'title_only' || spec.type === 'value_only' ? (
+                                                <td colSpan={2} className="px-2 py-2">
+                                                    <div className="relative">
+                                                        <Input
+                                                            value={spec.type === 'title_only' ? spec.label || '' : spec.value || ''}
+                                                            onChange={(e) => updateLocalSpec(index, spec.type === 'title_only' ? 'label' : 'value', e.target.value)}
+                                                            onPaste={(e) => handlePaste(e, index, spec.type === 'title_only' ? 'label' : 'value')}
+                                                            className={`${spec.type === 'title_only' ? 'font-bold bg-muted/50 pl-10 border-primary/20' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all`}
+                                                            placeholder={spec.type === 'title_only' ? 'Section Title' : 'Value'}
+                                                        />
+                                                        {spec.type === 'title_only' && (
+                                                            <div className="absolute top-0 left-0 bg-orange-600 text-white w-8 h-full flex items-center justify-center rounded-l-lg shadow-sm pointer-events-none opacity-100 z-10">
+                                                                <Hash className="w-4 h-4" />
+                                                            </div>
+                                                        )}
+                                                        {spec.type === 'value_only' && (
+                                                            <div className="absolute top-0 left-0 bg-primary text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            ) : (
+                                                <>
+                                                    <td className="px-2 py-2 align-top">
+                                                        <div className="relative group">
+                                                            <Input
+                                                                value={spec.label || ''}
+                                                                onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                                                onPaste={(e) => handlePaste(e, index, 'label')}
+                                                                placeholder="Label"
+                                                                className="w-full font-medium border-primary/30 bg-muted/10"
+                                                                list={`suggestions-${index}`}
+                                                            />
+                                                            <datalist id={`suggestions-${index}`}>
+                                                                {["Condition", "Color", "Size"]
+                                                                    .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
+                                                                    .map(opt => <option key={opt} value={opt} />)
+                                                                }
+                                                            </datalist>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2 align-top">
+                                                        {(() => {
+                                                            const label = spec.label?.trim();
+
+                                                            if (label === 'Condition') {
+                                                                return (
+                                                                    <select
+                                                                        value={spec.value || ''}
+                                                                        onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    >
+                                                                        <option value="" disabled>Select Condition</option>
+                                                                        <option value="New">New</option>
+                                                                        <option value="Used">Used</option>
+                                                                        <option value="Refurbished">Refurbished</option>
+                                                                    </select>
+                                                                );
+                                                            }
+
+                                                            if (label === 'Color') {
+                                                                const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                                return (
+                                                                    <MultiSelect
+                                                                        options={EXTERNAL_COLORS}
+                                                                        selected={selectedColors}
+                                                                        onChange={(selected) => updateLocalSpec(index, 'value', selected.join(', '))}
+                                                                        placeholder="Select or add Colors..."
+                                                                        creatable={true}
+                                                                    />
+                                                                );
+                                                            }
+
+                                                            if (label === 'Size') {
+                                                                const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
+                                                                const dimensions = match ? match[1] : (spec.value || '');
+                                                                const unit = match ? match[2] : 'mm';
+
+                                                                const updateSizeValue = (newDims: string, newUnit: string) => {
+                                                                    updateLocalSpec(index, 'value', `${newDims} ${newUnit}`.trim());
+                                                                };
+
+                                                                return (
+                                                                    <MaskedSizeInput
+                                                                        value={dimensions}
+                                                                        unit={unit}
+                                                                        onChange={(dims, u) => updateSizeValue(dims, u)}
+                                                                    />
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <Input
+                                                                    value={spec.value || ''}
+                                                                    onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                                    onPaste={(e) => handlePaste(e, index, 'value')}
+                                                                    placeholder="Value"
+                                                                    className="w-full"
+                                                                />
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                </>
+                                            )}
+                                            <td className="px-2 py-2">
+                                                <div className="flex gap-1 items-center">
+                                                    <select
+                                                        value={spec.type}
+                                                        onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
+                                                        className="h-8 px-1 text-xs border rounded bg-background w-20"
+                                                    >
+                                                        {index === 0 ? (
+                                                            <option value="title_only">Title</option>
+                                                        ) : (
+                                                            <>
+                                                                <option value="title_only">Title</option>
+                                                                {(() => {
+                                                                    const findSectionType = () => {
+                                                                        for (let i = index - 1; i >= 0; i--) {
+                                                                            if (localSpecs[i].type === 'title_only') return null;
+                                                                            return localSpecs[i].type;
+                                                                        }
+                                                                        return null;
+                                                                    };
+                                                                    const sectionType = findSectionType();
+                                                                    return (
+                                                                        <>
+                                                                            <option value="general" disabled={sectionType !== null && sectionType !== 'general'}>General</option>
+                                                                            <option value="value_only" disabled={sectionType !== null && sectionType !== 'value_only'}>Value</option>
+                                                                        </>
+                                                                    );
+                                                                })()}
+                                                            </>
+                                                        )}
+                                                    </select>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        onClick={() => deleteSpecRow(index)}
+                                                        title="Delete Row"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="flex justify-between mt-4 items-center">
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    min="1"
+                                    value={rowsToAdd}
+                                    onChange={(e) => setRowsToAdd(parseInt(e.target.value) || 1)}
+                                    className="w-16 h-9"
+                                />
+                                <Button type="button" variant="outline" size="sm" onClick={addSpecRows}>
+                                    <Plus className="mr-2 h-4 w-4" /> Add Rows
+                                </Button>
+                            </div>
+                        </div>
+                    </>
                 )}
             </div>
         );
@@ -1007,41 +1280,158 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
     function renderPricingSection() {
         return (
-            <div className="space-y-4">
+            <div className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                        control={form.control}
-                        name="basePrice"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Base Price *</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        value={field.value ?? ""}
-                                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                    />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
+                    <FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormItem>} />
+                    <FormField control={form.control} name="currency" render={({ field }) => <FormItem><FormLabel>Currency</FormLabel>
+                        <Select value={field.value || "AED"} onChange={field.onChange}>
+                            <option value="AED">AED</option>
+                            <option value="USD">USD</option>
+                        </Select>
+                    </FormItem>} />
+                </div>
 
-                    <FormField
-                        control={form.control}
-                        name="currency"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Currency</FormLabel>
-                                <FormControl>
-                                    <Select value={field.value || "AED"} onChange={field.onChange}>
-                                        <option value="AED">AED</option>
-                                        <option value="USD">USD</option>
-                                    </Select>
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
+                {/* Combo product Individual pricing Section */}
+                <div className="border border-border p-4 rounded-md bg-muted/20">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-lg">Combo product Individual pricing</h3>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={updateBasePrice} className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
+                                <Save className="h-4 w-4 mr-2" /> Update Base Price
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={addIndividualProduct}>
+                                <Plus className="h-4 w-4 mr-2" /> Add product
+                            </Button>
+                        </div>
+                    </div>
+
+                    {individualPricing.map((field, index) => (
+                        <div key={field.id} className="flex gap-4 items-end mb-4 border-b pb-4 last:border-0 last:pb-0">
+                            <FormField
+                                control={form.control}
+                                name={`individualProductPricing.${index}.name`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-[2]">
+                                        <FormLabel className="text-xs">Product Name</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="Enter product name" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`individualProductPricing.${index}.amount`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel className="text-xs">Amount</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                {...field}
+                                                onChange={e => field.onChange(parseFloat(e.target.value || "0"))}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive h-10 w-10 mb-2"
+                                onClick={() => removeIndividualProduct(index)}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                    {individualPricing.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No individual products added.</p>
+                    )}
+                </div>
+
+                {/* Pricing Tiers Section */}
+                <div className="border border-border p-4 rounded-md bg-muted/20">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-lg">Wholesale Pricing Tiers</h3>
+                        <Button type="button" variant="outline" size="sm" onClick={addPricingTier}>
+                            <Plus className="h-4 w-4 mr-2" /> Add Tier
+                        </Button>
+                    </div>
+
+                    {pricingTiers.map((field, index) => (
+                        <div key={field.id} className="flex gap-4 items-end mb-4 border-b pb-4 last:border-0 last:pb-0">
+                            <FormField
+                                control={form.control}
+                                name={`pricing_tiers.${index}.min_quantity`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel className="text-xs">Min Qty</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                {...field}
+                                                onChange={e => field.onChange(parseInt(e.target.value || "0"))}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`pricing_tiers.${index}.max_quantity`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel className="text-xs">Max Qty (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                value={field.value ?? ""}
+                                                onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
+                                                placeholder="∞"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`pricing_tiers.${index}.price`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel className="text-xs">Price</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                {...field}
+                                                onChange={e => field.onChange(parseFloat(e.target.value || "0"))}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive h-10 w-10 mb-2"
+                                onClick={() => removePricingTier(index)}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                    {pricingTiers.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No pricing tiers added.</p>
+                    )}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -1441,3 +1831,100 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
         );
     }
 }
+
+const MaskedSizeInput = ({
+    value,
+    unit,
+    onChange
+}: {
+    value: string,
+    unit: string,
+    onChange: (dims: string, unit: string) => void
+}) => {
+    // Value format: "LxWxH"
+    const parts = value.split('x');
+    const l = parts[0] || '';
+    const w = parts[1] || '';
+    const h = parts[2] || '';
+
+    // Refs for focus management
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    const updatePart = (index: number, val: string) => {
+        // Only allow digits
+        if (val && !/^\d*$/.test(val)) return;
+
+        const newParts = [l, w, h];
+        newParts[index] = val;
+        onChange(newParts.join('x'), unit);
+
+        // Auto-focus next input if length reaches 4
+        if (val.length === 4 && index < 2) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+        if (e.key === 'x') {
+            e.preventDefault();
+            // Focus next input
+            if (index < 2) {
+                inputRefs.current[index + 1]?.focus();
+            }
+        }
+        // Handle Backspace at start of input to jump back
+        if (e.key === 'Backspace' && (e.currentTarget.value === '')) {
+            if (index > 0) {
+                e.preventDefault();
+                inputRefs.current[index - 1]?.focus();
+            }
+        }
+    };
+
+    return (
+        <div className="flex gap-2">
+            <div className="flex-1 flex items-center border rounded-md bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background transition-all overflow-hidden h-10 w-full">
+                <Input
+                    ref={(el) => { inputRefs.current[0] = el }}
+                    value={l}
+                    onChange={(e) => updatePart(0, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 0)}
+                    placeholder="000"
+                    className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+                    maxLength={4}
+                />
+                <span className="text-muted-foreground font-medium select-none text-xs">x</span>
+                <Input
+                    ref={(el) => { inputRefs.current[1] = el }}
+                    value={w}
+                    onChange={(e) => updatePart(1, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 1)}
+                    placeholder="000"
+                    className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+                    maxLength={4}
+                />
+                <span className="text-muted-foreground font-medium select-none text-xs">x</span>
+                <Input
+                    ref={(el) => { inputRefs.current[2] = el }}
+                    value={h}
+                    onChange={(e) => updatePart(2, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 2)}
+                    placeholder="000"
+                    className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
+                    maxLength={4}
+                />
+            </div>
+
+            <select
+                value={unit}
+                onChange={(e) => onChange(value, e.target.value)}
+                className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+                <option value="mm">mm</option>
+                <option value="cm">cm</option>
+                <option value="m">m</option>
+            </select>
+        </div>
+    );
+};
+
