@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { User, Mail, Phone, Check, X, Lock, Unlock, Loader2, Edit2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import { adminService } from "@/services/admin/admin.service";
@@ -27,7 +28,26 @@ interface AdminProfileViewProps {
 // 10 Minutes in MS
 const EDIT_WINDOW_MS = 10 * 60 * 1000;
 
-export function AdminProfileView({ user }: AdminProfileViewProps) {
+// Helper function to map onboarding step to step name
+const getOnboardingStepName = (step: number | null | undefined): string => {
+    if (step === null) {
+        return "Completed";
+    }
+
+    const stepMap: Record<number, string> = {
+        0: "Create Store",
+        1: "Company Information",
+        2: "Contact Person",
+        3: "Declaration",
+        4: "Account Preferences",
+        5: "Bank Details",
+        6: "Verification",
+    };
+
+    return stepMap[step as number] || "—";
+};
+
+export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
     // State
     const [isEditingEnabled, setIsEditingEnabled] = useState(false);
     const [editExpiry, setEditExpiry] = useState<number | null>(null);
@@ -249,11 +269,11 @@ export function AdminProfileView({ user }: AdminProfileViewProps) {
     };
 
     // Render Helpers
-    const renderField = (label: string, fieldKey: string, value: string, textOnly = false) => {
+    const renderField = (label: string, fieldKey: string, value: string, hasBorder = true) => {
         const isEditing = editingField === fieldKey;
 
         return (
-            <div className="flex items-center justify-between py-4 border-b last:border-0">
+            <div className={`flex items-center justify-between py-4 ${hasBorder ? 'border-b' : ''}`}>
                 <div>
                     <Label className="text-muted-foreground uppercase text-xs tracking-wide">{label}</Label>
                     {isEditing ? (
@@ -304,9 +324,7 @@ export function AdminProfileView({ user }: AdminProfileViewProps) {
                         <Button
                             size="sm"
                             variant="ghost"
-                            disabled={!isEditingEnabled && fieldKey !== 'name' ? false : !isEditingEnabled} // Name is direct? User said "Name can be edited directly" but "To edit email or phone... verify first".
-                            // Wait, "Name can be edited directly" -> Does it need Re-auth? "To edit email or phone..." implies Name doesn't.
-                            // So name is always enabled? 
+                            disabled={fieldKey !== 'name' && !isEditingEnabled}
                             onClick={() => {
                                 if (fieldKey !== 'name' && !isEditingEnabled) {
                                     handleStartEdit();
@@ -343,7 +361,8 @@ export function AdminProfileView({ user }: AdminProfileViewProps) {
 
                 {renderField("Full Name", "name", user.name)}
                 {renderField("Email Address", "email", user.email)}
-                {renderField("Phone Number", "phone", user.phone)}
+                {renderField("Phone Number", "phone", user.phone, false)}
+
 
                 <div className="mt-8 pt-6 border-t">
                     <Label className="text-muted-foreground uppercase text-xs tracking-wide">Account Status</Label>
@@ -352,6 +371,28 @@ export function AdminProfileView({ user }: AdminProfileViewProps) {
                         <span className="font-medium">{user.is_active ? 'Active' : 'Inactive'}</span>
                     </div>
                 </div>
+
+                {user.user_type === 'vendor' && (
+                    <div className="mt-8 pt-6 border-t">
+                        <Label className="text-muted-foreground uppercase text-xs tracking-wide">Onboarding Details</Label>
+                        <div className="grid grid-cols-2 gap-6 mt-4">
+                            <div>
+                                <Label className="text-xs text-muted-foreground block mb-1">Current Step</Label>
+                                <p className="font-medium">{getOnboardingStepName(user.onboarding_step)}</p>
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground block mb-1">Status</Label>
+                                <span className={cn("inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold uppercase",
+                                    profile?.onboarding_status?.includes("approved") ? "bg-green-100 text-green-700" :
+                                        profile?.onboarding_status === "rejected" ? "bg-red-100 text-red-700" :
+                                            "bg-gray-100 text-gray-700"
+                                )}>
+                                    {profile?.onboarding_status?.replace(/_/g, " ") || "Pending"}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </CardContent>
 
             {/* Re-auth Modal */}

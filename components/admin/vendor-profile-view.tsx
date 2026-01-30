@@ -33,6 +33,7 @@ interface VendorProfileViewProps {
     markedFields?: Set<string>;
     toggleMarkField?: (field: string) => void;
     canPerformActions?: boolean;
+    hideUserInfo?: boolean;
 }
 
 // Helper function to format field names
@@ -194,7 +195,7 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
     return Array.isArray(processed) ? processed.join(", ") : String(processed);
 };
 
-export function VendorProfileView({ user, profile, markedFields, toggleMarkField, canPerformActions }: VendorProfileViewProps) {
+export function VendorProfileView({ user, profile, markedFields, toggleMarkField, canPerformActions, hideUserInfo = false }: VendorProfileViewProps) {
 
     // Render row logic
     const renderRow = (fieldName: string, customLabel?: string, overrideValue?: React.ReactNode) => {
@@ -340,58 +341,60 @@ export function VendorProfileView({ user, profile, markedFields, toggleMarkField
     return (
         <div className="flex w-full flex-col gap-8">
             {/* User Information Section - No Actions generally, or handle differently */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5" />
-                        User Information
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        <div>
-                            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Name</label>
-                            <p className="text-foreground mt-2">{user.name}</p>
+            {!hideUserInfo && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <User className="h-5 w-5" />
+                            User Information
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            <div>
+                                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Name</label>
+                                <p className="text-foreground mt-2">{user.name}</p>
+                            </div>
+                            <div>
+                                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
+                                <p className="text-foreground mt-2">{user.email}</p>
+                            </div>
+                            <div>
+                                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Phone</label>
+                                <p className="text-foreground mt-2">{user.country_code} {user.phone}</p>
+                            </div>
+                            <div>
+                                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
+                                <p className="text-foreground mt-2">
+                                    <span className={cn("text-sm font-medium", user.is_active ? "text-green-600" : "text-orange-600")}>
+                                        {user.is_active ? "Active" : "Inactive"}
+                                    </span>
+                                </p>
+                            </div>
+                            {user.user_type === 'vendor' && (
+                                <>
+                                    <div>
+                                        <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Onboarding Step</label>
+                                        <p className="text-foreground mt-2">{getOnboardingStepName(user.onboarding_step)}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Onboarding Status</label>
+                                        <p className="text-foreground mt-2">
+                                            <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase",
+                                                profile?.onboarding_status?.includes("approved") ? "bg-green-100 text-green-700" :
+                                                    profile?.onboarding_status === "rejected" ? "bg-red-100 text-red-700" :
+                                                        "bg-gray-100 text-gray-700"
+                                            )}>
+                                                {profile?.onboarding_status?.replace(/_/g, " ") || "Pending"}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </>
+                            )}
                         </div>
-                        <div>
-                            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
-                            <p className="text-foreground mt-2">{user.email}</p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Phone</label>
-                            <p className="text-foreground mt-2">{user.country_code} {user.phone}</p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
-                            <p className="text-foreground mt-2">
-                                <span className={cn("text-sm font-medium", user.is_active ? "text-green-600" : "text-orange-600")}>
-                                    {user.is_active ? "Active" : "Inactive"}
-                                </span>
-                            </p>
-                        </div>
-                        {user.user_type === 'vendor' && (
-                            <>
-                                <div>
-                                    <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Onboarding Step</label>
-                                    <p className="text-foreground mt-2">{getOnboardingStepName(user.onboarding_step)}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Onboarding Status</label>
-                                    <p className="text-foreground mt-2">
-                                        <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase",
-                                            profile?.onboarding_status?.includes("approved") ? "bg-green-100 text-green-700" :
-                                                profile?.onboarding_status === "rejected" ? "bg-red-100 text-red-700" :
-                                                    "bg-gray-100 text-gray-700"
-                                        )}>
-                                            {profile?.onboarding_status?.replace(/_/g, " ") || "Pending"}
-                                        </span>
-                                    </p>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Company Information */}
             {profile && (

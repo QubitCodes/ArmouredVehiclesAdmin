@@ -122,10 +122,16 @@ export default function ProfilePage() {
                 </p>
             </div>
 
-            {userRole === 'admin' || userRole === 'super_admin' ? (
-                <AdminProfileView user={userData} />
-            ) : (
-                <VendorProfileView user={userData} profile={userProfile} />
+            {/* Editable User Information (For Admin & Vendor) */}
+            <AdminProfileView user={userData} profile={userProfile} />
+
+            {/* Vendor Company Information (Read Only) */}
+            {userRole === 'vendor' && (
+                <VendorProfileView
+                    user={userData}
+                    profile={userProfile}
+                    hideUserInfo={true}
+                />
             )}
         </div>
     );
