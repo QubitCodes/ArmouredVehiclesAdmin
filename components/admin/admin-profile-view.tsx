@@ -324,7 +324,6 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
                         <Button
                             size="sm"
                             variant="ghost"
-                            disabled={fieldKey !== 'name' && !isEditingEnabled}
                             onClick={() => {
                                 if (fieldKey !== 'name' && !isEditingEnabled) {
                                     handleStartEdit();
