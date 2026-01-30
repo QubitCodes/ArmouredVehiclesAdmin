@@ -19,9 +19,14 @@ import { vendorAuthService } from "@/services/vendor/auth.service";
 function VendorLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Detect Magic Link URL immediately
+  const isMagicLinkRedirect = searchParams.get('mode') === 'signIn' && !!searchParams.get('oobCode');
+
   const [identifier, setIdentifier] = useState("");
   const [stage, setStage] = useState<"start" | "verify" | "magic_link_sent">("start");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(isMagicLinkRedirect);
+  const [isVerifyingLink, setIsVerifyingLink] = useState(isMagicLinkRedirect);
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -32,10 +37,17 @@ function VendorLoginContent() {
   const isEmail = (value: string) => value.includes("@");
 
   // Magic Link Verification Effect
+  const processingRef = useRef(false);
+
   useEffect(() => {
     const checkMagicLink = async () => {
+      if (processingRef.current) return;
+
       if (isMagicLink(window.location.href)) {
+        processingRef.current = true;
         setLoading(true);
+        setIsVerifyingLink(true);
+
         try {
           // Try to get email from storage
           let email = window.localStorage.getItem('emailForSignIn');
@@ -44,6 +56,8 @@ function VendorLoginContent() {
           }
           if (!email) {
             setLoading(false);
+            setIsVerifyingLink(false);
+            processingRef.current = false;
             return;
           }
 
@@ -52,13 +66,16 @@ function VendorLoginContent() {
           await completeLogin(idToken);
         } catch (err: any) {
           console.error(err);
-          toast.error(err.message || "Failed to verify magic link");
+          if (err.code !== 'auth/invalid-action-code') {
+            toast.error(err.message || "Failed to verify magic link");
+          }
           setLoading(false);
+          setIsVerifyingLink(false);
         }
       }
     };
     checkMagicLink();
-  }, []);
+  }, [isMagicLink, verifyMagicLink]);
 
   // ... imports
 
@@ -140,6 +157,7 @@ function VendorLoginContent() {
     } catch (err: any) {
       console.error(err);
       toast.error(err.response?.data?.message || err.message || "Login failed on server");
+      setIsVerifyingLink(false);
     } finally {
       setLoading(false);
     }
@@ -256,9 +274,10 @@ function VendorLoginContent() {
               Vendor Login
             </h1>
             <p className=" text-muted-foreground text-center">
-              {stage === 'start' && "Enter your details to get started"}
-              {stage === 'verify' && "Enter the security code sent to your phone"}
-              {stage === 'magic_link_sent' && "Check your inbox"}
+              {isVerifyingLink ? "Authenticating..." :
+                stage === 'start' ? "Enter your details to get started" :
+                  stage === 'verify' ? "Enter the security code sent to your phone" :
+                    "Check your inbox"}
             </p>
           </CardHeader>
 
@@ -267,7 +286,15 @@ function VendorLoginContent() {
             {/* Hidden Recaptcha */}
             <div id="recaptcha-container"></div>
 
-            {stage === 'magic_link_sent' ? (
+            {isVerifyingLink ? (
+              <div className="flex flex-col items-center justify-center py-10 space-y-6">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <div className="text-center space-y-2">
+                  <p className="font-medium text-lg">Verifying Access</p>
+                  <p className="text-sm text-muted-foreground">Please wait while we log you in...</p>
+                </div>
+              </div>
+            ) : stage === 'magic_link_sent' ? (
               <div className="text-center space-y-4">
                 <div className="p-4 bg-green-50 text-green-700 rounded-md text-sm">
                   We sent a login link to <strong>{identifier}</strong>.<br />
