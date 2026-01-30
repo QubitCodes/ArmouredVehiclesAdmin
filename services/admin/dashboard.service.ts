@@ -1,59 +1,50 @@
 import api, { ApiResponse } from '@/lib/api';
 
-export interface DashboardStats {
-  totalSellers?: number;
-  monthlySellers?: number; // New
-  activeSellers?: number;
-  
-  pendingVendorApprovals?: number; // Split
-  pendingCustomerApprovals?: number; // Split
-  pendingApprovals?: number; // Legacy total
-  
-  totalProducts?: number;
-  lowStockProducts?: number; // New for Vendors
+/**
+ * SDUI Dashboard Widget Interface
+ */
+export interface DashboardWidget {
+	type: 'stat_card';
+	width: number;
+	title: string;
+	value: string | number;
+	subValue?: string;
+	icon: string; // Lucide icon name
+	theme: string; // Tailwind color key (e.g., 'blue', 'emerald', 'amber')
+}
 
-  totalOrders?: number;
-  monthlyOrders?: number; // New
-
-  totalRevenue?: number;
-  monthlyRevenue?: number; // New
-
-  totalCustomers?: number;
-  monthlyCustomers?: number; // New
-
-  totalRefunds?: number;
-  totalUsers?: number;
-  
-  [key: string]: unknown;
+/**
+ * Dashboard API Response Data
+ */
+export interface DashboardData {
+	items: DashboardWidget[];
 }
 
 class DashboardService {
-  /**
-   * Fetch dashboard statistics from /admin/dashboard
-   * @returns {Promise<DashboardStats>} Dashboard statistics object
-   */
-  async getDashboardStats(): Promise<DashboardStats> {
-    try {
-      const response = await api.get<ApiResponse<DashboardStats>>('/admin/dashboard');
-      
-      // Defensive check for response structure
-      if (!response?.data) {
-        console.error('Dashboard API returned empty response:', response);
-        throw new Error('Dashboard API returned empty response');
-      }
-      
-      if (!response.data.status) {
-        console.error('Dashboard API returned failure:', response.data);
-        throw new Error(response.data.message || 'Failed to fetch dashboard stats');
-      }
-      
-      return response.data.data || {};
-    } catch (error: any) {
-      console.error('Error fetching dashboard stats:', error?.response?.data || error?.message || error);
-      throw error;
-    }
-  }
+	/**
+	 * Fetch dashboard statistics from /admin/dashboard (SDUI Format)
+	 * @returns {Promise<DashboardData>} Dashboard data with SDUI widgets
+	 */
+	async getDashboardStats(): Promise<DashboardData> {
+		try {
+			const response = await api.get<ApiResponse<DashboardData>>('/admin/dashboard');
+			
+			if (!response?.data) {
+				console.error('Dashboard API returned empty response:', response);
+				throw new Error('Dashboard API returned empty response');
+			}
+			
+			if (!response.data.status) {
+				console.error('Dashboard API returned failure:', response.data);
+				throw new Error(response.data.message || 'Failed to fetch dashboard stats');
+			}
+			
+			return response.data.data || { items: [] };
+		} catch (error: any) {
+			console.error('Error fetching dashboard stats:', error?.response?.data || error?.message || error);
+			throw error;
+		}
+	}
 }
 
 export const dashboardService = new DashboardService();
-
