@@ -24,6 +24,7 @@ import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/spinner";
 import RichTextEditor from "@/components/ui/rich-text-editor";
 import { COUNTRY_LIST } from "@/lib/countries";
+import { EXTERNAL_COLORS } from "@/lib/external-colors";
 import api from "@/lib/api";
 
 
