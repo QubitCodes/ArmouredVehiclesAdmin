@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -15,48 +15,46 @@ function VerifyIdentityContent() {
     const { verifyMagicLink, isMagicLink } = useFirebaseAuth();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
     const [error, setError] = useState<string | null>(null);
+    const verificationStarted = useRef(false);
 
     useEffect(() => {
+        if (verificationStarted.current) return;
+
         const handleVerification = async () => {
-            // Firebase magic links need the email
-            // We first check the URL (manually appended by sendMagicLink), then localStorage (set by Firebase)
-            const email = searchParams.get('email') || window.localStorage.getItem('emailForSignIn');
+            verificationStarted.current = true;
             const currentUrl = window.location.href;
-
-            if (!isMagicLink(currentUrl)) {
-                setStatus('error');
-                setError('This does not appear to be a valid verification link.');
-                return;
-            }
-
-            if (!email) {
-                setStatus('error');
-                setError('We need your email address to complete verification. Please try clicking the link again from your original device/browser.');
-                return;
-            }
+            const isReauthFlow = searchParams.get('reauth') === 'true';
+            const isEmailUpdateFlow = searchParams.get('email_verified') === 'true';
+            const email = searchParams.get('email') || window.localStorage.getItem('emailForSignIn');
 
             try {
-                // Verify with Firebase
-                await verifyMagicLink(email, currentUrl);
+                // 1. Handle Security Re-authentication (Magic Link)
+                if (isReauthFlow) {
+                    if (!isMagicLink(currentUrl)) {
+                        throw new Error('This link is invalid or has already been used.');
+                    }
+                    if (!email) {
+                        throw new Error('Please return to the profile page and try again on the same device.');
+                    }
 
-                setStatus('success');
-
-                // If this was a re-authentication flow (for security verification)
-                if (searchParams.get('reauth') === 'true') {
+                    await verifyMagicLink(email, currentUrl);
                     localStorage.setItem('reauth_verified', 'true');
                     localStorage.setItem('reauth_verified_at', Date.now().toString());
+                    setStatus('success');
                 }
-
-                // If this was an email update flow
-                if (searchParams.get('email_verified') === 'true') {
-                    // Firebase already updated the email if verifyBeforeUpdateEmail was used
-                    // We just pass the flag back so the profile page can sync to DB
+                // 2. Handle Email Update Return (Direct Redirect from Firebase Handler)
+                else if (isEmailUpdateFlow) {
+                    // When returning from verifyBeforeUpdateEmail, the user is redirected AFTER 
+                    // the update is already processed by Firebase on their standard handler page.
                     localStorage.setItem('email_update_verified', 'true');
                     localStorage.setItem('new_email_pending', searchParams.get('new_email') || '');
+                    setStatus('success');
+                }
+                else {
+                    throw new Error('Invalid verification request path.');
                 }
 
                 // Determine redirect path
-                // We default to '/admin/profile' if returnUrl is missing, assuming 'admin' domain
                 const returnUrl = searchParams.get('returnUrl') || '/admin/profile';
 
                 // Small delay to show success state
@@ -65,8 +63,9 @@ function VerifyIdentityContent() {
                 }, 1500);
             } catch (err: any) {
                 console.error('Verification error:', err);
-                setStatus('error');
-                setError(err.message || 'Identity verification failed. The link may have expired or been already used.');
+                // Important: Don't set error if we've already succeeded (avoids race condition UI flickers)
+                setStatus(prev => prev === 'success' ? 'success' : 'error');
+                setError(err.message || 'Identity verification failed.');
             }
         };
 

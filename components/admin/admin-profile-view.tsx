@@ -120,14 +120,22 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
             const newEmailPending = localStorage.getItem('new_email_pending');
             if (emailUpdateVerified === 'true' && newEmailPending) {
                 try {
-                    setLoading(true);
-                    // Sync to DB (Firebase is already updated via signInWithEmailLink in gateway)
-                    await adminService.updateAdmin(user.id, { email: newEmailPending });
-                    toast.success("Email address updated and verified!");
-                    localStorage.removeItem('email_update_verified');
-                    localStorage.removeItem('new_email_pending');
-                    // Reload to show fresh data
-                    setTimeout(() => window.location.reload(), 1500);
+                    // Security Check: Ensure Firebase state reflects the verified email
+                    // before syncing to our internal database.
+                    if (firebaseUser && firebaseUser.email === newEmailPending) {
+                        setLoading(true);
+                        await adminService.updateAdmin(user.id, { email: newEmailPending });
+                        toast.success("Email address updated and verified!");
+                        localStorage.removeItem('email_update_verified');
+                        localStorage.removeItem('new_email_pending');
+                        // Reload to show fresh data
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else if (firebaseUser) {
+                        console.log("Firebase email update detected but sync deferred (mismatch or pending propagation)", {
+                            firebase: firebaseUser.email,
+                            pending: newEmailPending
+                        });
+                    }
                 } catch (e: any) {
                     console.error("Failed to sync email to DB:", e);
                     toast.error("Contact verified but failed to sync database. Please contact support.");
