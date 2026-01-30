@@ -1,17 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 /**
- * Public gateway to handle Firebase Magic Link verification
- * This avoids middleware redirects by being whitelisted as a public route.
- * Once verified, it sets a secure flag and redirects back to the protected profile page.
+ * Inner component that uses useSearchParams
  */
-export default function VerifyIdentityPage() {
+function VerifyIdentityContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { verifyMagicLink, isMagicLink } = useFirebaseAuth();
@@ -76,60 +74,77 @@ export default function VerifyIdentityPage() {
     }, [searchParams, verifyMagicLink, isMagicLink, router]);
 
     return (
+        <CardContent className="flex flex-col items-center justify-center p-10 text-center">
+            {status === 'verifying' && (
+                <>
+                    <div className="relative mb-6">
+                        <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
+                        <Loader2 className="h-16 w-16 text-primary animate-spin relative z-10" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight">Verifying Identity</h2>
+                    <p className="text-muted-foreground mt-3 max-w-xs mx-auto">
+                        We're securely confirming your identity with Firebase. Just a moment...
+                    </p>
+                </>
+            )}
+
+            {status === 'success' && (
+                <>
+                    <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6 animate-in zoom-in duration-300">
+                        <CheckCircle className="h-12 w-12 text-green-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-green-600 dark:text-green-500">Verified Successfully</h2>
+                    <p className="text-muted-foreground mt-3">
+                        Your identity has been confirmed. Redirecting you back to your account...
+                    </p>
+                </>
+            )}
+
+            {status === 'error' && (
+                <>
+                    <div className="h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-6 animate-in zoom-in duration-300">
+                        <XCircle className="h-12 w-12 text-red-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-red-600 dark:text-red-500">Verification Failed</h2>
+                    <p className="text-muted-foreground mt-3 px-4">
+                        {error}
+                    </p>
+                    <div className="flex flex-col gap-3 mt-8 w-full">
+                        <button
+                            onClick={() => router.push('/admin/login')}
+                            className="w-full py-2.5 bg-primary text-primary-foreground font-medium rounded-lg shadow-sm hover:bg-primary/90 transition-all active:scale-[0.98]"
+                        >
+                            Login to Admin Panel
+                        </button>
+                        <button
+                            onClick={() => router.refresh()}
+                            className="w-full py-2.5 bg-secondary text-secondary-foreground font-medium rounded-lg hover:bg-secondary/80 transition-all"
+                        >
+                            Retry Verification
+                        </button>
+                    </div>
+                </>
+            )}
+        </CardContent>
+    );
+}
+
+/**
+ * Public gateway to handle Firebase Magic Link verification
+ * This avoids middleware redirects by being whitelisted as a public route.
+ */
+export default function VerifyIdentityPage() {
+    return (
         <div className="flex items-center justify-center min-h-[80vh] bg-slate-50 dark:bg-slate-950 p-4">
             <Card className="w-full max-w-md shadow-xl border-primary/20">
-                <CardContent className="flex flex-col items-center justify-center p-10 text-center">
-                    {status === 'verifying' && (
-                        <>
-                            <div className="relative mb-6">
-                                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
-                                <Loader2 className="h-16 w-16 text-primary animate-spin relative z-10" />
-                            </div>
-                            <h2 className="text-2xl font-bold tracking-tight">Verifying Identity</h2>
-                            <p className="text-muted-foreground mt-3 max-w-xs mx-auto">
-                                We're securely confirming your identity with Firebase. Just a moment...
-                            </p>
-                        </>
-                    )}
-
-                    {status === 'success' && (
-                        <>
-                            <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6 animate-in zoom-in duration-300">
-                                <CheckCircle className="h-12 w-12 text-green-500" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-green-600 dark:text-green-500">Verified Successfully</h2>
-                            <p className="text-muted-foreground mt-3">
-                                Your identity has been confirmed. Redirecting you back to your account...
-                            </p>
-                        </>
-                    )}
-
-                    {status === 'error' && (
-                        <>
-                            <div className="h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-6 animate-in zoom-in duration-300">
-                                <XCircle className="h-12 w-12 text-red-500" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-red-600 dark:text-red-500">Verification Failed</h2>
-                            <p className="text-muted-foreground mt-3 px-4">
-                                {error}
-                            </p>
-                            <div className="flex flex-col gap-3 mt-8 w-full">
-                                <button
-                                    onClick={() => router.push('/admin/login')}
-                                    className="w-full py-2.5 bg-primary text-primary-foreground font-medium rounded-lg shadow-sm hover:bg-primary/90 transition-all active:scale-[0.98]"
-                                >
-                                    Login to Admin Panel
-                                </button>
-                                <button
-                                    onClick={() => router.refresh()}
-                                    className="w-full py-2.5 bg-secondary text-secondary-foreground font-medium rounded-lg hover:bg-secondary/80 transition-all"
-                                >
-                                    Retry Verification
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </CardContent>
+                <Suspense fallback={
+                    <CardContent className="flex flex-col items-center justify-center p-10 text-center">
+                        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+                        <p className="text-muted-foreground">Loading verification module...</p>
+                    </CardContent>
+                }>
+                    <VerifyIdentityContent />
+                </Suspense>
             </Card>
         </div>
     );
