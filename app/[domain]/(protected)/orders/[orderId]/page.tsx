@@ -23,7 +23,8 @@ import {
   Clock,
   UserCog,
   Info,
-  Copy
+  Copy,
+  AlertTriangle
 } from "lucide-react";
 import Image from "next/image";
 
@@ -303,6 +304,26 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Order Request Alert Banner */}
+      {(order as any).type === 'request' && (
+        <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 shadow-sm">
+          <CardContent className="p-4 flex items-start gap-4">
+            <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/50">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-amber-800 dark:text-amber-200">
+                Order Request - Approval Required
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                This is a quote request submitted by the customer. It requires manual review and approval.
+                Payment must be collected outside the platform before processing the order.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Order Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
