@@ -6,7 +6,7 @@ import ProductAccordionForm from "../../../../../components/admin/product-manage
 export default function NewProductAccordionPage() {
     return (
         <Suspense fallback={<div className="flex justify-center items-center h-64">Loading...</div>}>
-            <ProductAccordionForm />
+            <ProductAccordionForm isNew />
         </Suspense>
     );
 }
