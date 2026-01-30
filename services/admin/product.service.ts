@@ -1,73 +1,38 @@
 import api from "@/lib/api";
 
 export interface Product {
+  id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  basePrice?: number;
+  base_price?: number;
+  currency?: string;
+  status?: string;
+  approval_status?: string;
+  category?: string;
+  mainCategory?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
+  image?: string | null;
+  imageUrl?: string | null;
+  media?: { id: number; url: string; type: string; is_cover: boolean }[];
+  stock?: number;
+  sku?: string;
+  is_featured?: boolean;
+  is_top_selling?: boolean;
+  vendor?: {
     id: string;
     name: string;
-    description?: string;
-    price?: number;
-    basePrice?: number;
-    base_price?: number;
-    currency?: string;
-    status?: string;
-    approval_status?: string;
-    category?: string;
-    mainCategory?: string;
-    createdAt?: string;
-    updatedAt?: string;
-    created_at?: string;
-    updated_at?: string;
-    image?: string | null;
-    imageUrl?: string | null;
-    media?: { id: number; url: string; type: string; is_cover: boolean }[];
-    stock?: number;
-    sku?: string;
-    is_featured?: boolean;
-    is_top_selling?: boolean;
-    vendor?: {
-        id: string;
-        name: string;
-        email: string;
-        profile?: {
-            company_name: string;
-        };
+    email: string;
+    profile?: {
+      company_name: string;
     };
-    individual_product_pricing?: { name: string; amount: number }[];
-    individualProductPricing?: { name: string; amount: number }[];
-
-    // Technical Specs
-    dimensionLength?: number;
-    dimension_length?: number;
-    dimensionWidth?: number;
-    dimension_width?: number;
-    dimensionHeight?: number;
-    dimension_height?: number;
-    dimensionUnit?: string;
-    dimension_unit?: string;
-    weightValue?: number;
-    weight_value?: number;
-    weightUnit?: string;
-    weight_unit?: string;
-    materials?: string[];
-    features?: string[];
-    performance?: string[];
-    technicalDescription?: string;
-    technical_description?: string;
-    
-    // Declarations & Warranty
-    readyStockAvailable?: boolean;
-    ready_stock_available?: boolean;
-    hasWarranty?: boolean;
-    has_warranty?: boolean;
-    warrantyDuration?: number;
-    warranty_duration?: number;
-    categoryId?: any;
-    category_id?: any;
-    mainCategoryId?: any;
-    main_category_id?: any;
-    subCategoryId?: any;
-    sub_category_id?: any;
-    pricing_tiers?: { min_quantity: number; max_quantity: number | null; price: number }[];
-    gallery?: string[];
+  };
+  individual_product_pricing?: { name: string; amount: number }[];
+  individualProductPricing?: { name: string; amount: number }[];
 }
 
 export interface CreateProductRequest {
@@ -77,7 +42,7 @@ export interface CreateProductRequest {
   categoryId?: number;
   subCategoryId?: number;
   vehicleCompatibility?: string;
-  certifications?: string[];
+  certifications?: string;
   countryOfOrigin?: string;
   controlledItemType?: string;
   dimensionLength?: number;
@@ -110,7 +75,7 @@ export interface CreateProductRequest {
   year?: number;
   readyStockAvailable?: boolean;
   pricingTerms?: string[];
-  productionLeadTime?: number | null;
+  productionLeadTime?: number;
   manufacturingSource?: string;
   manufacturingSourceName?: string;
   requiresExportLicense?: boolean;

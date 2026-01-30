@@ -1,19 +1,29 @@
 "use client";
 
 import { Suspense } from "react";
-import { useParams } from "next/navigation";
-import ProductAccordionDetail from "../../../../../components/admin/product-management/product-accordion-detail";
+import { use } from "react";
+import ProductAccordionForm from "@/components/admin/product-management/product-accordion-form";
+import { Spinner } from "@/components/ui/spinner";
 
-function DetailWrapper() {
-    const params = useParams();
-    const productId = params.id as string;
-    return <ProductAccordionDetail productId={productId} />;
+interface ProductEditPageProps {
+    params: Promise<{ id: string; domain: string }>;
 }
 
-export default function ProductAccordionDetailPage() {
+export default function ProductEditPage({ params }: ProductEditPageProps) {
+    const resolvedParams = use(params);
+
     return (
-        <Suspense fallback={<div className="flex justify-center items-center h-64">Loading...</div>}>
-            <DetailWrapper />
+        <Suspense
+            fallback={
+                <div className="flex justify-center items-center h-64">
+                    <Spinner size="lg" />
+                </div>
+            }
+        >
+            <ProductAccordionForm
+                productId={resolvedParams.id}
+                domain={resolvedParams.domain}
+            />
         </Suspense>
     );
 }
