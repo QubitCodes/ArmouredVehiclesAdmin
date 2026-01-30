@@ -136,8 +136,21 @@ function AddPhoneContent() {
       const phoneDigits = data.phoneNumber.replace(/^0+/, '');
       const phoneToUse = `+${dialCode}${phoneDigits}`;
 
-      // Check if phone exists (Backend check if possible, optional?) 
-      // Admin usually allows checking. Since we use Firebase, collision might happen if phone already linked.
+      // Check if phone exists in DB before sending OTP
+      try {
+        const checkRes = await api.post("/auth/user-exists", { identifier: phoneToUse });
+        if (checkRes.status === 200) {
+          toast.error("This phone number is already linked to another account.");
+          return;
+        }
+      } catch (e: any) {
+        // 404 = Not found (Good, proceed)
+        if (e.response?.status !== 404) {
+          console.error("Phone check error", e);
+          toast.error(e.response?.data?.message || "Unable to verify phone availability.");
+          return;
+        }
+      }
 
       const result = await linkPhone(phoneToUse, recaptchaContainerId);
       setConfirmationResult(result);
