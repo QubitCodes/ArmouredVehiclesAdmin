@@ -633,7 +633,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     }
 
     return (
-        <div className="flex w-full flex-col">
+        <div className="flex-1 space-y-4 p-8 pt-6">
             {/* Header */}
             <div className="flex items-center gap-4 pb-6">
                 <Button variant="outline" onClick={() => router.back()} className="w-fit">
