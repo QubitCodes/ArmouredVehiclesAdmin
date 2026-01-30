@@ -124,7 +124,7 @@ function AdminLoginContent() {
             // 1. Check if user exists & get formatted identifier
             let cleanIdentifier = input;
             try {
-                const checkRes = await api.post("/auth/user-exists", { identifier: input });
+                const checkRes = await api.post("/auth/user-exists", { identifier: input, userType: 'admin' });
                 if (checkRes.data?.data) {
                     const { identifier: id, userType } = checkRes.data.data;
                     cleanIdentifier = id;

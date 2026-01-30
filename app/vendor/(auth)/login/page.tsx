@@ -177,7 +177,7 @@ function VendorLoginContent() {
       // 1. Check if user exists & get formatted identifier
       let cleanIdentifier = input;
       try {
-        const checkRes = await api.post("/auth/user-exists", { identifier: input });
+        const checkRes = await api.post("/auth/user-exists", { identifier: input, userType: 'vendor' });
         // Response structure: { status: true, data: { exists: true, identifier: "+971..." } }
         // Or if 404, axios throws error (handled below) or returns status 404 depending on interceptor?
         // Standard axios throws on 4xx.
