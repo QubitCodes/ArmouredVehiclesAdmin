@@ -7,6 +7,8 @@ import {
   signInWithEmailLink,
   linkWithPhoneNumber,
   updatePhoneNumber,
+  updateEmail,
+  verifyBeforeUpdateEmail,
   PhoneAuthProvider,
   ConfirmationResult,
   UserCredential,
@@ -25,9 +27,10 @@ interface UseFirebaseAuthReturn {
   linkPhone: (phoneNumber: string, containerId: string) => Promise<ConfirmationResult>;
   verifyPhoneLink: (confirmationResult: ConfirmationResult, code: string) => Promise<UserCredential>;
 
-  // Phone Update (for existing users)
+  // Profile Updates
   verifyAndGetCredential: (confirmationResult: ConfirmationResult, code: string) => PhoneAuthCredential;
   updateUserPhone: (credential: PhoneAuthCredential) => Promise<void>;
+  sendEmailUpdateLink: (newEmail: string, redirectUrl?: string) => Promise<void>;
 
   // Magic Link Auth
   sendMagicLink: (email: string, redirectUrl?: string) => Promise<void>;
@@ -164,7 +167,27 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
       }
   };
 
-  // 5. Send Magic Link
+  // 7. Send Email Update Link (verifyBeforeUpdateEmail)
+  const sendEmailUpdateLink = async (newEmail: string, redirectUrl = window.location.href) => {
+      setLoading(true);
+      setError(null);
+      try {
+          if (!auth.currentUser) throw new Error("No user signed in");
+          
+          const actionCodeSettings = {
+              url: redirectUrl,
+              handleCodeInApp: true,
+          };
+          
+          await verifyBeforeUpdateEmail(auth.currentUser, newEmail, actionCodeSettings);
+      } catch (err: any) {
+          console.error("Firebase Email Update Link Error:", err);
+          setError(err.message || "Failed to send verification email");
+          throw err;
+      } finally {
+          setLoading(false);
+      }
+  };
   const sendMagicLink = async (email: string, redirectUrl = window.location.href) => {
     setLoading(true);
     setError(null);
@@ -231,6 +254,7 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
     verifyPhoneLink,
     verifyAndGetCredential,
     updateUserPhone,
+    sendEmailUpdateLink,
     sendMagicLink,
     verifyMagicLink,
     isMagicLink,

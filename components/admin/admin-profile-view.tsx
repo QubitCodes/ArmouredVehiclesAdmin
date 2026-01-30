@@ -76,7 +76,7 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
     const [loading, setLoading] = useState(false);
 
     // Hooks
-    const { sendPhoneOtp, verifyPhoneOtp, verifyAndGetCredential, updateUserPhone, sendMagicLink, isMagicLink, verifyMagicLink, user: firebaseUser, reauthenticate } = useFirebaseAuth();
+    const { sendPhoneOtp, verifyPhoneOtp, verifyAndGetCredential, updateUserPhone, sendEmailUpdateLink, sendMagicLink, isMagicLink, verifyMagicLink, user: firebaseUser, reauthenticate } = useFirebaseAuth();
 
     // Timer Effect - Only clear editingField on expiry, NOT when closing edit dialog
     useEffect(() => {
@@ -101,36 +101,69 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
         return () => clearInterval(interval);
     }, [isEditingEnabled, editExpiry]);
 
-    // Detect Magic Link return from email verification
+    // Detect re-auth token from URL (for email verification)
     useEffect(() => {
-        const handleMagicLinkReturn = async () => {
-            const currentUrl = window.location.href;
-            const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(window.location.search);
+        const reauthToken = urlParams.get('reauth_token');
 
-            // Check if this is a magic link return AND it's for re-auth
-            if (isMagicLink(currentUrl) && urlParams.get('reauth') === 'true') {
+        if (reauthToken) {
+            // Verify token matches what we stored
+            const storedToken = localStorage.getItem('reauth_token');
+            const storedExpiry = localStorage.getItem('reauth_token_expiry');
+
+            if (storedToken === reauthToken && storedExpiry && Date.now() < parseInt(storedExpiry)) {
+                // Valid token - enable editing
+                setIsEditingEnabled(true);
+                setEditExpiry(Date.now() + EDIT_WINDOW_MS);
+                toast.success("Identity verified. You have 10 minutes to edit.");
+
+                // Clean up
+                localStorage.removeItem('reauth_token');
+                localStorage.removeItem('reauth_token_expiry');
+
+                // Clean up URL
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, '', cleanUrl);
+            } else {
+                toast.error("Verification link expired or invalid. Please try again.");
+            }
+        }
+    }, []);
+
+    // Detect Email Update return
+    useEffect(() => {
+        const handleEmailUpdateReturn = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const emailVerified = urlParams.get('email_verified');
+            const newEmail = urlParams.get('new_email');
+
+            if (emailVerified === 'true' && newEmail) {
                 try {
                     setLoading(true);
-                    await verifyMagicLink(user.email, currentUrl);
+                    // At this point, Firebase already updated the email if the user clicked the link.
+                    // We just need to sync it to our DB.
+                    await adminService.updateAdmin(user.id, {
+                        email: newEmail
+                    });
 
-                    // Enable editing after successful verification
-                    setIsEditingEnabled(true);
-                    setEditExpiry(Date.now() + EDIT_WINDOW_MS);
-                    toast.success("Identity verified. You have 10 minutes to edit.");
+                    toast.success("Email address updated successfully!");
 
                     // Clean up URL
                     const cleanUrl = window.location.pathname;
                     window.history.replaceState({}, '', cleanUrl);
+
+                    // Reload to show fresh data
+                    setTimeout(() => window.location.reload(), 1500);
                 } catch (e: any) {
-                    console.error("Magic link verification failed:", e);
-                    toast.error("Email verification failed. Please try again.");
+                    console.error("Failed to sync email to DB:", e);
+                    toast.error("Contact verified but failed to sync database. Please contact support.");
                 } finally {
                     setLoading(false);
                 }
             }
         };
 
-        handleMagicLinkReturn();
+        handleEmailUpdateReturn();
     }, []);
 
     // --- Re-Authentication Logic ---
@@ -159,20 +192,37 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
     };
 
     /**
-     * Send magic link email for re-authentication
+     * Send verification email for re-authentication
+     * Uses a simple token-based approach instead of Firebase magic links
      */
     const sendReauthEmail = async () => {
         try {
             setLoading(true);
-            // Create a redirect URL that includes a flag indicating this is a re-auth flow
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('reauth', 'true');
 
-            await sendMagicLink(user.email, currentUrl.toString());
+            // Generate a simple token
+            const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            const tokenExpiry = Date.now() + 10 * 60 * 1000; // 10 minute expiry
+
+            // Store token locally for verification
+            localStorage.setItem('reauth_token', token);
+            localStorage.setItem('reauth_token_expiry', tokenExpiry.toString());
+
+            // Create verification URL
+            const verifyUrl = new URL(window.location.href);
+            verifyUrl.searchParams.set('reauth_token', token);
+
+            // Send email via backend
+            await api.post('/auth/send-reauth-email', {
+                email: user.email,
+                verifyUrl: verifyUrl.toString(),
+                userName: user.name
+            });
+
             setReauthStep("email_sent");
             toast.success(`Verification link sent to ${user.email}`);
         } catch (e: any) {
-            toast.error(e.message || "Failed to send verification email");
+            console.error("Failed to send reauth email:", e);
+            toast.error(e.response?.data?.message || e.message || "Failed to send verification email");
         } finally {
             setLoading(false);
         }
@@ -302,38 +352,43 @@ export function AdminProfileView({ user, profile }: AdminProfileViewProps) {
     };
 
     const handleUpdateEmail = async () => {
-        // For email, we use verifyBeforeUpdateEmail logic or similar.
-        // Since implementing custom email OTP is hard without backend,
-        // We will trigger the Link flow and tell user to check email.
         if (!formData.email) return;
+        if (formData.email === user.email) {
+            setEditingField(null);
+            return;
+        }
 
         try {
             setLoading(true);
-            // Call Backend to send Magic Link to NEW email? or Firebase?
-            // User requested "OTP or Magic Link".
-            // Let's use Backend to trigger a "Verify Email Change" link if possible?
-            // Or simpler: Check if email exists -> Update DB directly? NO, verification required.
 
-            // Assuming we use Firebase verifyBeforeUpdateEmail
-            if (firebaseUser) {
-                // We need to import the function from firebase/auth?
-                // Or add to useFirebaseAuth hook.
-                // For now, let's warn user
-                toast.info("Sending verification email...");
-
-                // Dynamic import to use auth directly if hook doesn't support it
-                const { getAuth, verifyBeforeUpdateEmail } = await import("firebase/auth");
-                const auth = getAuth();
-                if (auth.currentUser) {
-                    await verifyBeforeUpdateEmail(auth.currentUser, formData.email);
-                    toast.success(`Verification link sent to ${formData.email}. Please verify to complete the update.`);
-                    // Note: DB is NOT updated yet. User must verify.
-                    // We can listen to changes or user clicks "I Verified".
-                    // This UI flow is tricky.
+            // 1. Check if email exists in DB
+            try {
+                const checkRes = await api.post("/auth/user-exists", { identifier: formData.email });
+                if (checkRes.status === 200) {
+                    toast.error("This email is already linked to another account.");
+                    setLoading(false);
+                    return;
+                }
+            } catch (e: any) {
+                if (e.response?.status !== 404) {
+                    toast.error("Failed to verify email availability.");
+                    setLoading(false);
+                    return;
                 }
             }
+
+            // 2. Send Verification Link with Redirection
+            const redirectUrl = new URL(window.location.href);
+            redirectUrl.searchParams.set('email_verified', 'true');
+            redirectUrl.searchParams.set('new_email', formData.email);
+
+            await sendEmailUpdateLink(formData.email, redirectUrl.toString());
+
+            toast.success(`Verification link sent to ${formData.email}. Please click the link to confirm your new email.`);
+            setEditingField(null);
         } catch (e: any) {
-            toast.error(e.message);
+            console.error("Email update failed:", e);
+            toast.error(e.message || "Failed to send verification email");
         } finally {
             setLoading(false);
         }
