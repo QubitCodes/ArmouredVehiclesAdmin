@@ -417,11 +417,12 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     const mainCategoryId = form.watch("mainCategoryId");
     const categoryId = form.watch("categoryId");
     const watchName = form.watch("name");
+    const watchSku = form.watch("sku");
     const watchCategories = form.watch("mainCategoryId");
     const watchDesc = form.watch("description");
     const watchPrice = form.watch("basePrice");
     const watchStock = form.watch("stock");
-    const gallery = form.watch("gallery") || [];
+    const watchGallery = form.watch("gallery");
     const watchedPricingTiers = form.watch("pricing_tiers") || [];
 
     // Cascading categories
@@ -482,12 +483,40 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                 status: p.status || "draft",
             });
 
-            // Unlock all sections for existing products
-            setUnlockedSections([1, 2, 3, 4, 5]);
-            // Open all sections for existing products (user requested unlocked sections stay open)
-            setOpenSections(SECTIONS.map(s => s.slug));
+            // Logic to determine unlocked and open sections
+            const newUnlocked: number[] = [1];
+
+            // Check Section 1 (Basic) completeness using server data
+            const basicInfoComplete = !!(p.name && p.main_category_id && p.sku && p.description);
+
+            if (basicInfoComplete) {
+                // User Rule 4 & 1: If basic info is done, all other keys unlock
+                newUnlocked.push(2, 3, 4, 5);
+            }
+
+            setUnlockedSections(newUnlocked);
+
+            // Open logic - Rule 5 & 6
+            // Find first incomplete
+            let firstIncompleteSlug: string | null = null;
+
+            if (!basicInfoComplete) {
+                firstIncompleteSlug = 'basic-info';
+            } else if (p.base_price === undefined || p.base_price === null) {
+                // Section 3 (Pricing) is the next one with required fields (basePrice)
+                // Section 2 (Technical) and 4 (Uploads), 5 (Declarations) are optional
+                firstIncompleteSlug = 'pricing';
+            }
+
+            if (!firstIncompleteSlug) {
+                // All requirements met - Rule 6: If all required filled, all open
+                setOpenSections(SECTIONS.map(s => s.slug));
+            } else {
+                // Rule 5: Open first unfilled required
+                setOpenSections([firstIncompleteSlug]);
+            }
         }
-    }, [product, currentProductId, form]);
+    }, [product, currentProductId, form, refetchProduct]);
 
 
 
@@ -512,7 +541,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
         switch (sectionId) {
             case 1:
-                return !!(watchName && watchCategories && watchDesc);
+                return !!(watchName && watchCategories && watchSku && watchDesc);
             case 2:
                 return true; // Specs are optional
             case 3:
@@ -527,7 +556,8 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     };
 
     // Can publish validation
-    const canPublish = !!(watchName && watchCategories && watchDesc && watchPrice !== undefined && watchPrice >= 0);
+    // Can publish validation (now includes SKU)
+    const canPublish = !!(watchName && watchCategories && watchSku && watchDesc && watchPrice !== undefined && watchPrice >= 0);
 
     // Auto-revert to draft if published but requirements no longer met
     useEffect(() => {
@@ -600,8 +630,8 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                     data: fd as unknown as UpdateProductRequest,
                 });
 
-                // Refetch product data to update server media list immediately
-                if (sectionId === 4) {
+                // Refetch product data to update server media list immediately OR to unlock sections (if section 1 saved)
+                if (sectionId === 4 || sectionId === 1) {
                     await refetchProduct();
                 }
 
