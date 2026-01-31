@@ -410,7 +410,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     };
 
     // Data fetching
-    const { data: product, isLoading: isLoadingProduct } = useProduct(currentProductId || "");
+    const { data: product, isLoading: isLoadingProduct, refetch: refetchProduct } = useProduct(currentProductId || "");
     // Duplicates removed
 
     // Watch form values
@@ -599,6 +599,12 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                     id: currentProductId,
                     data: fd as unknown as UpdateProductRequest,
                 });
+
+                // Refetch product data to update server media list immediately
+                if (sectionId === 4) {
+                    await refetchProduct();
+                }
+
                 toast.success("Section saved successfully!");
 
                 // Clear file states after successful upload
