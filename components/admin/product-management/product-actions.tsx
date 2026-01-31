@@ -24,7 +24,7 @@ export function ProductActions() {
 
       {canAddProduct && (
         <Button asChild>
-          <Link href={`/${domain}/products/new`}>
+          <Link href={`/${domain}/product/new`}>
             <Plus className="h-4 w-4" />
             Add Product
           </Link>

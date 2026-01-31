@@ -197,7 +197,7 @@ export function SliderDialog({ open, onOpenChange, item, onSuccess }: SliderDial
                             <Input
                                 value={formData.link}
                                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                                placeholder="/products/..."
+                                placeholder="/product/..."
                             />
                         </div>
                     </div>

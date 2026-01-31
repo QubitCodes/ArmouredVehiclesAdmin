@@ -265,7 +265,7 @@ export function ProductTable({
         <div className="w-full space-y-1">
           {products.map((product) => {
             const imageUrl = getImageUrl(product);
-            const productLink = `/${domain}/products/${product.id}${fromVendor ? "?from=vendor" : ""
+            const productLink = `/${domain}/product/${product.id}${fromVendor ? "?from=vendor" : ""
               }`;
 
             return (
@@ -392,7 +392,7 @@ export function ProductTable({
                   )}
                   {showActions && (
                     <div className="flex items-center justify-center gap-2">
-                      <Link href={`/${domain}/products/${product.id}/edit${fromVendor ? "?from=vendor" : ""}`}>
+                      <Link href={`/${domain}/product/${product.id}/update${fromVendor ? "?from=vendor" : ""}`}>
                         <Button
                           variant="ghost"
                           size="icon"
