@@ -112,28 +112,29 @@ const productSchema = z.object({
     year: z.coerce.number().optional(),
     condition: z.string().optional(),
     // Technical Specs (now without MOQ)
-    dimensionLength: z.number().optional(),
-    dimensionWidth: z.number().optional(),
-    dimensionHeight: z.number().optional(),
-    dimensionUnit: z.string().optional(),
-    materials: z.array(z.string()).optional(),
-    features: z.array(z.string()).optional(),
-    performance: z.array(z.string()).optional(),
-    technicalDescription: z.string().optional(),
-    driveTypes: z.array(z.string()).optional(),
-    sizes: z.array(z.string()).optional(),
-    thickness: z.array(z.string()).optional(),
-    colors: z.array(z.string()).optional(),
-    weightValue: z.number().optional(),
-    weightUnit: z.string().optional(),
-    packingLength: z.number().optional(),
-    packingWidth: z.number().optional(),
-    packingHeight: z.number().optional(),
-    packingDimensionUnit: z.string().optional(),
-    packingWeight: z.number().optional(),
-    packingWeightUnit: z.string().optional(),
-    vehicleFitment: z.array(z.string()).optional(),
-    specifications: z.array(z.string()).optional(),
+    // Todo: To be deleted. JkWorkz
+    // dimensionLength: z.number().optional(),
+    // dimensionWidth: z.number().optional(),
+    // dimensionHeight: z.number().optional(),
+    // dimensionUnit: z.string().optional(),
+    // materials: z.array(z.string()).optional(),
+    // features: z.array(z.string()).optional(),
+    // performance: z.array(z.string()).optional(),
+    // technicalDescription: z.string().optional(),
+    // driveTypes: z.array(z.string()).optional(),
+    // sizes: z.array(z.string()).optional(),
+    // thickness: z.array(z.string()).optional(),
+    // colors: z.array(z.string()).optional(),
+    // weightValue: z.number().optional(),
+    // weightUnit: z.string().optional(),
+    // packingLength: z.number().optional(),
+    // packingWidth: z.number().optional(),
+    // packingHeight: z.number().optional(),
+    // packingDimensionUnit: z.string().optional(),
+    // packingWeight: z.number().optional(),
+    // packingWeightUnit: z.string().optional(),
+    // vehicleFitment: z.array(z.string()).optional(),
+    // specifications: z.array(z.string()).optional(),
     // Pricing (now includes MOQ)
     basePrice: z.coerce.number().min(0).optional(),
     shippingCharge: z.coerce.number().min(0).optional(),
@@ -252,9 +253,10 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
             name: "",
             sku: "",
             certifications: [],
-            materials: [],
-            features: [],
-            performance: [],
+            // Todo: To be deleted. JkWorkz
+            // materials: [],
+            // features: [],
+            // performance: [],
             pricingTerms: [],
             pricing_tiers: [],
             individualProductPricing: [],
@@ -314,10 +316,11 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
         return prev.type;
     };
 
-    const validateSpecsRules = () => {
-        // Simple validation rule checks if needed, for now return true
-        return true;
-    };
+    // Todo: To be deleted. JkWorkz
+    // const validateSpecsRules = () => {
+    //     // Simple validation rule checks if needed, for now return true
+    //     return true;
+    // };
 
     const updateLocalSpec = (index: number, field: keyof ProductSpecification, val: any) => {
         const updated = [...localSpecs];
@@ -330,21 +333,22 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
         setLocalSpecs(updated);
     };
 
-    const saveSpecRow = async (index: number) => {
-        // if (!validateSpecsRules()) return; // Skip complex validation for inline edit
-        const spec = localSpecs[index];
-        const dataToSave = {
-            ...spec,
-            label: spec.type === 'value_only' ? null : spec.label,
-            value: spec.type === 'title_only' ? null : spec.value,
-        };
+    // Todo: To be deleted. JkWorkz
+    // const saveSpecRow = async (index: number) => {
+    //     // if (!validateSpecsRules()) return; // Skip complex validation for inline edit
+    //     const spec = localSpecs[index];
+    //     const dataToSave = {
+    //         ...spec,
+    //         label: spec.type === 'value_only' ? null : spec.label,
+    //         value: spec.type === 'title_only' ? null : spec.value,
+    //     };
 
-        if (spec.id) {
-            await updateSpec.mutateAsync({ specId: spec.id, data: dataToSave });
-        } else {
-            await createSpec.mutateAsync(dataToSave);
-        }
-    };
+    //     if (spec.id) {
+    //         await updateSpec.mutateAsync({ specId: spec.id, data: dataToSave });
+    //     } else {
+    //         await createSpec.mutateAsync(dataToSave);
+    //     }
+    // };
 
     const deleteSpecRow = async (index: number) => {
         const spec = localSpecs[index];
@@ -672,19 +676,20 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 
     // Field mapping for API
     const FIELD_MAPPING: Record<string, string> = {
-        vehicleFitment: 'vehicle_fitment',
-        dimensionLength: 'dimension_length',
-        dimensionWidth: 'dimension_width',
-        dimensionHeight: 'dimension_height',
-        dimensionUnit: 'dimension_unit',
-        weightValue: 'weight_value',
-        weightUnit: 'weight_unit',
-        packingLength: 'packing_length',
-        packingWidth: 'packing_width',
-        packingHeight: 'packing_height',
-        packingDimensionUnit: 'packing_dimension_unit',
-        packingWeight: 'packing_weight',
-        packingWeightUnit: 'packing_weight_unit',
+        // Todo: To be deleted. JkWorkz
+        // vehicleFitment: 'vehicle_fitment',
+        // dimensionLength: 'dimension_length',
+        // dimensionWidth: 'dimension_width',
+        // dimensionHeight: 'dimension_height',
+        // dimensionUnit: 'dimension_unit',
+        // weightValue: 'weight_value',
+        // weightUnit: 'weight_unit',
+        // packingLength: 'packing_length',
+        // packingWidth: 'packing_width',
+        // packingHeight: 'packing_height',
+        // packingDimensionUnit: 'packing_dimension_unit',
+        // packingWeight: 'packing_weight',
+        // packingWeightUnit: 'packing_weight_unit',
         minOrderQuantity: 'min_order_quantity',
         pricingTerms: 'pricing_terms',
         productionLeadTime: 'production_lead_time',
@@ -700,8 +705,9 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
         supplierSignature: 'supplier_signature',
         signatureDate: 'submission_date',
         detailDescription: 'description',
-        driveTypes: 'drive_types',
-        technicalDescription: 'technical_description',
+        // Todo: To be deleted. JkWorkz
+        // driveTypes: 'drive_types',
+        // technicalDescription: 'technical_description',
         controlledItemType: 'controlled_item_type',
         countryOfOrigin: 'country_of_origin',
         mainCategoryId: 'main_category_id',
@@ -1270,33 +1276,33 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                 <>
                                     <div className="border rounded-lg overflow-hidden">
                                         <table className="w-full text-sm table-fixed">
-                                            <thead className="bg-muted">
-                                                <tr>
-                                                    <th className="w-10 px-2 py-2 text-center">Act.</th>
-                                                    <th className="px-2 py-2 text-left">Label</th>
-                                                    <th className="px-2 py-2 text-left">Value</th>
-                                                    <th className="w-32 px-2 py-2 text-left">Actions</th>
+                                            <thead className="bg-[#eadbc8] text-black font-semibold">
+                                                <tr className="border-b border-[#d4c5b0]">
+                                                    <th className="w-10 px-3 py-3 text-center">Act.</th>
+                                                    <th className="px-3 py-3 text-left">Label</th>
+                                                    <th className="px-3 py-3 text-left">Value</th>
+                                                    <th className="w-40 px-3 py-3 text-left">Actions</th>
                                                 </tr>
                                             </thead>
-                                            <tbody>
+                                            <tbody className="bg-[#fcfaf5]">
                                                 {localSpecs.map((spec, index) => (
-                                                    <tr key={spec.id || `legacy-${index}`} className="border-t">
-                                                        <td className="px-2 py-2 text-center">
+                                                    <tr key={spec.id || `legacy-${index}`} className="border-b border-[#eeeadd] hover:bg-[#f5f1e6] transition-colors">
+                                                        <td className="px-3 py-3 text-center">
                                                             <input
                                                                 type="checkbox"
                                                                 checked={spec.active}
                                                                 onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
-                                                                className="h-4 w-4"
+                                                                className="h-5 w-5 rounded border-[#c7bca0] text-primary focus:ring-primary bg-white"
                                                             />
                                                         </td>
                                                         {spec.type === 'title_only' || spec.type === 'value_only' ? (
-                                                            <td colSpan={2} className="px-2 py-2">
+                                                            <td colSpan={2} className="px-3 py-3">
                                                                 <div className="relative">
                                                                     <Input
                                                                         value={spec.type === 'title_only' ? spec.label || '' : spec.value || ''}
                                                                         onChange={(e) => updateLocalSpec(index, spec.type === 'title_only' ? 'label' : 'value', e.target.value)}
                                                                         onPaste={(e) => handlePaste(e, index, spec.type === 'title_only' ? 'label' : 'value')}
-                                                                        className={`${spec.type === 'title_only' ? 'font-bold bg-muted/50 pl-10 border-primary/20' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all`}
+                                                                        className={`${spec.type === 'title_only' ? 'font-bold bg-[#f2efe4] pl-10 border-[#d9d2c5]' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all text-base`}
                                                                         placeholder={spec.type === 'title_only' ? 'Section Title' : 'Value'}
                                                                     />
                                                                     {spec.type === 'title_only' && (
@@ -1305,35 +1311,31 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                                                         </div>
                                                                     )}
                                                                     {spec.type === 'value_only' && (
-                                                                        <div className="absolute top-0 left-0 bg-primary text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
-                                                                            <Circle className="w-2 h-2 fill-current" />
+                                                                        <div className="absolute top-0 left-0 bg-[#414e38] text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
+                                                                            <Circle className="w-2.5 h-2.5 fill-current text-white" />
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             </td>
                                                         ) : (
                                                             <>
-                                                                <td className="px-2 py-2 align-top">
-                                                                    <div className="relative group">
-                                                                        {/* Label Input with Suggestions */}
-                                                                        <Input
-                                                                            value={spec.label || ''}
-                                                                            onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
-                                                                            onPaste={(e) => handlePaste(e, index, 'label')}
-                                                                            placeholder="Label"
-                                                                            className="w-full font-medium border-primary/30 bg-muted/10"
-                                                                            list={`suggestions-legacy-${index}`}
-                                                                        />
-                                                                        <datalist id={`suggestions-legacy-${index}`}>
-                                                                            {["Condition", "Color", "Size"]
-                                                                                .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
-                                                                                .map(opt => <option key={opt} value={opt} />)
-                                                                            }
-                                                                        </datalist>
-                                                                    </div>
+                                                                <td className="px-3 py-3 align-top">
+                                                                    <Input
+                                                                        value={spec.label || ''}
+                                                                        onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                                                        onPaste={(e) => handlePaste(e, index, 'label')}
+                                                                        placeholder="Label"
+                                                                        className="w-full font-medium border-[#d9d2c5] bg-[#f9f7f2] focus:bg-white transition-colors"
+                                                                        list={`suggestions-legacy-${index}`}
+                                                                    />
+                                                                    <datalist id={`suggestions-legacy-${index}`}>
+                                                                        {["Condition", "Color", "Size"]
+                                                                            .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
+                                                                            .map(opt => <option key={opt} value={opt} />)
+                                                                        }
+                                                                    </datalist>
                                                                 </td>
-                                                                <td className="px-2 py-2 align-top">
-                                                                    {/* Dynamic Value Input */}
+                                                                <td className="px-3 py-3 align-top">
                                                                     {(() => {
                                                                         const label = spec.label?.trim();
 
@@ -1342,7 +1344,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                                                                 <select
                                                                                     value={spec.value || ''}
                                                                                     onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                                                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                                    className="flex h-10 w-full items-center justify-between rounded-md border border-[#d9d2c5] bg-[#ece9de] px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                                                 >
                                                                                     <option value="" disabled>Select Condition</option>
                                                                                     <option value="New">New</option>
@@ -1366,7 +1368,6 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                                                         }
 
                                                                         if (label === 'Size') {
-                                                                            // Parse composite value "11x11x11 mm"
                                                                             const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
                                                                             const dimensions = match ? match[1] : (spec.value || '');
                                                                             const unit = match ? match[2] : 'mm';
@@ -1391,19 +1392,19 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                                                                 onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
                                                                                 onPaste={(e) => handlePaste(e, index, 'value')}
                                                                                 placeholder="Value"
-                                                                                className="w-full"
+                                                                                className="w-full bg-[#f9f7f2] border-[#d9d2c5] focus:bg-white"
                                                                             />
                                                                         );
                                                                     })()}
                                                                 </td>
                                                             </>
                                                         )}
-                                                        <td className="px-2 py-2">
-                                                            <div className="flex gap-1 items-center">
+                                                        <td className="px-3 py-3">
+                                                            <div className="flex gap-2 items-center">
                                                                 <select
                                                                     value={spec.type}
                                                                     onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
-                                                                    className="h-8 px-1 text-xs border rounded bg-background w-20"
+                                                                    className="h-9 px-2 text-sm border border-[#d9d2c5] rounded bg-[#ece9de] w-[90px] focus:outline-none focus:ring-1 focus:ring-primary/50"
                                                                 >
                                                                     {index === 0 ? (
                                                                         <option value="title_only">Title</option>
@@ -1433,7 +1434,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    className="h-8 w-8 p-0 aspect-square shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-black dark:hover:text-white"
+                                                                    className="h-9 w-9 p-0 aspect-square shrink-0 border-[#e5baba] text-[#c94a4a] bg-[#fff5f5] hover:bg-[#ffe0e0] hover:text-[#a83232] hover:border-[#d99a9a]"
                                                                     onClick={() => deleteSpecRow(index)}
                                                                     disabled={deleteSpec.isPending}
                                                                     title="Delete Row"
@@ -1444,10 +1445,11 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                                         </td>
                                                     </tr>
                                                 ))}
+
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="flex justify-between mt-4 items-center">
+                                    <div className="flex justify-between mt-4 items-center bg-[#fcfaf5] p-2 rounded border border-[#eaddcf]">
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 type="number"
