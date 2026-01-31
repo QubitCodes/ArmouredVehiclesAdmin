@@ -205,16 +205,18 @@ const SECTIONS = [
 interface ProductAccordionFormProps {
     productId: string;
     domain: string;
+    readOnly?: boolean;
 }
 
-export default function ProductAccordionForm({ productId, domain }: ProductAccordionFormProps) {
+export default function ProductAccordionForm({ productId, domain, readOnly = false }: ProductAccordionFormProps) {
+    const isReadOnly = readOnly;
     const router = useRouter();
     const searchParams = useSearchParams();
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     // State
-    const [openSections, setOpenSections] = useState<string[]>(["basic-info"]);
-    const [unlockedSections, setUnlockedSections] = useState<number[]>([1]);
+    const [openSections, setOpenSections] = useState<string[]>(isReadOnly ? SECTIONS.map(s => s.slug) : ["basic-info"]);
+    const [unlockedSections, setUnlockedSections] = useState<number[]>(isReadOnly ? [1, 2, 3, 4, 5] : [1]);
     const [currentProductId, setCurrentProductId] = useState<string | null>(productId === "new" ? null : productId);
     const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
     const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -878,19 +880,21 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
                                             {/* Section save button */}
                                             <div className="flex justify-end mt-6 pt-4 border-t">
-                                                <Button
-                                                    type="button"
-                                                    onClick={() => handleSectionSave(section.id)}
-                                                    disabled={isSaving || (section.id === 1 && !isSectionComplete(1))}
-                                                >
-                                                    {isSaving ? (
-                                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
-                                                    ) : section.id === 5 ? (
-                                                        <><Save className="mr-2 h-4 w-4" /> Save & Finish</>
-                                                    ) : (
-                                                        <><Save className="mr-2 h-4 w-4" /> Save & Continue</>
-                                                    )}
-                                                </Button>
+                                                {!isReadOnly && (
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => handleSectionSave(section.id)}
+                                                        disabled={isSaving || (section.id === 1 && !isSectionComplete(1))}
+                                                    >
+                                                        {isSaving ? (
+                                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                                                        ) : section.id === 5 ? (
+                                                            <><Save className="mr-2 h-4 w-4" /> Save & Finish</>
+                                                        ) : (
+                                                            <><Save className="mr-2 h-4 w-4" /> Save & Continue</>
+                                                        )}
+                                                    </Button>
+                                                )}
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>
@@ -906,7 +910,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     // Section render functions
     function renderBasicInfoSection() {
         return (
-            <div className="space-y-4">
+            <div className={cn("space-y-4", isReadOnly && "pointer-events-none opacity-80")}>
                 <FormField
                     control={form.control}
                     name="name"
@@ -918,6 +922,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                     placeholder="Clear title (e.g., BR6 Ballistic Glass Kit for Toyota LC300)"
                                     {...field}
                                     onKeyUp={handleNameKeyUp}
+                                    disabled={isReadOnly}
                                 />
                             </FormControl>
                             <FormMessage />
@@ -941,7 +946,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             form.setValue("categoryId", undefined);
                                             form.setValue("subCategoryId", undefined);
                                         }}
-                                        disabled={isLoadingCategories}
+                                        disabled={isLoadingCategories || isReadOnly}
                                     >
                                         <option value="">Select Main Category</option>
                                         {mainCategories.map((cat: any) => (
@@ -968,7 +973,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             field.onChange(val === "" ? undefined : parseInt(val));
                                             form.setValue("subCategoryId", undefined);
                                         }}
-                                        disabled={!mainCategoryId || isLoadingSubCategories}
+                                        disabled={!mainCategoryId || isLoadingSubCategories || isReadOnly}
                                     >
                                         <option value="">Select Category</option>
                                         {categories.map((cat: any) => (
@@ -994,7 +999,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             const val = e.target.value;
                                             field.onChange(val === "" ? undefined : parseInt(val));
                                         }}
-                                        disabled={!categoryId}
+                                        disabled={!categoryId || isReadOnly}
                                     >
                                         <option value="">Select Subcategory</option>
                                         {subCategories.map((cat: any) => (
@@ -1015,7 +1020,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                         <FormItem>
                             <FormLabel>Product Code / SKU (Auto-generated)</FormLabel>
                             <FormControl>
-                                <Input {...field} readOnly className="bg-muted text-muted-foreground" />
+                                <Input {...field} readOnly className="bg-muted text-muted-foreground" disabled={isReadOnly} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -1036,7 +1041,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             const val = e.target.value;
                                             field.onChange(val === "" ? null : parseInt(val));
                                         }}
-                                        disabled={isLoadingBrands}
+                                        disabled={isLoadingBrands || isReadOnly}
                                     >
                                         <option value="">Select Brand</option>
                                         {brands.map((brand: any) => (
@@ -1056,7 +1061,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                             <FormItem>
                                 <FormLabel>Model</FormLabel>
                                 <FormControl>
-                                    <Input {...field} />
+                                    <Input {...field} disabled={isReadOnly} />
                                 </FormControl>
                             </FormItem>
                         )}
@@ -1073,6 +1078,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                         type="number"
                                         value={field.value ?? ""}
                                         onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                        disabled={isReadOnly}
                                     />
                                 </FormControl>
                             </FormItem>
@@ -1118,6 +1124,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             }
                                             throw new Error("Invalid response from server");
                                         }}
+                                        editable={!isReadOnly}
                                     />
                                 </div>
                             </FormControl>
@@ -1141,223 +1148,120 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                     </div>
                 </div>
 
-                {isLoadingSpecs ? (
-                    <div className="flex justify-center py-8"><Spinner /></div>
-                ) : (
-                    <>
-                        <div className="border rounded-lg overflow-hidden bg-background">
-                            <table className="w-full text-sm table-fixed">
-                                <thead className="bg-muted">
-                                    <tr>
-                                        <th className="w-10 px-2 py-2 text-center">Act.</th>
-                                        <th className="px-2 py-2 text-left">Label</th>
-                                        <th className="px-2 py-2 text-left">Value</th>
-                                        <th className="w-32 px-2 py-2 text-left">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {localSpecs.map((spec, index) => (
-                                        <tr key={spec.id || `new-${index}`} className="border-t">
-                                            <td className="px-2 py-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={spec.active}
-                                                    onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
-                                                    className="h-4 w-4"
-                                                />
-                                            </td>
-                                            {spec.type === 'title_only' || spec.type === 'value_only' ? (
-                                                <td colSpan={2} className="px-2 py-2">
-                                                    <div className="relative">
-                                                        <Input
-                                                            value={spec.type === 'title_only' ? spec.label || '' : spec.value || ''}
-                                                            onChange={(e) => updateLocalSpec(index, spec.type === 'title_only' ? 'label' : 'value', e.target.value)}
-                                                            onPaste={(e) => handlePaste(e, index, spec.type === 'title_only' ? 'label' : 'value')}
-                                                            className={`${spec.type === 'title_only' ? 'font-bold bg-muted/50 pl-10 border-primary/20' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all`}
-                                                            placeholder={spec.type === 'title_only' ? 'Section Title' : 'Value'}
-                                                        />
-                                                        {spec.type === 'title_only' && (
-                                                            <div className="absolute top-0 left-0 bg-orange-600 text-white w-8 h-full flex items-center justify-center rounded-l-lg shadow-sm pointer-events-none opacity-100 z-10">
-                                                                <Hash className="w-4 h-4" />
-                                                            </div>
-                                                        )}
-                                                        {spec.type === 'value_only' && (
-                                                            <div className="absolute top-0 left-0 bg-primary text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            ) : (
-                                                <>
-                                                    <td className="px-2 py-2 align-top">
-                                                        <div className="relative group">
-                                                            <Input
-                                                                value={spec.label || ''}
-                                                                onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
-                                                                onPaste={(e) => handlePaste(e, index, 'label')}
-                                                                placeholder="Label"
-                                                                className="w-full font-medium border-primary/30 bg-muted/10"
-                                                                list={`suggestions-${index}`}
-                                                            />
-                                                            <datalist id={`suggestions-${index}`}>
-                                                                {["Condition", "Color", "Size"]
-                                                                    .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
-                                                                    .map(opt => <option key={opt} value={opt} />)
-                                                                }
-                                                            </datalist>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-2 py-2 align-top">
-                                                        {(() => {
-                                                            const label = spec.label?.trim();
-
-                                                            if (label === 'Condition') {
-                                                                return (
-                                                                    <select
-                                                                        value={spec.value || ''}
-                                                                        onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                                    >
-                                                                        <option value="" disabled>Select Condition</option>
-                                                                        <option value="New">New</option>
-                                                                        <option value="Used">Used</option>
-                                                                        <option value="Refurbished">Refurbished</option>
-                                                                    </select>
-                                                                );
-                                                            }
-
-                                                            if (label === 'Color') {
-                                                                const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
-                                                                return (
-                                                                    <MultiSelect
-                                                                        options={EXTERNAL_COLORS}
-                                                                        selected={selectedColors}
-                                                                        onChange={(selected) => updateLocalSpec(index, 'value', selected.join(', '))}
-                                                                        placeholder="Select or add Colors..."
-                                                                        creatable={true}
-                                                                    />
-                                                                );
-                                                            }
-
-                                                            if (label === 'Size') {
-                                                                const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
-                                                                const dimensions = match ? match[1] : (spec.value || '');
-                                                                const unit = match ? match[2] : 'mm';
-
-                                                                const updateSizeValue = (newDims: string, newUnit: string) => {
-                                                                    updateLocalSpec(index, 'value', `${newDims} ${newUnit}`.trim());
-                                                                };
-
-                                                                return (
-                                                                    <MaskedSizeInput
-                                                                        value={dimensions}
-                                                                        unit={unit}
-                                                                        onChange={(dims, u) => updateSizeValue(dims, u)}
-                                                                    />
-                                                                );
-                                                            }
-
-                                                            return (
-                                                                <Input
-                                                                    value={spec.value || ''}
-                                                                    onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                                                    onPaste={(e) => handlePaste(e, index, 'value')}
-                                                                    placeholder="Value"
-                                                                    className="w-full"
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </td>
-                                                </>
-                                            )}
-                                            <td className="px-2 py-2">
-                                                <div className="flex gap-1 items-center">
-                                                    <select
-                                                        value={spec.type}
-                                                        onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
-                                                        className="h-8 px-1 text-xs border rounded bg-background w-20"
-                                                    >
-                                                        {index === 0 ? (
-                                                            <option value="title_only">Title</option>
-                                                        ) : (
-                                                            <>
-                                                                <option value="title_only">Title</option>
-                                                                {(() => {
-                                                                    const findSectionType = () => {
-                                                                        for (let i = index - 1; i >= 0; i--) {
-                                                                            if (localSpecs[i].type === 'title_only') return null;
-                                                                            return localSpecs[i].type;
-                                                                        }
-                                                                        return null;
-                                                                    };
-                                                                    const sectionType = findSectionType();
-                                                                    return (
-                                                                        <>
-                                                                            <option value="general" disabled={sectionType !== null && sectionType !== 'general'}>General</option>
-                                                                            <option value="value_only" disabled={sectionType !== null && sectionType !== 'value_only'}>Value</option>
-                                                                        </>
-                                                                    );
-                                                                })()}
-                                                            </>
-                                                        )}
-                                                    </select>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                        onClick={() => deleteSpecRow(index)}
-                                                        title="Delete Row"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                <div className="space-y-4">
+                    {/* Specs Table */}
+                    <div className="rounded-md border">
+                        <div className="bg-muted p-2 font-medium grid grid-cols-12 gap-2 text-sm">
+                            <div className="col-span-1 text-center">Act.</div>
+                            <div className="col-span-3">Label (Title/Key)</div>
+                            <div className="col-span-4">Value</div>
+                            <div className="col-span-2">Type</div>
+                            <div className="col-span-2 text-center">Actions</div>
                         </div>
-                        <div className="flex justify-between mt-4 items-center">
+                        {isLoadingSpecs ? (
+                            <div className="p-4 flex justify-center"><Loader2 className="animate-spin" /></div>
+                        ) : localSpecs.length === 0 ? (
+                            <div className="p-4 text-center text-muted-foreground">No specifications defined.</div>
+                        ) : (
+                            localSpecs.map((spec, index) => (
+                                <div key={spec.id || `temp-${index}`} className={cn("grid grid-cols-12 gap-2 p-2 items-center border-t text-sm", isReadOnly && "pointer-events-none opacity-80")}>
+                                    {/* ... Content ... */}
+                                    <div className="col-span-1 flex justify-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={spec.active}
+                                            onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
+                                            className="h-4 w-4"
+                                            disabled={isReadOnly}
+                                        />
+                                    </div>
+                                    <div className="col-span-3">
+                                        {/* Simplified render for brevity, relying on pointer-events-none for disable */}
+                                        <Input
+                                            value={spec.label || ""}
+                                            onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                            placeholder={spec.type === 'value_only' ? 'N/A' : 'Label/Title'}
+                                            disabled={spec.type === 'value_only' || isReadOnly}
+                                            className="h-8"
+                                        />
+                                    </div>
+                                    <div className="col-span-4">
+                                        <Input
+                                            value={spec.value || ""}
+                                            onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                            onPaste={(e) => handlePaste(e, index, 'value')} // Assuming handlePaste takes index and field
+                                            disabled={spec.type === 'title_only' || isReadOnly}
+                                            placeholder={spec.type === 'title_only' ? 'N/A' : 'Value'}
+                                            className="h-8"
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Select
+                                            value={spec.type}
+                                            onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
+                                            disabled={isReadOnly}
+                                        >
+                                            <option value="general">General</option>
+                                            <option value="title_only">Title Only</option>
+                                            <option value="value_only">Value Only</option>
+                                        </Select>
+                                    </div>
+                                    <div className="col-span-2 flex justify-center gap-1">
+                                        {!isReadOnly && (
+                                            <Button variant="ghost" size="icon" onClick={() => deleteSpecRow(index)} className="h-8 w-8 text-destructive">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Add Actions */}
+                    {!isReadOnly && (
+                        <div className="flex gap-2 items-end">
                             <div className="flex items-center gap-2">
+                                <Label>Rows to add:</Label>
                                 <Input
                                     type="number"
-                                    min="1"
+                                    min={1}
+                                    max={20}
+                                    className="w-20"
                                     value={rowsToAdd}
                                     onChange={(e) => setRowsToAdd(parseInt(e.target.value) || 1)}
-                                    className="w-16 h-9"
+                                    disabled={isReadOnly}
                                 />
-                                <Button type="button" variant="outline" size="sm" onClick={addSpecRows}>
-                                    <Plus className="mr-2 h-4 w-4" /> Add Rows
-                                </Button>
                             </div>
+                            <Button type="button" onClick={addSpecRows} variant="outline" disabled={isReadOnly}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Rows
+                            </Button>
                         </div>
+                    )}
+                </div>
 
-                        {/* Specification Guidelines */}
-                        <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-md">
-                            <div className="space-y-1">
-                                <p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
-                                <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-                                    <li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
-                                    <li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
-                                    <li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </>
-                )}
+                {/* Specification Guidelines */}
+                <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-md">
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
+                        <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+                            <li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
+                            <li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
+                            <li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         );
     }
 
     function renderPricingSection() {
         return (
-            <div className="space-y-6">
+            <div className={cn("space-y-6", isReadOnly && "pointer-events-none opacity-80")}>
                 <div className="grid gap-4 md:grid-cols-2">
-                    <FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormItem>} />
+                    <FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} disabled={isReadOnly} /></FormItem>} />
                     <FormField control={form.control} name="currency" render={({ field }) => <FormItem><FormLabel>Currency</FormLabel>
-                        <Select value={field.value || "AED"} onChange={field.onChange}>
+                        <Select value={field.value || "AED"} onChange={field.onChange} disabled={isReadOnly}>
                             <option value="AED">AED</option>
                             <option value="USD">USD</option>
                         </Select>
@@ -1369,12 +1273,16 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-lg">Combo product Individual pricing</h3>
                         <div className="flex gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={updateBasePrice} className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
-                                <Save className="h-4 w-4 mr-2" /> Update Base Price
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" onClick={addIndividualProduct}>
-                                <Plus className="h-4 w-4 mr-2" /> Add product
-                            </Button>
+                            {!isReadOnly && (
+                                <Button type="button" variant="outline" size="sm" onClick={updateBasePrice} className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
+                                    <Save className="h-4 w-4 mr-2" /> Update Base Price
+                                </Button>
+                            )}
+                            {!isReadOnly && (
+                                <Button type="button" variant="outline" size="sm" onClick={addIndividualProduct}>
+                                    <Plus className="h-4 w-4 mr-2" /> Add product
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -1387,7 +1295,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                     <FormItem className="flex-[2]">
                                         <FormLabel className="text-xs">Product Name</FormLabel>
                                         <FormControl>
-                                            <Input {...field} placeholder="Enter product name" />
+                                            <Input {...field} placeholder="Enter product name" disabled={isReadOnly} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -1405,21 +1313,24 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                                 step="0.01"
                                                 {...field}
                                                 onChange={e => field.onChange(parseFloat(e.target.value || "0"))}
+                                                disabled={isReadOnly}
                                             />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive h-10 w-10 mb-2"
-                                onClick={() => removeIndividualProduct(index)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {!isReadOnly && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive h-10 w-10 mb-2"
+                                    onClick={() => removeIndividualProduct(index)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
                     ))}
                     {individualPricing.length === 0 && (
@@ -1431,9 +1342,11 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                 <div className="border border-border p-4 rounded-md bg-muted/20">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-lg">Wholesale Pricing Tiers</h3>
-                        <Button type="button" variant="outline" size="sm" onClick={addPricingTier}>
-                            <Plus className="h-4 w-4 mr-2" /> Add Tier
-                        </Button>
+                        {!isReadOnly && (
+                            <Button type="button" variant="outline" size="sm" onClick={addPricingTier}>
+                                <Plus className="h-4 w-4 mr-2" /> Add Tier
+                            </Button>
+                        )}
                     </div>
 
                     {pricingTiers.map((field, index) => (
@@ -1449,6 +1362,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                                 type="number"
                                                 {...field}
                                                 onChange={e => field.onChange(parseInt(e.target.value || "0"))}
+                                                disabled={isReadOnly}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -1467,6 +1381,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                                 value={field.value ?? ""}
                                                 onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
                                                 placeholder="∞"
+                                                disabled={isReadOnly}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -1485,21 +1400,24 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                                 step="0.01"
                                                 {...field}
                                                 onChange={e => field.onChange(parseFloat(e.target.value || "0"))}
+                                                disabled={isReadOnly}
                                             />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive h-10 w-10 mb-2"
-                                onClick={() => removePricingTier(index)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {!isReadOnly && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive h-10 w-10 mb-2"
+                                    onClick={() => removePricingTier(index)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
                     ))}
                     {pricingTiers.length === 0 && (
@@ -1519,6 +1437,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                         type="number"
                                         value={field.value ?? ""}
                                         onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                        disabled={isReadOnly}
                                     />
                                 </FormControl>
                             </FormItem>
@@ -1536,6 +1455,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                         type="number"
                                         value={field.value ?? ""}
                                         onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                        disabled={isReadOnly}
                                     />
                                 </FormControl>
                             </FormItem>
@@ -1556,6 +1476,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                         step="0.01"
                                         value={field.value ?? ""}
                                         onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                        disabled={isReadOnly}
                                     />
                                 </FormControl>
                             </FormItem>
@@ -1574,6 +1495,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                         step="0.01"
                                         value={field.value ?? ""}
                                         onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                        disabled={isReadOnly}
                                     />
                                 </FormControl>
                             </FormItem>
@@ -1593,8 +1515,8 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                     onValueChange={(val) => field.onChange(val === "yes")}
                                     className="flex gap-4"
                                 >
-                                    <RadioGroupItem value="yes" label="Yes" />
-                                    <RadioGroupItem value="no" label="No" />
+                                    <RadioGroupItem value="yes" label="Yes" disabled={isReadOnly} />
+                                    <RadioGroupItem value="no" label="No" disabled={isReadOnly} />
                                 </RadioGroup>
                             </FormControl>
                         </FormItem>
@@ -1613,7 +1535,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
         const galleryMedia = serverMedia.filter((m: any) => !m.is_cover);
 
         return (
-            <div className="space-y-6">
+            <div className={cn("space-y-6", isReadOnly && "pointer-events-none opacity-80")}>
                 <FormField
                     control={form.control}
                     name="image"
@@ -1626,14 +1548,16 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                         "relative border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center min-h-[250px] cursor-pointer transition-all duration-200",
                                         coverPreview ? "border-primary/50 bg-accent/10" : "border-border hover:border-primary/50 hover:bg-accent/5"
                                     )}
-                                    onClick={() => document.getElementById('cover-upload-input')?.click()}
+                                    onClick={() => !isReadOnly && document.getElementById('cover-upload-input')?.click()}
                                 >
                                     {coverPreview ? (
                                         <div className="relative w-full h-full flex items-center justify-center">
                                             <img src={coverPreview} alt="Cover Preview" className="max-h-[300px] w-auto object-contain rounded-lg shadow-sm" />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white font-medium">
-                                                Click to Change
-                                            </div>
+                                            {!isReadOnly && (
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white font-medium">
+                                                    Click to Change
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="text-center space-y-2">
@@ -1655,6 +1579,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             const file = e.target.files?.[0];
                                             if (file) setCoverImageFile(file);
                                         }}
+                                        disabled={isReadOnly}
                                     />
                                 </div>
                             </FormControl>
@@ -1681,6 +1606,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             }
                                         }}
                                         className="h-4 w-4"
+                                        disabled={isReadOnly}
                                     />
                                     <label
                                         htmlFor="select-all-media"
@@ -1691,7 +1617,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                 </div>
                             )}
                         </div>
-                        {selectedMediaIds.size > 0 && (
+                        {selectedMediaIds.size > 0 && !isReadOnly && (
                             <Button
                                 type="button"
                                 variant="destructive"
@@ -1734,30 +1660,33 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                             setSelectedMediaIds(newSet);
                                         }}
                                         className="bg-white/90 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground shadow-sm"
+                                        disabled={isReadOnly}
                                     />
                                 </div>
 
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="icon"
-                                    className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
-                                    onClick={async () => {
-                                        if (confirm("Delete this image?")) {
-                                            try {
-                                                await deleteMedia({
-                                                    productId: currentProductId || "",
-                                                    mediaId: String(item.id)
-                                                });
-                                                toast.success("Image deleted");
-                                            } catch (e) {
-                                                toast.error("Failed to delete image");
+                                {!isReadOnly && (
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                                        onClick={async () => {
+                                            if (confirm("Delete this image?")) {
+                                                try {
+                                                    await deleteMedia({
+                                                        productId: currentProductId || "",
+                                                        mediaId: String(item.id)
+                                                    });
+                                                    toast.success("Image deleted");
+                                                } catch (e) {
+                                                    toast.error("Failed to delete image");
+                                                }
                                             }
-                                        }
-                                    }}
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                        }}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
                             </div>
                         ))}
 
@@ -1765,43 +1694,48 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                         {galleryFiles.map((file, i) => (
                             <div key={`new-${i}`} className="group relative aspect-square border-2 border-primary/50 rounded-xl overflow-hidden bg-background shadow-sm">
                                 <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover" />
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="icon"
-                                    className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
-                                    onClick={() => {
-                                        const newFiles = [...galleryFiles];
-                                        newFiles.splice(i, 1);
-                                        setGalleryFiles(newFiles);
-                                    }}
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </Button>
+                                {!isReadOnly && (
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                                        onClick={() => {
+                                            const newFiles = [...galleryFiles];
+                                            newFiles.splice(i, 1);
+                                            setGalleryFiles(newFiles);
+                                        }}
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
                                 <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground rounded text-[10px] font-medium shadow-sm pointer-events-none">
                                     New
                                 </div>
                             </div>
                         ))}
 
-                        <label className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/5 rounded-xl flex flex-col items-center justify-center aspect-square cursor-pointer transition-all duration-200 group">
-                            <div className="p-3 bg-accent/20 group-hover:bg-primary/10 rounded-full transition-colors mb-2">
-                                <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </div>
-                            <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">Add Image</span>
-                            <Input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                    if (e.target.files) {
-                                        const newFiles = Array.from(e.target.files);
-                                        setGalleryFiles(prev => [...prev, ...newFiles]);
-                                    }
-                                }}
-                            />
-                        </label>
+                        {!isReadOnly && (
+                            <label className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/5 rounded-xl flex flex-col items-center justify-center aspect-square cursor-pointer transition-all duration-200 group">
+                                <div className="p-3 bg-accent/20 group-hover:bg-primary/10 rounded-full transition-colors mb-2">
+                                    <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                                </div>
+                                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">Add Image</span>
+                                <Input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            const newFiles = Array.from(e.target.files);
+                                            setGalleryFiles(prev => [...prev, ...newFiles]);
+                                        }
+                                    }}
+                                    disabled={isReadOnly}
+                                />
+                            </label>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1811,7 +1745,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
     function renderDeclarationsSection() {
         return (
-            <div className="space-y-4">
+            <div className={cn("space-y-4", isReadOnly && "pointer-events-none opacity-80")}>
                 <FormField
                     control={form.control}
                     name="manufacturingSource"
@@ -1819,7 +1753,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                         <FormItem>
                             <FormLabel>Manufacturing Source</FormLabel>
                             <FormControl>
-                                <Select value={field.value || ""} onChange={field.onChange}>
+                                <Select value={field.value || ""} onChange={field.onChange} disabled={isReadOnly}>
                                     <option value="">Select</option>
                                     <option value="In-House">In-House</option>
                                     <option value="Sourced">Sourced</option>
@@ -1953,11 +1887,11 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                     value={field.value || "draft"}
                                     className="flex flex-col space-y-1"
                                 >
-                                    <RadioGroupItem value="draft" label="Draft (Hidden from approval)" />
+                                    <RadioGroupItem value="draft" label="Draft (Hidden from approval)" disabled={isReadOnly} />
                                     <RadioGroupItem
                                         value="published"
                                         label="Published (Submit for Approval)"
-                                        disabled={!canPublish}
+                                        disabled={!canPublish || isReadOnly}
                                     />
                                 </RadioGroup>
                             </FormControl>
