@@ -1896,10 +1896,10 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                     name="status"
                     render={({ field }) => (
                         <FormItem className={cn(
-                            "space-y-3 p-4 border border-border rounded-md transition-colors",
+                            "space-y-3 p-4 border rounded-md transition-colors",
                             field.value === "published"
-                                ? "bg-green-50/70 border-green-200"
-                                : "bg-orange-50/70 border-orange-200"
+                                ? "bg-green-100 border-green-300"
+                                : "bg-orange-100 border-orange-300"
                         )}>
                             <FormLabel className="text-base font-semibold">Publish Status</FormLabel>
                             <FormControl>
