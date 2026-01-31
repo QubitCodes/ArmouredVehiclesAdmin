@@ -45,25 +45,31 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
                         <h1 className="text-2xl font-bold tracking-tight break-words">{product.name}</h1>
                     </div>
 
-                    <div className="flex items-center justify-start gap-2">
+                    <div className="flex items-center justify-between gap-2">
                         <Button
                             variant="ghost"
                             onClick={() => router.back()}
-                            className="gap-2 shrink-0 mt-1"
+                            className="gap-2 shrink-0"
                         >
                             <ArrowLeft className="h-4 w-4" />
                             Back
                         </Button>
-                        <Button variant="outline" className="gap-2">
-                            <Eye className="h-4 w-4" />
-                            Preview
-                        </Button>
-                        <Link href={`/${resolvedParams.domain}/product/${resolvedParams.id}/update`}>
-                            <Button className="gap-2">
-                                <Pencil className="h-4 w-4" />
-                                Edit Product
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => window.open(`${process.env.NEXT_PUBLIC_WEBSITE_URL || "http://localhost:3000"}/product/${resolvedParams.id}`, "_blank")}
+                            >
+                                <Eye className="h-4 w-4" />
+                                Preview
                             </Button>
-                        </Link>
+                            <Link href={`/${resolvedParams.domain}/product/${resolvedParams.id}/update`}>
+                                <Button className="gap-2">
+                                    <Pencil className="h-4 w-4" />
+                                    Edit Product
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
