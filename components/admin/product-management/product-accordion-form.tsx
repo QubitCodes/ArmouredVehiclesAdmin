@@ -24,6 +24,7 @@ import {
     Info,
     Lock,
     CheckCircle2,
+    Circle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -1279,43 +1280,71 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                             type="checkbox"
                                             checked={spec.active}
                                             onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
-                                            className="h-4 w-4 accent-primary"
+                                            className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
                                             disabled={isReadOnly}
                                         />
                                     </div>
 
-                                    {/* Render Label Column (Hidden if Value Only) */}
-                                    {spec.type !== 'value_only' && (
-                                        <div className={cn(spec.type === 'title_only' ? "col-span-9" : "col-span-5")}>
-                                            <div className={cn("flex items-center gap-2", spec.type === 'title_only' ? "bg-orange-500 text-white rounded-md px-2 py-1" : "")}>
-                                                {spec.type === 'title_only' && <Hash className="h-4 w-4 shrink-0" />}
+                                    {/* Content Area - Dynamic Col Span */}
+                                    <div className="col-span-9 grid grid-cols-9 gap-2">
+                                        {/* Title Only: Icon + Label (Full Width) */}
+                                        {spec.type === 'title_only' && (
+                                            <div className="col-span-9 flex items-center gap-2">
+                                                <div className="h-8 w-8 rounded bg-[#f97316] flex items-center justify-center shrink-0 text-white">
+                                                    <Hash className="h-5 w-5" />
+                                                </div>
                                                 <Input
                                                     value={spec.label || ""}
                                                     onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
-                                                    placeholder="Label"
+                                                    className="font-semibold bg-muted/50 border-input"
+                                                    placeholder="Section Title"
                                                     disabled={isReadOnly}
-                                                    className={cn(
-                                                        "h-8 border-0 focus-visible:ring-0 px-0",
-                                                        spec.type === 'title_only' ? "bg-transparent text-white placeholder:text-white/70 h-auto py-0" : "bg-transparent"
-                                                    )}
                                                 />
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* Render Value Column (Hidden if Title Only) */}
-                                    {spec.type !== 'title_only' && (
-                                        <div className={cn(spec.type === 'value_only' ? "col-span-9" : "col-span-4")}>
-                                            <Input
-                                                value={spec.value || ""}
-                                                onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                                onPaste={(e) => handlePaste(e, index, 'value')}
-                                                disabled={isReadOnly}
-                                                placeholder="Value"
-                                                className="h-8"
-                                            />
-                                        </div>
-                                    )}
+                                        {/* Value Only: Icon + Value (Full Width) */}
+                                        {spec.type === 'value_only' && (
+                                            <div className="col-span-9 flex items-center gap-2">
+                                                <div className="h-8 w-8 rounded bg-[#414e38] flex items-center justify-center shrink-0 text-white">
+                                                    <Circle className="h-3 w-3 fill-current" />
+                                                </div>
+                                                <Input
+                                                    value={spec.value || ""}
+                                                    onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                    className="bg-muted/50 border-input"
+                                                    placeholder="Value"
+                                                    disabled={isReadOnly}
+                                                    onPaste={(e) => handlePaste(e, index, 'value')}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* General: Label (5) + Value (4) */}
+                                        {spec.type === 'general' && (
+                                            <>
+                                                <div className="col-span-5">
+                                                    <Input
+                                                        value={spec.label || ""}
+                                                        onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                                        className="bg-background border-input"
+                                                        placeholder="Label"
+                                                        disabled={isReadOnly}
+                                                    />
+                                                </div>
+                                                <div className="col-span-4">
+                                                    <Input
+                                                        value={spec.value || ""}
+                                                        onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                        className="bg-muted/30 border-input"
+                                                        placeholder="Value"
+                                                        disabled={isReadOnly}
+                                                        onPaste={(e) => handlePaste(e, index, 'value')}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
 
                                     <div className="col-span-2 flex items-center justify-end gap-1">
                                         <Select
