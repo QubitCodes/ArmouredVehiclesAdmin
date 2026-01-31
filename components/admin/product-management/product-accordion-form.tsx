@@ -1293,31 +1293,40 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                             disabled={isReadOnly}
                                         />
                                     </div>
-                                    <div className="col-span-5">
-                                        <div className={cn("flex items-center gap-2", spec.type === 'title_only' ? "bg-orange-500 text-white rounded-md px-2 py-1" : "")}>
-                                            {spec.type === 'title_only' && <Hash className="h-4 w-4 shrink-0" />}
+
+                                    {/* Render Label Column (Hidden if Value Only) */}
+                                    {spec.type !== 'value_only' && (
+                                        <div className={cn(spec.type === 'title_only' ? "col-span-9" : "col-span-5")}>
+                                            <div className={cn("flex items-center gap-2", spec.type === 'title_only' ? "bg-orange-500 text-white rounded-md px-2 py-1" : "")}>
+                                                {spec.type === 'title_only' && <Hash className="h-4 w-4 shrink-0" />}
+                                                <Input
+                                                    value={spec.label || ""}
+                                                    onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                                    placeholder="Label"
+                                                    disabled={isReadOnly}
+                                                    className={cn(
+                                                        "h-8 border-0 focus-visible:ring-0 px-0",
+                                                        spec.type === 'title_only' ? "bg-transparent text-white placeholder:text-white/70 h-auto py-0" : "bg-transparent"
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Render Value Column (Hidden if Title Only) */}
+                                    {spec.type !== 'title_only' && (
+                                        <div className={cn(spec.type === 'value_only' ? "col-span-9" : "col-span-4")}>
                                             <Input
-                                                value={spec.label || ""}
-                                                onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
-                                                placeholder={spec.type === 'value_only' ? 'N/A' : 'Label'}
-                                                disabled={spec.type === 'value_only' || isReadOnly}
-                                                className={cn(
-                                                    "h-8 border-0 focus-visible:ring-0 px-0",
-                                                    spec.type === 'title_only' ? "bg-transparent text-white placeholder:text-white/70 h-auto py-0" : "bg-transparent"
-                                                )}
+                                                value={spec.value || ""}
+                                                onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                onPaste={(e) => handlePaste(e, index, 'value')}
+                                                disabled={isReadOnly}
+                                                placeholder="Value"
+                                                className="h-8"
                                             />
                                         </div>
-                                    </div>
-                                    <div className="col-span-4">
-                                        <Input
-                                            value={spec.value || ""}
-                                            onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                            onPaste={(e) => handlePaste(e, index, 'value')}
-                                            disabled={spec.type === 'title_only' || isReadOnly}
-                                            placeholder={spec.type === 'title_only' ? 'N/A' : 'Value'}
-                                            className={cn("h-8", spec.type === 'title_only' && "bg-muted")}
-                                        />
-                                    </div>
+                                    )}
+
                                     <div className="col-span-2 flex items-center justify-end gap-1">
                                         <Select
                                             value={spec.type}
