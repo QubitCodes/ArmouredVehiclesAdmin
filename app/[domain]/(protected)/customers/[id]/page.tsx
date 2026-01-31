@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { CustomerProfile } from "@/components/admin/customer-management/customer-profile";
 import { CustomerOrders } from "@/components/admin/customer-management/customer-orders";
 import { customerService, Customer } from "@/services/admin/customer.service";
+import { authService } from "@/services/admin/auth.service";
 import { useQuery } from "@tanstack/react-query";
 
 export default function CustomerDetailPage() {
@@ -34,6 +35,28 @@ export default function CustomerDetailPage() {
         queryFn: async () => customerService.getCustomerById(customerId),
         retry: false
     });
+
+    // Marked fields for removal state
+    const [markedFields, setMarkedFields] = useState<Set<string>>(new Set());
+    const [canPerformActions, setCanPerformActions] = useState(false);
+
+    useEffect(() => {
+        // Simple permission check (can be refined based on actual permission names)
+        const perm = authService.hasPermission("customer.approve") || authService.hasPermission("customer.controlled.approve");
+        setCanPerformActions(perm);
+    }, []);
+
+    const toggleMarkField = (field: string) => {
+        setMarkedFields(prev => {
+            const next = new Set(prev);
+            if (next.has(field)) {
+                next.delete(field);
+            } else {
+                next.add(field);
+            }
+            return next;
+        });
+    };
 
     // Handle errors
     useEffect(() => {
@@ -135,7 +158,14 @@ export default function CustomerDetailPage() {
 
             {/* Content */}
             <div className="pb-10">
-                {currentTab === 'details' && <CustomerProfile customer={customer} />}
+                {currentTab === 'details' && (
+                    <CustomerProfile
+                        customer={customer}
+                        markedFields={markedFields}
+                        toggleMarkField={toggleMarkField}
+                        canPerformActions={canPerformActions}
+                    />
+                )}
                 {currentTab === 'orders' && <CustomerOrders customerId={customerId} basePath={`/${domain}/orders`} />}
             </div>
 

@@ -118,14 +118,16 @@ function VendorLoginContent() {
     }
 
     // C. Map Steps
+    // C. Map Steps
     switch (currentStep) {
-      case 0: router.push('/vendor/company-information'); break;
-      case 1: router.push('/vendor/contact-person'); break;
-      case 2: router.push('/vendor/bank-account'); break;
-      case 3: router.push('/vendor/account-preferences'); break;
-      case 4: router.push('/vendor/declaration'); break;
-      case 5: router.push('/vendor/verification'); break;
-      default: router.push('/vendor/company-information');
+      case 0:
+      case 1: router.push('/vendor/company-information'); break;
+      case 2: router.push('/vendor/contact-person'); break;
+      case 3: router.push('/vendor/declaration'); break;
+      case 4: router.push('/vendor/account-preferences'); break;
+      case 5: router.push('/vendor/bank-account'); break;
+      case 6: router.push('/vendor/verification'); break;
+      default: router.push('/vendor');
     }
   };
 

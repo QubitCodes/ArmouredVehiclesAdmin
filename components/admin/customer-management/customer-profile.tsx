@@ -15,11 +15,20 @@ import {
     CreditCard,
     Globe,
     ExternalLink,
+    Trash2,
 } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -36,6 +45,22 @@ const formatFieldName = (fieldName: string): string => {
         .replace(/([A-Z])/g, " $1")
         .replace(/^./, (str) => str.toUpperCase())
         .trim();
+};
+
+// Helper function to map onboarding step to step name
+const getOnboardingStepName = (step: number | null | undefined): string => {
+    if (step === null) {
+        return "Completed";
+    }
+
+    const stepMap: Record<number, string> = {
+        1: "Buyer Information",
+        2: "Contact Person",
+        3: "Declaration",
+        4: "Account Setup",
+    };
+
+    return stepMap[step as number] || "—";
 };
 
 // Helper function to robustly parse and format field values
@@ -213,103 +238,155 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
 
 interface CustomerProfileProps {
     customer: Customer;
+    markedFields?: Set<string>;
+    toggleMarkField?: (field: string) => void;
+    canPerformActions?: boolean;
 }
 
-export function CustomerProfile({ customer }: CustomerProfileProps) {
-    const profile = (customer.profile as unknown as Record<string, unknown>) || null;
+export function CustomerProfile({ customer, markedFields, toggleMarkField, canPerformActions }: CustomerProfileProps) {
+    const profile = (customer.profile as any) || null;
 
-    // Render field in section (from profile)
-    const renderField = (fieldName: string, customLabel?: string) => {
-        const value = profile?.[fieldName];
-        const formattedValue = formatValue(value, fieldName);
+    // Render row logic
+    const renderRow = (fieldName: string, customLabel?: string, overrideValue?: React.ReactNode) => {
+        const rawValue = overrideValue !== undefined ? overrideValue : profile?.[fieldName];
+        const formattedValue = formatValue(profile?.[fieldName], fieldName);
 
-        const isEmail = fieldName.toLowerCase().includes("email") && value;
-        const isPhone =
-            (fieldName.toLowerCase().includes("phone") ||
-                fieldName.toLowerCase().includes("mobile")) &&
-            value;
-        const isUrl =
-            (fieldName.toLowerCase().endsWith("_url") ||
-                fieldName.toLowerCase().includes("website") ||
-                fieldName.toLowerCase().includes("link")) &&
-            value;
-        const isList = Array.isArray(formattedValue);
+        let displayValue: React.ReactNode = "—";
+
+        if (overrideValue !== undefined) {
+            displayValue = overrideValue;
+        } else {
+            const isEmail = fieldName.toLowerCase().includes("email") && rawValue;
+            const isPhone =
+                (fieldName.toLowerCase().includes("phone") ||
+                    fieldName.toLowerCase().includes("mobile")) &&
+                rawValue;
+            const isUrl =
+                (fieldName.toLowerCase().endsWith("_url") ||
+                    fieldName.toLowerCase().includes("website") ||
+                    fieldName.toLowerCase().includes("link")) &&
+                rawValue;
+            const isList = Array.isArray(formattedValue);
+
+            if (isEmail) {
+                displayValue = (
+                    <a
+                        href={`mailto:${rawValue}`}
+                        className="text-primary hover:underline flex items-center gap-2 font-medium"
+                    >
+                        <Mail className="h-4 w-4" />
+                        {typeof formattedValue === "string" ? formattedValue : String(rawValue)}
+                    </a>
+                );
+            } else if (isPhone) {
+                displayValue = (
+                    <a
+                        href={`tel:${rawValue}`}
+                        className="text-primary hover:underline flex items-center gap-2 font-medium"
+                    >
+                        <Phone className="h-4 w-4" />
+                        {typeof formattedValue === "string" ? formattedValue : String(rawValue)}
+                    </a>
+                );
+            } else if (isUrl && typeof rawValue === "string") {
+                displayValue = (
+                    <a
+                        href={rawValue.startsWith("http") ? rawValue : `https://${rawValue}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                            "hover:underline flex items-center gap-2 font-medium transition-colors",
+                            fieldName.endsWith("_url") ? "text-secondary" : "text-primary"
+                        )}
+                    >
+                        {fieldName.endsWith("_url") ? (
+                            <FileText className="h-4 w-4" />
+                        ) : (
+                            <Globe className="h-4 w-4" />
+                        )}
+                        {fieldName.endsWith("_url")
+                            ? `View ${customLabel || formatFieldName(fieldName)}`
+                            : formattedValue}
+                        <ExternalLink className="h-3 w-3 opacity-70" />
+                    </a>
+                );
+            } else if (isList) {
+                displayValue = (
+                    <div className="flex flex-wrap gap-2">
+                        {formattedValue.map((item: string, index: number) => (
+                            <span
+                                key={index}
+                                className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                            >
+                                {item}
+                            </span>
+                        ))}
+                    </div>
+                );
+            } else {
+                displayValue = <span className="break-all">{typeof formattedValue === "string" ? formattedValue : String(formattedValue)}</span>;
+            }
+        }
+
+        const isMarked = markedFields?.has(fieldName);
 
         return (
-            <div key={fieldName}>
-                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            <TableRow key={fieldName} className={cn(isMarked && "bg-destructive/10")}>
+                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide", isMarked && "line-through opacity-50")}>
                     {customLabel || formatFieldName(fieldName)}
-                </label>
-                <div className="text-foreground mt-2">
-                    {isEmail ? (
-                        <a
-                            href={`mailto:${value}`}
-                            className="text-primary hover:underline flex items-center gap-2 font-medium"
+                </TableCell>
+                <TableCell className={cn(isMarked && "line-through opacity-50 text-destructive")}>
+                    {displayValue}
+                </TableCell>
+                {canPerformActions && toggleMarkField && (
+                    <TableCell className="w-[80px] text-right">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleMarkField(fieldName)}
+                            className={cn("h-8 w-8", isMarked ? "text-destructive hover:text-destructive/90 hover:bg-destructive/20 bg-destructive/10" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10")}
+                            title={isMarked ? "Undo Mark for Deletion" : "Mark field for deletion"}
                         >
-                            <Mail className="h-4 w-4" />
-                            {typeof formattedValue === "string"
-                                ? formattedValue
-                                : String(value)}
-                        </a>
-                    ) : isPhone ? (
-                        <a
-                            href={`tel:${value}`}
-                            className="text-primary hover:underline flex items-center gap-2 font-medium"
-                        >
-                            <Phone className="h-4 w-4" />
-                            {typeof formattedValue === "string"
-                                ? formattedValue
-                                : String(value)}
-                        </a>
-                    ) : isUrl && typeof value === "string" ? (
-                        <a
-                            href={value.startsWith("http") ? value : `https://${value}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={cn(
-                                "hover:underline flex items-center gap-2 font-medium transition-colors",
-                                fieldName.endsWith("_url") ? "text-secondary" : "text-primary"
-                            )}
-                        >
-                            {fieldName.endsWith("_url") ? (
-                                <FileText className="h-4 w-4" />
-                            ) : (
-                                <Globe className="h-4 w-4" />
-                            )}
-                            {fieldName.endsWith("_url")
-                                ? `View ${customLabel || formatFieldName(fieldName)}`
-                                : formattedValue}
-                            <ExternalLink className="h-3 w-3 opacity-70" />
-                        </a>
-                    ) : isList ? (
-                        <div className="flex flex-wrap gap-2 mt-1">
-                            {formattedValue.map((item: string, index: number) => (
-                                <span
-                                    key={index}
-                                    className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                                >
-                                    {item}
-                                </span>
-                            ))}
-                        </div>
-                    ) : (
-                        <span className="break-all">
-                            {typeof formattedValue === "string"
-                                ? formattedValue
-                                : String(formattedValue)}
-                        </span>
-                    )}
-                </div>
-            </div>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </TableCell>
+                )}
+            </TableRow>
         );
     };
 
+    // Helper component to render a section as a table
+    const RenderSection = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
+        <Card>
+            <CardHeader className="py-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <Icon className="h-5 w-5" />
+                    {title}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="hover:bg-transparent border-b">
+                            <TableHead className="w-[250px] pl-6 text-xs uppercase font-bold tracking-wider">Field</TableHead>
+                            <TableHead className="text-xs uppercase font-bold tracking-wider">Value</TableHead>
+                            {canPerformActions && toggleMarkField && <TableHead className="w-[80px] text-right pr-6 text-xs uppercase font-bold tracking-wider">Action</TableHead>}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {children}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+
     return (
-        <div className="flex w-full flex-col gap-6">
+        <div className="flex w-full flex-col gap-8">
             {/* User Information Section */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
                         <User className="h-5 w-5" />
                         User Information
                     </CardTitle>
@@ -380,12 +457,34 @@ export function CustomerProfile({ customer }: CustomerProfileProps) {
                             </label>
                             <p className="text-foreground mt-2">
                                 <span
-                                    className={`text-sm font-medium ${customer.is_active
-                                        ? "text-green-600 dark:text-green-500"
-                                        : "text-red-600 dark:text-red-500"
-                                        }`}
+                                    className={cn(
+                                        "text-sm font-medium",
+                                        customer.is_active
+                                            ? "text-green-600 dark:text-green-500"
+                                            : "text-red-600 dark:text-red-500"
+                                    )}
                                 >
                                     {customer.is_active ? "Active" : "Suspended"}
+                                </span>
+                            </p>
+                        </div>
+                        <div>
+                            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                Onboarding Step
+                            </label>
+                            <p className="text-foreground mt-2">{getOnboardingStepName(customer.onboarding_step)}</p>
+                        </div>
+                        <div>
+                            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                Onboarding Status
+                            </label>
+                            <p className="text-foreground mt-2">
+                                <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase",
+                                    profile?.onboarding_status?.includes("approved") ? "bg-green-100 text-green-700" :
+                                        profile?.onboarding_status === "rejected" ? "bg-red-100 text-red-700" :
+                                            "bg-gray-100 text-gray-700"
+                                )}>
+                                    {profile?.onboarding_status?.replace(/_/g, " ") || "Pending"}
                                 </span>
                             </p>
                         </div>
@@ -415,143 +514,85 @@ export function CustomerProfile({ customer }: CustomerProfileProps) {
 
             {/* Company Information */}
             {profile && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5" />
-                            Company Information
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {renderField("company_name")}
-                            {renderField("company_email")}
-                            <div>
-                                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                                    Company Phone
-                                </label>
-                                <div className="text-foreground mt-2">
-                                    {profile?.company_phone ? (
-                                        <a
-                                            href={`tel:${profile.company_phone as string}`}
-                                            className="text-primary hover:underline flex items-center gap-2"
-                                        >
-                                            <Phone className="h-4 w-4" />
-                                            {(profile.company_phone_country_code as string) ||
-                                                ""}{" "}
-                                            {profile.company_phone as string}
-                                        </a>
-                                    ) : (
-                                        "—"
-                                    )}
-                                </div>
-                            </div>
-                            {renderField("country_of_registration")}
-                            {renderField("registered_company_name")}
-                            {renderField("trade_brand_name")}
-                            {renderField("year_of_establishment")}
-                            {renderField("entity_type")}
-                            {renderField("official_website")}
-                            {renderField("city_office_address")}
-                            {renderField("duns_number")}
-                            {renderField("tax_vat_number")}
-                            {renderField("tax_issuing_date")}
-                            {renderField("tax_expiry_date")}
-                            {renderField("sponsor_content", "Sponsor Content")}
-                            {renderField("selling_categories")}
-                            {renderField("vat_certificate_url", "VAT Certificate")}
-                        </div>
-                    </CardContent>
-                </Card>
+                <RenderSection title="Company Information" icon={Building2}>
+                    {renderRow("company_name")}
+                    {renderRow("company_email")}
+                    {renderRow("company_phone", "Company Phone",
+                        profile?.company_phone ? (
+                            <a
+                                href={`tel:${profile.company_phone as string}`}
+                                className="text-primary hover:underline flex items-center gap-2"
+                            >
+                                <Phone className="h-4 w-4" />
+                                {(profile.company_phone_country_code as string) || ""} {profile.company_phone as string}
+                            </a>
+                        ) : "—"
+                    )}
+                    {renderRow("country_of_registration")}
+                    {renderRow("registered_company_name")}
+                    {renderRow("trade_brand_name")}
+                    {renderRow("year_of_establishment")}
+                    {renderRow("entity_type")}
+                    {renderRow("official_website")}
+                    {renderRow("city_office_address")}
+                    {renderRow("duns_number")}
+                    {renderRow("tax_vat_number")}
+                    {renderRow("tax_issuing_date")}
+                    {renderRow("tax_expiry_date")}
+                    {renderRow("sponsor_content", "Sponsor Content")}
+                    {renderRow("selling_categories")}
+                    {renderRow("vat_certificate_url", "VAT Certificate")}
+                </RenderSection>
             )}
 
             {/* Contact Information */}
             {profile && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Mail className="h-5 w-5" />
-                            Contact Information
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {renderField("contact_full_name")}
-                            {renderField("contact_job_title")}
-                            {renderField("contact_work_email")}
-                            <div>
-                                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                                    Contact Mobile
-                                </label>
-                                <div className="text-foreground mt-2">
-                                    {profile?.contact_mobile ? (
-                                        <a
-                                            href={`tel:${profile.contact_mobile as string}`}
-                                            className="text-primary hover:underline flex items-center gap-2"
-                                        >
-                                            <Phone className="h-4 w-4" />
-                                            {(profile.contact_mobile_country_code as string) ||
-                                                ""}{" "}
-                                            {profile.contact_mobile as string}
-                                        </a>
-                                    ) : (
-                                        "—"
-                                    )}
-                                </div>
-                            </div>
-                            {renderField("contact_id_document_url", "ID Document")}
-                        </div>
-                    </CardContent>
-                </Card>
+                <RenderSection title="Contact Information" icon={Mail}>
+                    {renderRow("contact_full_name")}
+                    {renderRow("contact_job_title")}
+                    {renderRow("contact_work_email")}
+                    {renderRow("contact_mobile", "Contact Mobile",
+                        profile?.contact_mobile ? (
+                            <a
+                                href={`tel:${profile.contact_mobile as string}`}
+                                className="text-primary hover:underline flex items-center gap-2"
+                            >
+                                <Phone className="h-4 w-4" />
+                                {(profile.contact_mobile_country_code as string) || ""} {profile.contact_mobile as string}
+                            </a>
+                        ) : "—"
+                    )}
+                    {renderRow("contact_id_document_url", "ID Document")}
+                </RenderSection>
             )}
 
             {/* Legal & Compliance */}
             {profile && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Shield className="h-5 w-5" />
-                            Legal & Compliance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {renderField("nature_of_business")}
-                            {renderField("license_types")}
-                            {renderField("end_use_markets")}
-                            {renderField("operating_countries")}
-                            {renderField("business_license_url", "Business License")}
-                            {renderField("company_profile_url", "Company Profile")}
-                        </div>
-                    </CardContent>
-                </Card>
+                <RenderSection title="Legal & Compliance" icon={Shield}>
+                    {renderRow("nature_of_business")}
+                    {renderRow("license_types")}
+                    {renderRow("end_use_markets")}
+                    {renderRow("operating_countries")}
+                    {renderRow("business_license_url", "Business License")}
+                    {renderRow("company_profile_url", "Company Profile")}
+                </RenderSection>
             )}
 
             {/* Payment Information */}
             {profile && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <CreditCard className="h-5 w-5" />
-                            Payment Information
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {renderField("preferred_currency")}
-                            {renderField("bank_country")}
-                            {renderField("financial_institution")}
-                            {renderField("swift_code")}
-                            {renderField("bank_account_number")}
-                            {renderField("proof_type")}
-                            {renderField("bank_proof_url", "Bank Proof")}
-                        </div>
-                    </CardContent>
-                </Card>
+                <RenderSection title="Payment Information" icon={CreditCard}>
+                    {renderRow("preferred_currency")}
+                    {renderRow("bank_country")}
+                    {renderRow("financial_institution")}
+                    {renderRow("swift_code")}
+                    {renderRow("bank_account_number")}
+                    {renderRow("proof_type")}
+                    {renderRow("bank_proof_url", "Bank Proof")}
+                </RenderSection>
             )}
 
             {/* Onboarding Review */}
-            <OnboardingReview customer={customer} />
+            <OnboardingReview customer={customer} markedFields={markedFields} />
 
             {/* Admin Actions */}
             <CustomerActions customer={customer} />
@@ -561,11 +602,11 @@ export function CustomerProfile({ customer }: CustomerProfileProps) {
 
 
 
-function OnboardingReview({ customer }: { customer: Customer }) {
+function OnboardingReview({ customer, markedFields }: { customer: Customer, markedFields?: Set<string> }) {
     const [selectedStatus, setSelectedStatus] = useState<string>("");
     const [note, setNote] = useState("");
     const queryClient = useQueryClient();
-    const profile = customer.profile || {};
+    const profile = (customer.profile as any) || {};
     const [canApproveControlled, setCanApproveControlled] = useState(false);
 
     useEffect(() => {
@@ -574,9 +615,21 @@ function OnboardingReview({ customer }: { customer: Customer }) {
         setCanApproveControlled(hasPermission);
     }, []);
 
+    // Force rejection if fields are marked
+    const hasMarkedFields = markedFields && markedFields.size > 0;
+
+    useEffect(() => {
+        if (hasMarkedFields) {
+            if (selectedStatus !== "rejected" && selectedStatus !== "") {
+                toast.warning("You must reject the customer when fields are marked for clearing.");
+                setSelectedStatus("rejected");
+            }
+        }
+    }, [hasMarkedFields, selectedStatus]);
+
     const { mutate: updateOnboarding, isPending } = useMutation({
-        mutationFn: async ({ status, note }: { status: string; note?: string }) => {
-            return customerService.updateOnboardingStatus(customer.id, status, note);
+        mutationFn: async ({ status, note, fields_to_clear }: { status: string; note?: string; fields_to_clear?: string[] }) => {
+            return customerService.updateOnboardingStatus(customer.id, status, note, fields_to_clear);
         },
         onSuccess: () => {
             toast.success("Customer onboarding status updated successfully");
@@ -590,11 +643,19 @@ function OnboardingReview({ customer }: { customer: Customer }) {
     });
 
     const handleUpdate = () => {
-        if (selectedStatus === 'rejected' && !note) {
-            toast.error("Please provide a reason for rejection");
-            return;
+        if (selectedStatus === 'rejected') {
+            if (!note) {
+                toast.error("Please provide a reason for rejection");
+                return;
+            }
+            updateOnboarding({
+                status: selectedStatus,
+                note,
+                fields_to_clear: hasMarkedFields ? Array.from(markedFields) : undefined
+            });
+        } else {
+            updateOnboarding({ status: selectedStatus, note });
         }
-        updateOnboarding({ status: selectedStatus, note });
     };
 
     // Determine current status label
@@ -629,8 +690,10 @@ function OnboardingReview({ customer }: { customer: Customer }) {
                             value={selectedStatus}
                             onChange={(e) => setSelectedStatus(e.target.value)}
                         >
-                            <option value="approved_general">Approve (General)</option>
-                            {canApproveControlled && (
+                            {(!hasMarkedFields) && (
+                                <option value="approved_general">Approve (General)</option>
+                            )}
+                            {(canApproveControlled && !hasMarkedFields) && (
                                 <option value="approved_controlled">Approve (Controlled)</option>
                             )}
                             <option value="rejected">Reject Application</option>
@@ -654,8 +717,17 @@ function OnboardingReview({ customer }: { customer: Customer }) {
                                 placeholder={selectedStatus === 'rejected' ? "Explain why the application is rejected..." : "Add any internal notes about this approval..."}
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
-                                className="min-h-[100px]"
+                                className={cn(
+                                    "min-h-[100px]",
+                                    selectedStatus === 'rejected' ? "border-destructive/20 focus-visible:ring-destructive/30" : ""
+                                )}
                             />
+                            {hasMarkedFields && selectedStatus === "rejected" && (
+                                <p className="text-sm text-destructive font-medium flex items-center gap-2">
+                                    <AlertCircle className="h-4 w-4" />
+                                    {markedFields.size} field(s) marked for clearing will be removed upon rejection.
+                                </p>
+                            )}
                         </div>
 
                         <div className="flex gap-4">
@@ -672,10 +744,12 @@ function OnboardingReview({ customer }: { customer: Customer }) {
                             >
                                 {isPending ? (
                                     <Spinner className="mr-2 h-4 w-4 border-2" />
+                                ) : selectedStatus === "rejected" ? (
+                                    <XCircle className="mr-2 h-5 w-5" />
                                 ) : (
                                     <CheckCircle2 className="mr-2 h-5 w-5" />
                                 )}
-                                Confirm Decision
+                                {selectedStatus === "rejected" ? "Confirm Rejection" : "Confirm Decision"}
                             </Button>
                             <Button
                                 variant="outline"
