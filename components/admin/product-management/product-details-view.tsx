@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useProduct } from "@/hooks/admin/product-management/use-product";
 import { useProductSpecifications } from "@/hooks/admin/product-management/use-product-specifications";
-import { useMainCategories } from "@/hooks/admin/product-management/use-categories";
+import { useMainCategories, useCategoriesByParent } from "@/hooks/admin/product-management/use-categories";
 import { useBrands } from "@/hooks/admin/use-references";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
@@ -34,14 +34,20 @@ import {
     CheckCircle2,
     XCircle,
     FileText,
-    Info
+    Info,
+    Globe,
+    Truck,
+    AlertTriangle
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import type { Product } from "@/services/admin/product.service";
+import { COUNTRY_LIST } from "@/lib/countries";
 
 interface ProductDetailsViewProps {
     productId: string;
     domain: string;
+    product: Product;
 }
 
 const SECTIONS = [
@@ -52,25 +58,21 @@ const SECTIONS = [
     { id: "declarations", name: "Declarations", icon: Shield },
 ];
 
-export default function ProductDetailsView({ productId, domain }: ProductDetailsViewProps) {
-    const { data: product, isLoading: isLoadingProduct } = useProduct(productId);
+export default function ProductDetailsView({ productId, domain, product }: ProductDetailsViewProps) {
     const { data: specifications = [], isLoading: isLoadingSpecs } = useProductSpecifications(productId);
     const { data: mainCategories = [] } = useMainCategories();
     const { data: brands = [] } = useBrands();
 
+    // Category Hierarchy Data Fetching
+    const { data: categories = [] } = useCategoriesByParent(product.mainCategoryId);
+    const { data: subCategories = [] } = useCategoriesByParent(product.categoryId);
+
     const [openSections, setOpenSections] = useState<string[]>(["basic-info", "technical", "pricing", "uploads", "declarations"]);
 
-    if (isLoadingProduct) {
-        return <div className="flex justify-center p-8"><Spinner size="lg" /></div>;
-    }
-
-    if (!product) {
-        return <div className="text-center p-8 text-destructive">Product not found</div>;
-    }
-
     // Helpers
-    const getCategoryName = (id?: number) => mainCategories.find(c => c.id === id)?.name || "N/A";
+    const getCategoryName = (id?: number, list: any[] = []) => list.find(c => c.id === id)?.name || "N/A";
     const getBrandName = (id?: number) => brands.find(b => b.id === id)?.name || "N/A";
+    const getCountryName = (code?: string) => COUNTRY_LIST.find(c => c.countryCode === code)?.name || code || "N/A";
 
     // Parse JSON fields if necessary (usually handled by hook/service, but safeguarding)
     const pricingTiers = product.pricing_tiers || [];
@@ -82,40 +84,83 @@ export default function ProductDetailsView({ productId, domain }: ProductDetails
     const renderBasicInfo = () => (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Product Name</h3>
-                    <p className="text-lg font-semibold">{product.name}</p>
-                </div>
-                <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">SKU</h3>
-                    <p className="font-mono">{product.sku || "N/A"}</p>
-                </div>
 
-                <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Category</h3>
-                    <div className="flex gap-2 items-center">
-                        <Badge variant="outline">{getCategoryName(product.mainCategoryId)}</Badge>
-                        {/* Add subcategory logic if avail in product object */}
+                {/* Column 1 */}
+                <div className="space-y-4">
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Category Hierarchy</h3>
+                        <div className="flex flex-wrap gap-2 items-center text-sm">
+                            <Badge variant="outline">{getCategoryName(product.mainCategoryId, mainCategories)}</Badge>
+                            {product.categoryId && (
+                                <>
+                                    <span className="text-muted-foreground">/</span>
+                                    <Badge variant="outline">{getCategoryName(product.categoryId, categories)}</Badge>
+                                </>
+                            )}
+                            {product.subCategoryId && (
+                                <>
+                                    <span className="text-muted-foreground">/</span>
+                                    <Badge variant="outline">{getCategoryName(product.subCategoryId, subCategories)}</Badge>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Brand & Model</h3>
+                        <p>{getBrandName(product.brandId)} {product.model ? `- ${product.model}` : ""} {product.year ? `(${product.year})` : ""}</p>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Country of Origin</h3>
+                        <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-muted-foreground" />
+                            <span>{getCountryName(product.countryOfOrigin)}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Controlled Item Type</h3>
+                        {product.controlledItemType ? (
+                            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-500">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                {product.controlledItemType}
+                            </Badge>
+                        ) : (
+                            <span className="text-muted-foreground text-sm">N/A</span>
+                        )}
                     </div>
                 </div>
 
-                <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Brand & Model</h3>
-                    <p>{getBrandName(product.brandId)} {product.model ? `- ${product.model}` : ""} {product.year ? `(${product.year})` : ""}</p>
-                </div>
+                {/* Column 2 */}
+                <div className="space-y-4">
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">SKU</h3>
+                        <p className="font-mono">{product.sku || "N/A"}</p>
+                    </div>
 
-                <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Condition</h3>
-                    <Badge variant="secondary" className="capitalize">{product.condition || "New"}</Badge>
-                </div>
-                <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Status</h3>
-                    <Badge
-                        variant={product.status === 'published' ? 'default' : 'secondary'}
-                        className={cn("capitalize", product.status === 'published' ? 'bg-green-600 hover:bg-green-700' : '')}
-                    >
-                        {product.status || "Draft"}
-                    </Badge>
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Condition</h3>
+                        <Badge variant="secondary" className="capitalize">{product.condition || "New"}</Badge>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Vehicle Compatibility</h3>
+                        <div className="flex items-start gap-2">
+                            <Truck className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <span className="text-sm">{product.vehicleCompatibility || "Universal / Not Specified"}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Status</h3>
+                        <Badge
+                            variant={product.status === 'published' ? 'default' : 'secondary'}
+                            className={cn("capitalize", product.status === 'published' ? 'bg-green-600 hover:bg-green-700' : '')}
+                        >
+                            {product.status || "Draft"}
+                        </Badge>
+                    </div>
                 </div>
             </div>
 
@@ -129,16 +174,33 @@ export default function ProductDetailsView({ productId, domain }: ProductDetails
                 </div>
             )}
 
-            {features.length > 0 && (
-                <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Key Features</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {features.map((f: string, i: number) => (
-                            <Badge key={i} variant="outline" className="bg-background">{f}</Badge>
-                        ))}
+            {/* Features & Certifications */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {features.length > 0 && (
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Key Features</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {features.map((f: string, i: number) => (
+                                <Badge key={i} variant="outline" className="bg-background">{f}</Badge>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {certifications.length > 0 && (
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Certifications</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {certifications.map((c: string, i: number) => (
+                                <Badge key={i} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    {c}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 

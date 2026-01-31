@@ -1086,6 +1086,105 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                     />
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                        control={form.control}
+                        name="controlledItemType"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Controlled Item Type</FormLabel>
+                                <FormControl>
+                                    <Select
+                                        value={field.value || ""}
+                                        onChange={(e) => field.onChange(e.target.value)}
+                                        disabled={isReadOnly}
+                                    >
+                                        <option value="">Select Type</option>
+                                        <option value="Military">Military</option>
+                                        <option value="Dual-Use">Dual-Use</option>
+                                        <option value="Civilian">Civilian</option>
+                                    </Select>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="countryOfOrigin"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Country of Origin</FormLabel>
+                                <FormControl>
+                                    <Select
+                                        value={field.value || ""}
+                                        onChange={(e) => field.onChange(e.target.value)}
+                                        disabled={isReadOnly}
+                                    >
+                                        <option value="">Select Country</option>
+                                        {COUNTRY_LIST.map((country) => (
+                                            <option key={country.value} value={country.countryCode}>
+                                                {country.flag} {country.name}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-1">
+                    <FormField
+                        control={form.control}
+                        name="vehicleCompatibility"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Vehicle Compatibility</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        placeholder="e.g. Toyota Land Cruiser 300, Nissan Patrol Y62"
+                                        {...field}
+                                        disabled={isReadOnly}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-1">
+                    <FormField
+                        control={form.control}
+                        name="certifications"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Certifications</FormLabel>
+                                <FormControl>
+                                    <MultiSelect
+                                        options={[
+                                            { label: "ISO 9001", value: "ISO 9001" },
+                                            { label: "STANAG 4569", value: "STANAG 4569" },
+                                            { label: "VPAM", value: "VPAM" },
+                                            { label: "NIJ 0108.01", value: "NIJ 0108.01" },
+                                            { label: "CEN 1063", value: "CEN 1063" },
+                                        ]}
+                                        selected={field.value || []}
+                                        onChange={field.onChange}
+                                        placeholder="Select or create certifications..."
+                                        creatable={true}
+                                        disabled={isReadOnly}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
                 <FormField
                     control={form.control}
                     name="description"
