@@ -435,6 +435,7 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     // Initialize form with product data
     useEffect(() => {
         if (product && currentProductId) {
+            // console.log("Initializing Form with Product:", product);
             const p = product as Record<string, any>;
             form.reset({
                 name: p.name || "",
@@ -531,12 +532,17 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
     // Force revert to Draft if requirements are lost
     useEffect(() => {
+        if (isLoadingProduct) return;
+
         const currentStatus = form.getValues("status");
+        // Console log for debugging
+        // console.log("Validating Status:", { canPublish, currentStatus, isLoadingProduct });
+
         if (!canPublish && currentStatus === "published") {
+            // console.warn("Forcing Draft - Missing Requirements");
             form.setValue("status", "draft", { shouldValidate: true });
-            // toast.info("Status reverted to Draft due to missing required fields.");
         }
-    }, [canPublish, form.watch("status")]);
+    }, [canPublish, form.watch("status"), isLoadingProduct]);
 
     // Handle section save and unlock next
     const handleSectionSave = async (sectionId: number) => {
