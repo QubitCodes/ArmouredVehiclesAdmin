@@ -1300,6 +1300,18 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                 </Button>
                             </div>
                         </div>
+
+                        {/* Specification Guidelines */}
+                        <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-md">
+                            <div className="space-y-1">
+                                <p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
+                                <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+                                    <li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
+                                    <li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
+                                    <li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
+                                </ul>
+                            </div>
+                        </div>
                     </>
                 )}
             </div>
