@@ -511,10 +511,13 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
             if (!firstIncompleteSlug) {
                 // All requirements met - Rule 6: If all required filled, all open
                 setOpenSections(SECTIONS.map(s => s.slug));
-            } else {
                 // Rule 5: Open first unfilled required
-                setOpenSections([firstIncompleteSlug]);
+                setOpenSections([firstIncompleteSlug as string]);
             }
+        } else if (!currentProductId) {
+            // New Product Mode: Explicitly reset to defaults
+            setUnlockedSections([1]);
+            setOpenSections(['basic-info']);
         }
     }, [product, currentProductId, form, refetchProduct]);
 
