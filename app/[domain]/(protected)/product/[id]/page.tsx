@@ -40,20 +40,20 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
             }
         >
             <div className="space-y-6">
-                <div className="flex items-center justify-between border-b pb-4">
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
                         <Button
                             variant="ghost"
                             onClick={() => router.back()}
-                            className="gap-2"
+                            className="gap-2 shrink-0"
                         >
                             <ArrowLeft className="h-4 w-4" />
                             Back
                         </Button>
-                        <h1 className="text-2xl font-bold tracking-tight">{product.name}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight break-words min-w-0">{product.name}</h1>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                         <Button variant="outline" className="gap-2">
                             <Eye className="h-4 w-4" />
                             Preview

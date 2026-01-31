@@ -70,16 +70,41 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
     const [openSections, setOpenSections] = useState<string[]>(["basic-info", "technical", "pricing", "uploads", "declarations"]);
 
     // Helpers
-    const getCategoryName = (id?: number, list: any[] = []) => list.find(c => c.id === id)?.name || "N/A";
-    const getBrandName = (id?: number) => brands.find(b => b.id === id)?.name || "N/A";
+    const getCategoryName = (id?: number | string, list: any[] = []) => {
+        if (!id) return "N/A";
+        return list.find(c => c.id == id)?.name || "N/A";
+    };
+    const getBrandName = (id?: number | string) => {
+        if (!id) return "N/A";
+        return brands.find(b => b.id == id)?.name || "N/A";
+    };
     const getCountryName = (code?: string) => COUNTRY_LIST.find(c => c.countryCode === code)?.name || code || "N/A";
 
-    // Parse JSON fields if necessary (usually handled by hook/service, but safeguarding)
-    const pricingTiers = product.pricing_tiers || [];
-    const individualPricing = product.individualProductPricing || [];
-    const gallery = product.gallery || [];
-    const certifications = product.certifications || [];
-    const features = product.features || [];
+    // Safe parser for array fields
+    const safeParseArray = (value: any) => {
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') {
+            try {
+                // If it looks like a JSON array, parse it
+                if (value.trim().startsWith('[')) {
+                    const parsed = JSON.parse(value);
+                    if (Array.isArray(parsed)) return parsed;
+                }
+                // Fallback for comma-separated strings if acceptable, or return empty
+                return [];
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    };
+
+    // Parse JSON fields
+    const pricingTiers = safeParseArray(product.pricing_tiers);
+    const individualPricing = safeParseArray(product.individualProductPricing);
+    const gallery = safeParseArray(product.gallery);
+    const certifications = safeParseArray(product.certifications);
+    const features = safeParseArray(product.features);
 
     const renderBasicInfo = () => (
         <div className="space-y-6">
@@ -176,7 +201,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
 
             {/* Features & Certifications */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Array.isArray(features) && features.length > 0 && (
+                {features.length > 0 && (
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Key Features</h3>
                         <div className="flex flex-wrap gap-2">
@@ -187,7 +212,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
                     </div>
                 )}
 
-                {Array.isArray(certifications) && certifications.length > 0 && (
+                {certifications.length > 0 && (
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Certifications</h3>
                         <div className="flex flex-wrap gap-2">
