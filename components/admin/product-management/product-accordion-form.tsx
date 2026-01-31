@@ -1258,16 +1258,6 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
     function renderTechnicalSection() {
         return (
             <div className="space-y-6">
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex gap-3 items-start">
-                    <Info className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                    <div className="space-y-1">
-                        <p className="text-sm font-semibold text-primary">Technical Specifications</p>
-                        <p className="text-xs text-muted-foreground">
-                            Add detailed specifications for your product. The first row must be a Section Title.
-                        </p>
-                    </div>
-                </div>
-
                 <div className="space-y-4">
                     {/* Specs Table */}
                     <div className="rounded-md border">
