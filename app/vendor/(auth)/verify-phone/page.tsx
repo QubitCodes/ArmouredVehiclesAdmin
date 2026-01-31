@@ -219,7 +219,7 @@ function VerifyPhoneContent() {
               onClick={handleVerify}
               variant="secondary"
               disabled={
-                otp.join("").length !== 6 || verifyPhoneMutation.isPending
+                otp.join("").length !== 6 || firebaseLoading
               }
               className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 relative overflow-visible"
               style={{
@@ -237,10 +237,10 @@ function VerifyPhoneContent() {
               <button
                 onClick={handleResend}
                 type="button"
-                disabled={resendPhoneMutation.isPending}
+                disabled={firebaseLoading}
                 className="text-sm text-secondary underline-offset-2 hover:text-secondary/80 hover:underline transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {resendPhoneMutation.isPending ? (
+                {firebaseLoading ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Sending...
