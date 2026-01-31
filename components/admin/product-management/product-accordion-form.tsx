@@ -1895,34 +1895,25 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                     control={form.control}
                     name="status"
                     render={({ field }) => (
-                        <FormItem className="space-y-3 p-4 border border-border rounded-md bg-muted/20">
+                        <FormItem className={cn(
+                            "space-y-3 p-4 border border-border rounded-md transition-colors",
+                            field.value === "published"
+                                ? "bg-green-50/70 border-green-200"
+                                : "bg-orange-50/70 border-orange-200"
+                        )}>
                             <FormLabel className="text-base font-semibold">Publish Status</FormLabel>
                             <FormControl>
                                 <RadioGroup
                                     onValueChange={field.onChange}
                                     value={field.value || "draft"}
-                                    className="flex flex-col gap-3"
+                                    className="flex flex-col space-y-1"
                                 >
-                                    <div className={cn(
-                                        "flex items-center space-x-2 border rounded-md p-3 transition-colors",
-                                        field.value === "draft" ? "border-orange-500 bg-orange-50/50" : "border-border hover:bg-muted/50"
-                                    )}>
-                                        <RadioGroupItem value="draft" id="status-draft" label="" />
-                                        <label htmlFor="status-draft" className="flex-1 cursor-pointer font-medium">
-                                            Draft <span className="text-muted-foreground font-normal text-sm ml-1">(Hidden from approval)</span>
-                                        </label>
-                                    </div>
-
-                                    <div className={cn(
-                                        "flex items-center space-x-2 border rounded-md p-3 transition-colors",
-                                        field.value === "published" ? "border-green-600 bg-green-50/50" : "border-border hover:bg-muted/50",
-                                        !canPublish && "opacity-50 cursor-not-allowed bg-muted"
-                                    )}>
-                                        <RadioGroupItem value="published" id="status-published" disabled={!canPublish} label="" />
-                                        <label htmlFor="status-published" className={cn("flex-1 font-medium", !canPublish ? "cursor-not-allowed" : "cursor-pointer")}>
-                                            Published <span className="text-muted-foreground font-normal text-sm ml-1">(Submit for Approval)</span>
-                                        </label>
-                                    </div>
+                                    <RadioGroupItem value="draft" label="Draft (Hidden from approval)" />
+                                    <RadioGroupItem
+                                        value="published"
+                                        label="Published (Submit for Approval)"
+                                        disabled={!canPublish}
+                                    />
                                 </RadioGroup>
                             </FormControl>
                             {!canPublish && (
