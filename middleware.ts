@@ -4,13 +4,13 @@ import type { NextRequest } from "next/server";
 // Public routes that don't require authentication
 const publicRoutes = [
   "/admin/login",
-  "/admin/verify-email",
+  // "/admin/verify-email", // Legacy OTP
   "/vendor/create-account",
   "/vendor/verify-email",
   "/vendor/add-phone",
   "/vendor/verify-phone",
   "/vendor/login",
-  "/vendor/login/verify-email",
+  // "/vendor/login/verify-email", // Legacy OTP
   "/admin/verify-identity",
 ];
 
