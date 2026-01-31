@@ -176,7 +176,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
 
             {/* Features & Certifications */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {features.length > 0 && (
+                {Array.isArray(features) && features.length > 0 && (
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Key Features</h3>
                         <div className="flex flex-wrap gap-2">
@@ -187,7 +187,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
                     </div>
                 )}
 
-                {certifications.length > 0 && (
+                {Array.isArray(certifications) && certifications.length > 0 && (
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Certifications</h3>
                         <div className="flex flex-wrap gap-2">
@@ -208,7 +208,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
         <div className="space-y-4">
             {isLoadingSpecs ? (
                 <Spinner />
-            ) : specifications.length === 0 ? (
+            ) : !Array.isArray(specifications) || specifications.length === 0 ? (
                 <p className="text-muted-foreground italic">No technical specifications defined.</p>
             ) : (
                 <div className="border rounded-md overflow-hidden">
@@ -284,7 +284,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
             </div>
 
             {/* Wholesale Tiers */}
-            {pricingTiers.length > 0 && (
+            {Array.isArray(pricingTiers) && pricingTiers.length > 0 && (
                 <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                         <Package className="h-4 w-4 text-muted-foreground" />
@@ -316,7 +316,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
             )}
 
             {/* Individual Product Pricing */}
-            {individualPricing.length > 0 && (
+            {Array.isArray(individualPricing) && individualPricing.length > 0 && (
                 <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                         <Settings className="h-4 w-4 text-muted-foreground" />
@@ -367,7 +367,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
                 )}
             </div>
 
-            {gallery.length > 0 && (
+            {Array.isArray(gallery) && gallery.length > 0 && (
                 <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-3">Gallery</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">

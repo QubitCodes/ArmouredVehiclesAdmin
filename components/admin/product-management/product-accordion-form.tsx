@@ -911,24 +911,41 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
     function renderBasicInfoSection() {
         return (
             <div className={cn("space-y-4", isReadOnly && "pointer-events-none opacity-80")}>
-                <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Product Name *</FormLabel>
-                            <FormControl>
-                                <Input
-                                    placeholder="Clear title (e.g., BR6 Ballistic Glass Kit for Toyota LC300)"
-                                    {...field}
-                                    onKeyUp={handleNameKeyUp}
-                                    disabled={isReadOnly}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                {/* Product Name & SKU Row */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem className="md:col-span-3">
+                                <FormLabel>Product Name *</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        placeholder="Clear title (e.g., BR6 Ballistic Glass Kit for Toyota LC300)"
+                                        {...field}
+                                        onKeyUp={handleNameKeyUp}
+                                        disabled={isReadOnly}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="sku"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Product Code / SKU</FormLabel>
+                                <FormControl>
+                                    <Input {...field} readOnly className="bg-muted text-muted-foreground font-mono text-sm" disabled={isReadOnly} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
                     <FormField
@@ -1013,20 +1030,6 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                     />
                 </div>
 
-                <FormField
-                    control={form.control}
-                    name="sku"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Product Code / SKU (Auto-generated)</FormLabel>
-                            <FormControl>
-                                <Input {...field} readOnly className="bg-muted text-muted-foreground" disabled={isReadOnly} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
                 <div className="grid gap-4 md:grid-cols-3">
                     <FormField
                         control={form.control}
@@ -1086,7 +1089,8 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                     />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                {/* Combined Row for Attributes */}
+                <div className="grid gap-4 md:grid-cols-3">
                     <FormField
                         control={form.control}
                         name="controlledItemType"
@@ -1134,9 +1138,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                             </FormItem>
                         )}
                     />
-                </div>
 
-                <div className="grid gap-4 md:grid-cols-1">
                     <FormField
                         control={form.control}
                         name="vehicleCompatibility"
@@ -1145,7 +1147,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                                 <FormLabel>Vehicle Compatibility</FormLabel>
                                 <FormControl>
                                     <Input
-                                        placeholder="e.g. Toyota Land Cruiser 300, Nissan Patrol Y62"
+                                        placeholder="e.g. Toyota Land Cruiser 300..."
                                         {...field}
                                         disabled={isReadOnly}
                                     />
@@ -1156,33 +1158,52 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                     />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-1">
-                    <FormField
-                        control={form.control}
-                        name="certifications"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Certifications</FormLabel>
-                                <FormControl>
-                                    <MultiSelect
-                                        options={[
-                                            { label: "ISO 9001", value: "ISO 9001" },
-                                            { label: "STANAG 4569", value: "STANAG 4569" },
-                                            { label: "VPAM", value: "VPAM" },
-                                            { label: "NIJ 0108.01", value: "NIJ 0108.01" },
-                                            { label: "CEN 1063", value: "CEN 1063" },
-                                        ]}
-                                        selected={field.value || []}
-                                        onChange={field.onChange}
-                                        placeholder="Select or create certifications..."
-                                        creatable={true}
-                                        disabled={isReadOnly}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
+                <div className="space-y-3">
+                    <FormLabel>Certifications</FormLabel>
+                    <div className="flex flex-col gap-2">
+                        {(form.watch('certifications') || []).map((_: string, index: number) => (
+                            <div key={index} className="flex gap-2 items-center">
+                                <FormField
+                                    control={form.control}
+                                    name={`certifications.${index}`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex-1">
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    placeholder="e.g. ISO 9001"
+                                                    disabled={isReadOnly}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                {!isReadOnly && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() => removeArrayItem("certifications", index)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+                        {!isReadOnly && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-fit"
+                                onClick={() => addArrayItem("certifications")}
+                            >
+                                <Plus className="mr-2 h-4 w-4" /> Add Certification
+                            </Button>
                         )}
-                    />
+                    </div>
                 </div>
 
                 <FormField
