@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { use } from "react";
-import ProductAccordionForm from "@/components/admin/product-management/product-accordion-form";
+import ProductDetailsView from "@/components/admin/product-management/product-details-view";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil } from "lucide-react";
@@ -44,10 +44,9 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
                     </Link>
                 </div>
 
-                <ProductAccordionForm
+                <ProductDetailsView
                     productId={resolvedParams.id}
                     domain={resolvedParams.domain}
-                    readOnly={true}
                 />
             </div>
         </Suspense>

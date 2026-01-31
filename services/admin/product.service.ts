@@ -33,6 +33,31 @@ export interface Product {
   };
   individual_product_pricing?: { name: string; amount: number }[];
   individualProductPricing?: { name: string; amount: number }[];
+  pricing_tiers?: { min_quantity: number; max_quantity?: number | null; price: number }[];
+  gallery?: string[];
+  certifications?: string[];
+  features?: string[];
+  mainCategoryId?: number;
+  categoryId?: number;
+  subCategoryId?: number;
+  brandId?: number;
+  model?: string;
+  year?: number;
+  condition?: string;
+  minOrderQuantity?: number;
+  productionLeadTime?: number;
+  requiresExportLicense?: boolean;
+  readyStockAvailable?: boolean;
+  complianceConfirmed?: boolean;
+  manufacturingSource?: string;
+  manufacturingSourceName?: string;
+  hasWarranty?: boolean;
+  warrantyDuration?: number;
+  warrantyDurationUnit?: string;
+  warrantyTerms?: string;
+  vehicleCompatibility?: string;
+  countryOfOrigin?: string;
+  controlledItemType?: string;
 }
 
 export interface CreateProductRequest {
