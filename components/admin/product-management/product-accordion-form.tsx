@@ -1263,156 +1263,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                     <div className="space-y-1">
                         <p className="text-sm font-semibold text-primary">Technical Specifications</p>
                         <p className="text-xs text-muted-foreground">
-                            Define physical dimensions, materials, and other technical details.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Dimensions & Weight Grid */}
-                <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-4 border p-4 rounded-md">
-                        <h3 className="font-medium text-sm">Dimensions</h3>
-                        <div className="grid grid-cols-3 gap-2">
-                            <FormField
-                                control={form.control}
-                                name="dimensionLength"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Length (mm)</FormLabel>
-                                        <FormControl><Input type="number" step="0.1" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} disabled={isReadOnly} /></FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="dimensionWidth"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Width (mm)</FormLabel>
-                                        <FormControl><Input type="number" step="0.1" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} disabled={isReadOnly} /></FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="dimensionHeight"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Height (mm)</FormLabel>
-                                        <FormControl><Input type="number" step="0.1" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} disabled={isReadOnly} /></FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-4 border p-4 rounded-md">
-                        <h3 className="font-medium text-sm">Weight</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="weightValue"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Value</FormLabel>
-                                        <FormControl><Input type="number" step="0.01" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} disabled={isReadOnly} /></FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="weightUnit"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Unit</FormLabel>
-                                        <FormControl>
-                                            <Select value={field.value || "kg"} onChange={field.onChange} disabled={isReadOnly}>
-                                                <option value="kg">kg</option>
-                                                <option value="lbs">lbs</option>
-                                                <option value="g">g</option>
-                                            </Select>
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Arrays: Materials, Features, Performance */}
-                <div className="grid gap-6 md:grid-cols-2">
-                    {['materials', 'features', 'performance'].map((key) => (
-                        <div key={key} className="space-y-3 p-4 border rounded-md">
-                            <FormLabel className="capitalize font-semibold">{key}</FormLabel>
-                            <div className="flex flex-col gap-2">
-                                {(form.watch(key as any) || []).map((_: string, index: number) => (
-                                    <div key={index} className="flex gap-2 items-center">
-                                        <FormField
-                                            control={form.control}
-                                            name={`${key}.${index}` as any}
-                                            render={({ field }) => (
-                                                <FormItem className="flex-1">
-                                                    <FormControl>
-                                                        <Input {...field} disabled={isReadOnly} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        {!isReadOnly && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="icon"
-                                                className="shrink-0"
-                                                onClick={() => removeArrayItem(key as any, index)}
-                                            >
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
-                                {!isReadOnly && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-fit"
-                                        onClick={() => addArrayItem(key as any)}
-                                    >
-                                        <Plus className="mr-2 h-4 w-4" /> Add {key.slice(0, -1)}
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <FormField
-                    control={form.control}
-                    name="technicalDescription"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Technical Description</FormLabel>
-                            <FormControl>
-                                <textarea
-                                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Detailed technical specifications..."
-                                    {...field}
-                                    value={field.value || ""}
-                                    disabled={isReadOnly}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <div className="p-4 bg-muted/30 border rounded-lg flex gap-3 items-start mt-8">
-                    <Info className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
-                    <div className="space-y-1">
-                        <p className="text-sm font-semibold">Advanced Specifications Table</p>
-                        <p className="text-xs text-muted-foreground">
-                            Use this table for detailed, structured specifications. The first row must be a Section Title.
+                            Add detailed specifications for your product. The first row must be a Section Title.
                         </p>
                     </div>
                 </div>
@@ -1422,9 +1273,8 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                     <div className="rounded-md border">
                         <div className="bg-muted p-2 font-medium grid grid-cols-12 gap-2 text-sm">
                             <div className="col-span-1 text-center">Act.</div>
-                            <div className="col-span-3">Label (Title/Key)</div>
+                            <div className="col-span-5">Label</div>
                             <div className="col-span-4">Value</div>
-                            <div className="col-span-2">Type</div>
                             <div className="col-span-2 text-center">Actions</div>
                         </div>
                         {isLoadingSpecs ? (
@@ -1434,50 +1284,52 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
                         ) : (
                             localSpecs.map((spec, index) => (
                                 <div key={spec.id || `temp-${index}`} className={cn("grid grid-cols-12 gap-2 p-2 items-center border-t text-sm", isReadOnly && "pointer-events-none opacity-80")}>
-                                    {/* ... Content ... */}
                                     <div className="col-span-1 flex justify-center">
                                         <input
                                             type="checkbox"
                                             checked={spec.active}
                                             onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
-                                            className="h-4 w-4"
+                                            className="h-4 w-4 accent-primary"
                                             disabled={isReadOnly}
                                         />
                                     </div>
-                                    <div className="col-span-3">
-                                        {/* Simplified render for brevity, relying on pointer-events-none for disable */}
-                                        <Input
-                                            value={spec.label || ""}
-                                            onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
-                                            placeholder={spec.type === 'value_only' ? 'N/A' : 'Label/Title'}
-                                            disabled={spec.type === 'value_only' || isReadOnly}
-                                            className="h-8"
-                                        />
+                                    <div className="col-span-5">
+                                        <div className={cn("flex items-center gap-2", spec.type === 'title_only' ? "bg-orange-500 text-white rounded-md px-2 py-1" : "")}>
+                                            {spec.type === 'title_only' && <Hash className="h-4 w-4 shrink-0" />}
+                                            <Input
+                                                value={spec.label || ""}
+                                                onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                                placeholder={spec.type === 'value_only' ? 'N/A' : 'Label'}
+                                                disabled={spec.type === 'value_only' || isReadOnly}
+                                                className={cn(
+                                                    "h-8 border-0 focus-visible:ring-0 px-0",
+                                                    spec.type === 'title_only' ? "bg-transparent text-white placeholder:text-white/70 h-auto py-0" : "bg-transparent"
+                                                )}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="col-span-4">
                                         <Input
                                             value={spec.value || ""}
                                             onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                            onPaste={(e) => handlePaste(e, index, 'value')} // Assuming handlePaste takes index and field
+                                            onPaste={(e) => handlePaste(e, index, 'value')}
                                             disabled={spec.type === 'title_only' || isReadOnly}
                                             placeholder={spec.type === 'title_only' ? 'N/A' : 'Value'}
-                                            className="h-8"
+                                            className={cn("h-8", spec.type === 'title_only' && "bg-muted")}
                                         />
                                     </div>
-                                    <div className="col-span-2">
+                                    <div className="col-span-2 flex items-center justify-end gap-1">
                                         <Select
                                             value={spec.type}
                                             onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
                                             disabled={isReadOnly}
                                         >
                                             <option value="general">General</option>
-                                            <option value="title_only">Title Only</option>
+                                            <option value="title_only">Title</option>
                                             <option value="value_only">Value Only</option>
                                         </Select>
-                                    </div>
-                                    <div className="col-span-2 flex justify-center gap-1">
                                         {!isReadOnly && (
-                                            <Button variant="ghost" size="icon" onClick={() => deleteSpecRow(index)} className="h-8 w-8 text-destructive">
+                                            <Button variant="ghost" size="icon" onClick={() => deleteSpecRow(index)} className="h-8 w-8 text-destructive shrink-0 bg-red-50 hover:bg-red-100 border border-red-200">
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}
