@@ -435,7 +435,6 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     // Initialize form with product data
     useEffect(() => {
         if (product && currentProductId) {
-            // console.log("Initializing Form with Product:", product);
             const p = product as Record<string, any>;
             form.reset({
                 name: p.name || "",
@@ -529,20 +528,6 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
     // Can publish validation
     const canPublish = !!(watchName && watchCategories && watchDesc && watchPrice !== undefined && watchPrice >= 0);
-
-    // Force revert to Draft if requirements are lost
-    useEffect(() => {
-        if (isLoadingProduct) return;
-
-        const currentStatus = form.getValues("status");
-        // Console log for debugging
-        // console.log("Validating Status:", { canPublish, currentStatus, isLoadingProduct });
-
-        if (!canPublish && currentStatus === "published") {
-            // console.warn("Forcing Draft - Missing Requirements");
-            form.setValue("status", "draft", { shouldValidate: true });
-        }
-    }, [canPublish, form.watch("status"), isLoadingProduct]);
 
     // Handle section save and unlock next
     const handleSectionSave = async (sectionId: number) => {
@@ -1609,29 +1594,30 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
                             <Label className="text-base font-semibold">Gallery Images</Label>
                             {galleryMedia.length > 0 && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => {
-                                        const allIds = galleryMedia.map((m: any) => String(m.id));
-                                        const allSelected = allIds.every((id: string) => selectedMediaIds.has(id));
-
-                                        if (allSelected) {
-                                            setSelectedMediaIds(new Set());
-                                        } else {
-                                            setSelectedMediaIds(new Set(allIds));
-                                        }
-                                    }}
-                                >
-                                    {galleryMedia.length > 0 && galleryMedia.every((m: any) => selectedMediaIds.has(String(m.id)))
-                                        ? "Deselect All"
-                                        : "Select All"}
-                                </Button>
+                                <div className="flex items-center space-x-2 ml-4">
+                                    <Checkbox
+                                        id="select-all-media"
+                                        checked={galleryMedia.length > 0 && selectedMediaIds.size === galleryMedia.length}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) {
+                                                const allIds = galleryMedia.map((m: any) => String(m.id));
+                                                setSelectedMediaIds(new Set(allIds));
+                                            } else {
+                                                setSelectedMediaIds(new Set());
+                                            }
+                                        }}
+                                        className="h-4 w-4"
+                                    />
+                                    <label
+                                        htmlFor="select-all-media"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-muted-foreground"
+                                    >
+                                        Select All
+                                    </label>
+                                </div>
                             )}
                         </div>
                         {selectedMediaIds.size > 0 && (
