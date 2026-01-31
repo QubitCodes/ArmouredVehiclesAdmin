@@ -41,30 +41,29 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
         >
             <div className="space-y-6">
                 <div className="flex flex-col gap-4 border-b pb-4">
-                    <Button
-                        variant="ghost"
-                        onClick={() => router.back()}
-                        className="w-fit -ml-2 gap-2 text-muted-foreground hover:text-foreground"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Back
-                    </Button>
+                    <div className="flex items-start gap-4">
+                        <Button
+                            variant="ghost"
+                            onClick={() => router.back()}
+                            className="gap-2 shrink-0 mt-1"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Back
+                        </Button>
+                        <h1 className="text-2xl font-bold tracking-tight break-words">{product.name}</h1>
+                    </div>
 
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <h1 className="text-3xl font-bold tracking-tight break-words flex-1">{product.name}</h1>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                            <Button variant="outline" className="gap-2">
-                                <Eye className="h-4 w-4" />
-                                Preview
+                    <div className="flex items-center justify-end gap-2">
+                        <Button variant="outline" className="gap-2">
+                            <Eye className="h-4 w-4" />
+                            Preview
+                        </Button>
+                        <Link href={`/${resolvedParams.domain}/product/${resolvedParams.id}/update`}>
+                            <Button className="gap-2">
+                                <Pencil className="h-4 w-4" />
+                                Edit Product
                             </Button>
-                            <Link href={`/${resolvedParams.domain}/product/${resolvedParams.id}/update`}>
-                                <Button className="gap-2">
-                                    <Pencil className="h-4 w-4" />
-                                    Edit Product
-                                </Button>
-                            </Link>
-                        </div>
+                        </Link>
                     </div>
                 </div>
 

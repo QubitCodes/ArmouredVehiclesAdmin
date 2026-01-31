@@ -63,9 +63,14 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
     const { data: mainCategories = [] } = useMainCategories();
     const { data: brands = [] } = useBrands();
 
-    // Category Hierarchy Data Fetching
-    const { data: categories = [] } = useCategoriesByParent(product.mainCategoryId);
-    const { data: subCategories = [] } = useCategoriesByParent(product.categoryId);
+    // Category Hierarchy Data Fetching - Support both camelCase and snake_case
+    const mainCategoryId = product.mainCategoryId || (product as any).main_category_id;
+    const categoryId = product.categoryId || (product as any).category_id;
+    const subCategoryId = product.subCategoryId || (product as any).sub_category_id;
+    const brandId = product.brandId || (product as any).brand_id;
+
+    const { data: categories = [] } = useCategoriesByParent(mainCategoryId);
+    const { data: subCategories = [] } = useCategoriesByParent(categoryId);
 
     const [openSections, setOpenSections] = useState<string[]>(["basic-info", "technical", "pricing", "uploads", "declarations"]);
 
@@ -101,10 +106,15 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
 
     // Parse JSON fields
     const pricingTiers = safeParseArray(product.pricing_tiers);
-    const individualPricing = safeParseArray(product.individualProductPricing);
+    const individualPricing = safeParseArray(product.individualProductPricing || (product as any).individual_product_pricing);
     const gallery = safeParseArray(product.gallery);
     const certifications = safeParseArray(product.certifications);
     const features = safeParseArray(product.features);
+
+    // Support snake_case for other fields
+    const controlledItemType = product.controlledItemType || (product as any).controlled_item_type;
+    const vehicleCompatibility = product.vehicleCompatibility || (product as any).vehicle_compatibility;
+    const countryOfOrigin = product.countryOfOrigin || (product as any).country_of_origin;
 
     const renderBasicInfo = () => (
         <div className="space-y-6">
@@ -115,17 +125,17 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Category Hierarchy</h3>
                         <div className="flex flex-wrap gap-2 items-center text-sm">
-                            <Badge variant="outline">{getCategoryName(product.mainCategoryId, mainCategories)}</Badge>
-                            {product.categoryId && (
+                            <Badge variant="outline">{getCategoryName(mainCategoryId, mainCategories)}</Badge>
+                            {categoryId && (
                                 <>
                                     <span className="text-muted-foreground">/</span>
-                                    <Badge variant="outline">{getCategoryName(product.categoryId, categories)}</Badge>
+                                    <Badge variant="outline">{getCategoryName(categoryId, categories)}</Badge>
                                 </>
                             )}
-                            {product.subCategoryId && (
+                            {subCategoryId && (
                                 <>
                                     <span className="text-muted-foreground">/</span>
-                                    <Badge variant="outline">{getCategoryName(product.subCategoryId, subCategories)}</Badge>
+                                    <Badge variant="outline">{getCategoryName(subCategoryId, subCategories)}</Badge>
                                 </>
                             )}
                         </div>
@@ -133,23 +143,23 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
 
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Brand & Model</h3>
-                        <p>{getBrandName(product.brandId)} {product.model ? `- ${product.model}` : ""} {product.year ? `(${product.year})` : ""}</p>
+                        <p>{getBrandName(brandId)} {product.model ? `- ${product.model}` : ""} {product.year ? `(${product.year})` : ""}</p>
                     </div>
 
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Country of Origin</h3>
                         <div className="flex items-center gap-2">
                             <Globe className="h-4 w-4 text-muted-foreground" />
-                            <span>{getCountryName(product.countryOfOrigin)}</span>
+                            <span>{getCountryName(countryOfOrigin)}</span>
                         </div>
                     </div>
 
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Controlled Item Type</h3>
-                        {product.controlledItemType ? (
+                        {controlledItemType ? (
                             <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-500">
                                 <AlertTriangle className="h-3 w-3 mr-1" />
-                                {product.controlledItemType}
+                                {controlledItemType}
                             </Badge>
                         ) : (
                             <span className="text-muted-foreground text-sm">N/A</span>
@@ -173,7 +183,7 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Vehicle Compatibility</h3>
                         <div className="flex items-start gap-2">
                             <Truck className="h-4 w-4 text-muted-foreground mt-0.5" />
-                            <span className="text-sm">{product.vehicleCompatibility || "Universal / Not Specified"}</span>
+                            <span className="text-sm">{vehicleCompatibility || "Universal / Not Specified"}</span>
                         </div>
                     </div>
 
