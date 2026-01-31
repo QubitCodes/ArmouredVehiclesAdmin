@@ -16,7 +16,7 @@ export interface SetPhoneResponse {
 /**
  * React Query hook for setting phone number API
  */
-export function useSetPhone() {
+export function x_useSetPhone() {
   return useMutation<SetPhoneResponse, AxiosError, SetPhoneRequest>({
     mutationFn: async (data: SetPhoneRequest) => {
       const response = await api.post<SetPhoneResponse>(

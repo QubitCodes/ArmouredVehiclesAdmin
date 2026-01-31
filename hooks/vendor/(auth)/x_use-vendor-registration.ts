@@ -20,7 +20,7 @@ export type VendorRegistrationResponse = ApiResponse<{
 /**
  * React Query hook for vendor registration API (OTP registration start)
  */
-export function useVendorRegistration() {
+export function x_useVendorRegistration() {
   return useMutation<
     VendorRegistrationResponse,
     AxiosError,

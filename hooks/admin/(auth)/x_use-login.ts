@@ -14,7 +14,7 @@ export interface LoginStartResponse extends ApiResponse<{
 /**
  * React Query hook for login API (OTP login start)
  */
-export function useLoginStart() {
+export function x_useLoginStart() {
   return useMutation<LoginStartResponse, AxiosError, LoginStartRequest>({
     mutationFn: async (data: LoginStartRequest) => {
       const response = await api.post<LoginStartResponse>(

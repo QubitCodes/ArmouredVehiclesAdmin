@@ -8,8 +8,9 @@ import { ArrowLeft } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useVerifyPhone } from "@/hooks/vendor/(auth)/use-verify-phone";
-import { useResendPhone } from "@/hooks/vendor/(auth)/use-resend-phone";
+import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
+import { vendorAuthService } from "@/services/vendor/auth.service";
+import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
 function VerifyPhoneContent() {
@@ -21,11 +22,11 @@ function VerifyPhoneContent() {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [resendTimer, setResendTimer] = useState(60);
-  const verifyPhoneMutation = useVerifyPhone();
-  const resendPhoneMutation = useResendPhone();
 
   // Derive canResend from resendTimer instead of using state
   const canResend = resendTimer === 0;
+
+  const { verifyPhoneOtp, sendPhoneOtp, loading: firebaseLoading } = useFirebaseAuth();
 
   // Mask phone number for display (show only last 2 digits)
   const maskPhone = (phoneNumber: string) => {
@@ -91,6 +92,15 @@ function VerifyPhoneContent() {
     }
   };
 
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+
+  // Trigger initial OTP on mount if we have a phone
+  useEffect(() => {
+    if (phone && !confirmationResult) {
+      handleResend();
+    }
+  }, [phone]);
+
   const handleVerify = async () => {
     const otpCode = otp.join("");
     if (otpCode.length !== 6) {
@@ -99,86 +109,50 @@ function VerifyPhoneContent() {
     }
 
     try {
-      if (!userId) {
-        toast.error("User ID is missing. Please try again.");
+      if (!confirmationResult) {
+        toast.error("Session expired. Please resend code.");
         return;
       }
 
-      if (!phone) {
-        toast.error("Phone number is missing. Please try again.");
-        return;
+      const userCred = await verifyPhoneOtp(confirmationResult, otpCode);
+      const idToken = await userCred.user.getIdToken();
+
+      const response = await api.post("/auth/firebase/verify", { idToken });
+      const { status, data, message } = response.data;
+
+      if (status && data) {
+        if (data.accessToken && data.refreshToken) {
+          vendorAuthService.setTokens(data.accessToken, data.refreshToken);
+        }
+        if (data.user) {
+          vendorAuthService.setUserDetails(data.user);
+        }
+        toast.success("Phone verified successfully!");
+        router.push("/vendor");
+      } else {
+        throw new Error(message || "Verification failed on server");
       }
 
-      const response = await verifyPhoneMutation.mutateAsync({
-        userId,
-        phone,
-        code: otpCode,
-      });
-
-      toast.success(response.message || "Phone number verified successfully!");
-
-      // Redirect to create store page
-      setTimeout(() => {
-        router.push("/vendor/create-store");
-      }, 1500);
-    } catch (error) {
-      const axiosError = error as AxiosError<{
-        message?: string;
-        error?: string;
-      }>;
-      const errorMessage =
-        axiosError?.response?.data?.error ||
-        axiosError?.response?.data?.message ||
-        axiosError?.message ||
-        "Invalid code. Please try again.";
-      toast.error(errorMessage);
-
-      // Clear OTP inputs on error
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Invalid code. Please try again.");
       setOtp(Array(6).fill(""));
       inputRefs.current[0]?.focus();
     }
   };
 
   const handleResend = async () => {
-    if (!canResend) return;
+    if (!phone) return;
 
     try {
-      if (!userId) {
-        toast.error("User ID is missing. Please try again.");
-        return;
-      }
-
-      if (!phone) {
-        toast.error("Phone number is missing. Please try again.");
-        return;
-      }
-
-      const response = await resendPhoneMutation.mutateAsync({
-        userId,
-        phone,
-      });
-
-      toast.success(
-        response.message || "Security code resent successfully! Please check your phone."
-      );
-
-      // Reset timer
+      const res = await sendPhoneOtp(phone, 'recaptcha-container');
+      setConfirmationResult(res);
       setResendTimer(60);
-
-      // Clear OTP inputs
       setOtp(Array(6).fill(""));
       inputRefs.current[0]?.focus();
-    } catch (error) {
-      const axiosError = error as AxiosError<{
-        message?: string;
-        error?: string;
-      }>;
-      const errorMessage =
-        axiosError?.response?.data?.error ||
-        axiosError?.response?.data?.message ||
-        axiosError?.message ||
-        "Failed to resend code. Please try again.";
-      toast.error(errorMessage);
+      toast.success("Security code sent!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send code.");
     }
   };
 
@@ -253,7 +227,7 @@ function VerifyPhoneContent() {
                   "polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%)",
               }}
             >
-              {verifyPhoneMutation.isPending ? "VERIFYING..." : "VERIFY"}
+              {firebaseLoading ? "VERIFYING..." : "VERIFY"}
             </Button>
           </div>
 
@@ -281,6 +255,7 @@ function VerifyPhoneContent() {
               </p>
             )}
           </div>
+          <div id="recaptcha-container"></div>
         </CardContent>
       </Card>
     </div>

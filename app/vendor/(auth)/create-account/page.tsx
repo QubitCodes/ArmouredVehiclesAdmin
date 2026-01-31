@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useVendorRegistration } from "@/hooks/vendor/(auth)/use-vendor-registration";
+
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import api from "@/lib/api";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -51,7 +51,6 @@ export default function CreateSupplierAccountPage() {
     },
   });
 
-  const registrationMutation = useVendorRegistration();
 
   const { sendMagicLink, loading: firebaseLoading } = useFirebaseAuth();
 
@@ -185,16 +184,16 @@ export default function CreateSupplierAccountPage() {
                   <Button
                     type="submit"
                     variant="secondary"
-                    disabled={registrationMutation.isPending}
+                    disabled={firebaseLoading}
                     className="w-full font-bold uppercase tracking-wider py-3.5 text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 relative overflow-visible"
                     style={{
                       clipPath: "polygon(0 0, 0 20%, 12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 80%, 0 100%)",
                     }}
                   >
-                    {registrationMutation.isPending ? (
+                    {firebaseLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sending OTP...
+                        Processing...
                       </>
                     ) : (
                       <>

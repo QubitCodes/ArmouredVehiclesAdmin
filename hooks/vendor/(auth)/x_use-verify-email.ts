@@ -6,27 +6,33 @@ import { vendorAuthService } from "@/services/vendor/auth.service";
 
 import { ApiResponse } from "@/lib/api";
 
-export interface VerifyPhoneRequest {
+export interface VerifyEmailRequest {
   userId: string;
-  phone: string;
+  email: string;
   code: string;
 }
 
-export type VerifyPhoneResponse = ApiResponse<{
-  user: Record<string, any>;
+export type VerifyEmailResponse = ApiResponse<{
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    username: string;
+    userType: string;
+  };
   accessToken: string;
   refreshToken: string;
-  phoneVerified: boolean;
+  expiresIn: number;
 }>;
 
 /**
- * React Query hook for vendor phone verification API
+ * React Query hook for vendor email verification API
  */
-export function useVerifyPhone() {
-  return useMutation<VerifyPhoneResponse, AxiosError, VerifyPhoneRequest>({
-    mutationFn: async (data: VerifyPhoneRequest) => {
-      const response = await api.post<VerifyPhoneResponse>(
-        "/auth/otp/verify-phone",
+export function x_useVerifyEmail() {
+  return useMutation<VerifyEmailResponse, AxiosError, VerifyEmailRequest>({
+    mutationFn: async (data: VerifyEmailRequest) => {
+      const response = await api.post<VerifyEmailResponse>(
+        "/auth/otp/register/verify",
         data
       );
       
@@ -43,6 +49,4 @@ export function useVerifyPhone() {
     },
   });
 }
-
-
 

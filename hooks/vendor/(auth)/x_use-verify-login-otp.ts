@@ -26,7 +26,7 @@ export interface VerifyLoginOtpResponse extends ApiResponse<VerifyLoginOtpPayloa
 /**
  * React Query hook for vendor login OTP verification
  */
-export function useVerifyLoginOtp() {
+export function x_useVerifyLoginOtp() {
   return useMutation<VerifyLoginOtpResponse, AxiosError, VerifyLoginOtpRequest>({
     mutationFn: async (data: VerifyLoginOtpRequest) => {
       const response = await api.post<VerifyLoginOtpResponse>(

@@ -15,7 +15,7 @@ export interface ResendPhoneResponse {
 /**
  * React Query hook for resending phone OTP API
  */
-export function useResendPhone() {
+export function x_useResendPhone() {
   return useMutation<ResendPhoneResponse, AxiosError, ResendPhoneRequest>({
     mutationFn: async (data: ResendPhoneRequest) => {
       const response = await api.post<ResendPhoneResponse>(
