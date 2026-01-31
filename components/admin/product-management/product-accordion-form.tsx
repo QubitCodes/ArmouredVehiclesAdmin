@@ -1261,225 +1261,223 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
     function renderTechnicalSection() {
         return (
             <div className="space-y-6">
-                <div className="space-y-4">
-                    {currentProductId && (
-                        <Card>
-                            <CardContent className="p-0">
-                                {isLoadingSpecs ? (
-                                    <div className="flex justify-center py-8"><Loader2 className="animate-spin" /></div>
-                                ) : (
-                                    <>
-                                        <div className="border rounded-lg overflow-hidden">
-                                            <table className="w-full text-sm table-fixed">
-                                                <thead className="bg-muted">
-                                                    <tr>
-                                                        <th className="w-10 px-2 py-2 text-center">Act.</th>
-                                                        <th className="px-2 py-2 text-left">Label</th>
-                                                        <th className="px-2 py-2 text-left">Value</th>
-                                                        <th className="w-32 px-2 py-2 text-left">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {localSpecs.map((spec, index) => (
-                                                        <tr key={spec.id || `legacy-${index}`} className="border-t">
-                                                            <td className="px-2 py-2 text-center">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={spec.active}
-                                                                    onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
-                                                                    className="h-4 w-4"
-                                                                />
-                                                            </td>
-                                                            {spec.type === 'title_only' || spec.type === 'value_only' ? (
-                                                                <td colSpan={2} className="px-2 py-2">
-                                                                    <div className="relative">
-                                                                        <Input
-                                                                            value={spec.type === 'title_only' ? spec.label || '' : spec.value || ''}
-                                                                            onChange={(e) => updateLocalSpec(index, spec.type === 'title_only' ? 'label' : 'value', e.target.value)}
-                                                                            onPaste={(e) => handlePaste(e, index, spec.type === 'title_only' ? 'label' : 'value')}
-                                                                            className={`${spec.type === 'title_only' ? 'font-bold bg-muted/50 pl-10 border-primary/20' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all`}
-                                                                            placeholder={spec.type === 'title_only' ? 'Section Title' : 'Value'}
-                                                                        />
-                                                                        {spec.type === 'title_only' && (
-                                                                            <div className="absolute top-0 left-0 bg-orange-600 text-white w-8 h-full flex items-center justify-center rounded-l-lg shadow-sm pointer-events-none opacity-100 z-10">
-                                                                                <Hash className="w-4 h-4" />
-                                                                            </div>
-                                                                        )}
-                                                                        {spec.type === 'value_only' && (
-                                                                            <div className="absolute top-0 left-0 bg-primary text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
-                                                                                <Circle className="w-2 h-2 fill-current" />
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                            ) : (
-                                                                <>
-                                                                    <td className="px-2 py-2 align-top">
-                                                                        <div className="relative group">
-                                                                            {/* Label Input with Suggestions */}
-                                                                            <Input
-                                                                                value={spec.label || ''}
-                                                                                onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
-                                                                                onPaste={(e) => handlePaste(e, index, 'label')}
-                                                                                placeholder="Label"
-                                                                                className="w-full font-medium border-primary/30 bg-muted/10"
-                                                                                list={`suggestions-legacy-${index}`}
-                                                                            />
-                                                                            <datalist id={`suggestions-legacy-${index}`}>
-                                                                                {["Condition", "Color", "Size"]
-                                                                                    .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
-                                                                                    .map(opt => <option key={opt} value={opt} />)
-                                                                                }
-                                                                            </datalist>
+                {currentProductId && (
+                    <Card>
+                        <CardContent className="p-0">
+                            {isLoadingSpecs ? (
+                                <div className="flex justify-center py-8"><Loader2 className="animate-spin" /></div>
+                            ) : (
+                                <>
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <table className="w-full text-sm table-fixed">
+                                            <thead className="bg-muted">
+                                                <tr>
+                                                    <th className="w-10 px-2 py-2 text-center">Act.</th>
+                                                    <th className="px-2 py-2 text-left">Label</th>
+                                                    <th className="px-2 py-2 text-left">Value</th>
+                                                    <th className="w-32 px-2 py-2 text-left">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {localSpecs.map((spec, index) => (
+                                                    <tr key={spec.id || `legacy-${index}`} className="border-t">
+                                                        <td className="px-2 py-2 text-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={spec.active}
+                                                                onChange={(e) => updateLocalSpec(index, 'active', e.target.checked)}
+                                                                className="h-4 w-4"
+                                                            />
+                                                        </td>
+                                                        {spec.type === 'title_only' || spec.type === 'value_only' ? (
+                                                            <td colSpan={2} className="px-2 py-2">
+                                                                <div className="relative">
+                                                                    <Input
+                                                                        value={spec.type === 'title_only' ? spec.label || '' : spec.value || ''}
+                                                                        onChange={(e) => updateLocalSpec(index, spec.type === 'title_only' ? 'label' : 'value', e.target.value)}
+                                                                        onPaste={(e) => handlePaste(e, index, spec.type === 'title_only' ? 'label' : 'value')}
+                                                                        className={`${spec.type === 'title_only' ? 'font-bold bg-muted/50 pl-10 border-primary/20' : ''} ${spec.type === 'value_only' ? 'pl-10' : ''} w-full transition-all`}
+                                                                        placeholder={spec.type === 'title_only' ? 'Section Title' : 'Value'}
+                                                                    />
+                                                                    {spec.type === 'title_only' && (
+                                                                        <div className="absolute top-0 left-0 bg-orange-600 text-white w-8 h-full flex items-center justify-center rounded-l-lg shadow-sm pointer-events-none opacity-100 z-10">
+                                                                            <Hash className="w-4 h-4" />
                                                                         </div>
-                                                                    </td>
-                                                                    <td className="px-2 py-2 align-top">
-                                                                        {/* Dynamic Value Input */}
-                                                                        {(() => {
-                                                                            const label = spec.label?.trim();
-
-                                                                            if (label === 'Condition') {
-                                                                                return (
-                                                                                    <select
-                                                                                        value={spec.value || ''}
-                                                                                        onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                                                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                                                    >
-                                                                                        <option value="" disabled>Select Condition</option>
-                                                                                        <option value="New">New</option>
-                                                                                        <option value="Used">Used</option>
-                                                                                        <option value="Refurbished">Refurbished</option>
-                                                                                    </select>
-                                                                                );
-                                                                            }
-
-                                                                            if (label === 'Color') {
-                                                                                const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
-                                                                                return (
-                                                                                    <MultiSelect
-                                                                                        options={EXTERNAL_COLORS}
-                                                                                        selected={selectedColors}
-                                                                                        onChange={(selected) => updateLocalSpec(index, 'value', selected.join(', '))}
-                                                                                        placeholder="Select or add Colors..."
-                                                                                        creatable={true}
-                                                                                    />
-                                                                                );
-                                                                            }
-
-                                                                            if (label === 'Size') {
-                                                                                // Parse composite value "11x11x11 mm"
-                                                                                const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
-                                                                                const dimensions = match ? match[1] : (spec.value || '');
-                                                                                const unit = match ? match[2] : 'mm';
-
-                                                                                const updateSizeValue = (newDims: string, newUnit: string) => {
-                                                                                    updateLocalSpec(index, 'value', `${newDims} ${newUnit}`.trim());
-                                                                                };
-
-                                                                                return (
-                                                                                    <MaskedSizeInput
-                                                                                        value={dimensions}
-                                                                                        unit={unit}
-                                                                                        onChange={(dims, u) => updateSizeValue(dims, u)}
-                                                                                    />
-                                                                                );
-                                                                            }
-
-                                                                            // Default Text Input
-                                                                            return (
-                                                                                <Input
-                                                                                    value={spec.value || ''}
-                                                                                    onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                                                                    onPaste={(e) => handlePaste(e, index, 'value')}
-                                                                                    placeholder="Value"
-                                                                                    className="w-full"
-                                                                                />
-                                                                            );
-                                                                        })()}
-                                                                    </td>
-                                                                </>
-                                                            )}
-                                                            <td className="px-2 py-2">
-                                                                <div className="flex gap-1 items-center">
-                                                                    <select
-                                                                        value={spec.type}
-                                                                        onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
-                                                                        className="h-8 px-1 text-xs border rounded bg-background w-20"
-                                                                    >
-                                                                        {index === 0 ? (
-                                                                            <option value="title_only">Title</option>
-                                                                        ) : (
-                                                                            <>
-                                                                                <option value="title_only">Title</option>
-                                                                                {(() => {
-                                                                                    const findSectionType = () => {
-                                                                                        for (let i = index - 1; i >= 0; i--) {
-                                                                                            if (localSpecs[i].type === 'title_only') return null;
-                                                                                            return localSpecs[i].type;
-                                                                                        }
-                                                                                        return null;
-                                                                                    };
-                                                                                    const sectionType = findSectionType();
-                                                                                    return (
-                                                                                        <>
-                                                                                            <option value="general" disabled={sectionType !== null && sectionType !== 'general'}>General</option>
-                                                                                            <option value="value_only" disabled={sectionType !== null && sectionType !== 'value_only'}>Value</option>
-                                                                                        </>
-                                                                                    );
-                                                                                })()}
-                                                                            </>
-                                                                        )}
-                                                                    </select>
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="icon"
-                                                                        className="h-8 w-8 p-0 aspect-square shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-black dark:hover:text-white"
-                                                                        onClick={() => deleteSpecRow(index)}
-                                                                        disabled={deleteSpec.isPending}
-                                                                        title="Delete Row"
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
+                                                                    )}
+                                                                    {spec.type === 'value_only' && (
+                                                                        <div className="absolute top-0 left-0 bg-primary text-primary-foreground w-8 h-full flex items-center justify-center rounded-l-md shadow-sm pointer-events-none opacity-90">
+                                                                            <Circle className="w-2 h-2 fill-current" />
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <div className="flex justify-between mt-4 items-center">
-                                            <div className="flex items-center gap-2">
-                                                <Input
-                                                    type="number"
-                                                    min="1"
-                                                    value={rowsToAdd}
-                                                    onChange={(e) => setRowsToAdd(parseInt(e.target.value) || 1)}
-                                                    className="w-16 h-9"
-                                                />
-                                                <Button type="button" variant="outline" size="sm" onClick={addSpecRows}>
-                                                    <Plus className="mr-2 h-4 w-4" /> Add Rows
-                                                </Button>
-                                            </div>
-                                        </div>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-2 py-2 align-top">
+                                                                    <div className="relative group">
+                                                                        {/* Label Input with Suggestions */}
+                                                                        <Input
+                                                                            value={spec.label || ''}
+                                                                            onChange={(e) => updateLocalSpec(index, 'label', e.target.value)}
+                                                                            onPaste={(e) => handlePaste(e, index, 'label')}
+                                                                            placeholder="Label"
+                                                                            className="w-full font-medium border-primary/30 bg-muted/10"
+                                                                            list={`suggestions-legacy-${index}`}
+                                                                        />
+                                                                        <datalist id={`suggestions-legacy-${index}`}>
+                                                                            {["Condition", "Color", "Size"]
+                                                                                .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
+                                                                                .map(opt => <option key={opt} value={opt} />)
+                                                                            }
+                                                                        </datalist>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-2 py-2 align-top">
+                                                                    {/* Dynamic Value Input */}
+                                                                    {(() => {
+                                                                        const label = spec.label?.trim();
 
-                                        <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 items-start">
-                                            <Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
-                                                <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-                                                    <li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
-                                                    <li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
-                                                    <li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
-                                                </ul>
-                                            </div>
+                                                                        if (label === 'Condition') {
+                                                                            return (
+                                                                                <select
+                                                                                    value={spec.value || ''}
+                                                                                    onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                                >
+                                                                                    <option value="" disabled>Select Condition</option>
+                                                                                    <option value="New">New</option>
+                                                                                    <option value="Used">Used</option>
+                                                                                    <option value="Refurbished">Refurbished</option>
+                                                                                </select>
+                                                                            );
+                                                                        }
+
+                                                                        if (label === 'Color') {
+                                                                            const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                                            return (
+                                                                                <MultiSelect
+                                                                                    options={EXTERNAL_COLORS}
+                                                                                    selected={selectedColors}
+                                                                                    onChange={(selected) => updateLocalSpec(index, 'value', selected.join(', '))}
+                                                                                    placeholder="Select or add Colors..."
+                                                                                    creatable={true}
+                                                                                />
+                                                                            );
+                                                                        }
+
+                                                                        if (label === 'Size') {
+                                                                            // Parse composite value "11x11x11 mm"
+                                                                            const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
+                                                                            const dimensions = match ? match[1] : (spec.value || '');
+                                                                            const unit = match ? match[2] : 'mm';
+
+                                                                            const updateSizeValue = (newDims: string, newUnit: string) => {
+                                                                                updateLocalSpec(index, 'value', `${newDims} ${newUnit}`.trim());
+                                                                            };
+
+                                                                            return (
+                                                                                <MaskedSizeInput
+                                                                                    value={dimensions}
+                                                                                    unit={unit}
+                                                                                    onChange={(dims, u) => updateSizeValue(dims, u)}
+                                                                                />
+                                                                            );
+                                                                        }
+
+                                                                        // Default Text Input
+                                                                        return (
+                                                                            <Input
+                                                                                value={spec.value || ''}
+                                                                                onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
+                                                                                onPaste={(e) => handlePaste(e, index, 'value')}
+                                                                                placeholder="Value"
+                                                                                className="w-full"
+                                                                            />
+                                                                        );
+                                                                    })()}
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                        <td className="px-2 py-2">
+                                                            <div className="flex gap-1 items-center">
+                                                                <select
+                                                                    value={spec.type}
+                                                                    onChange={(e) => updateLocalSpec(index, 'type', e.target.value)}
+                                                                    className="h-8 px-1 text-xs border rounded bg-background w-20"
+                                                                >
+                                                                    {index === 0 ? (
+                                                                        <option value="title_only">Title</option>
+                                                                    ) : (
+                                                                        <>
+                                                                            <option value="title_only">Title</option>
+                                                                            {(() => {
+                                                                                const findSectionType = () => {
+                                                                                    for (let i = index - 1; i >= 0; i--) {
+                                                                                        if (localSpecs[i].type === 'title_only') return null;
+                                                                                        return localSpecs[i].type;
+                                                                                    }
+                                                                                    return null;
+                                                                                };
+                                                                                const sectionType = findSectionType();
+                                                                                return (
+                                                                                    <>
+                                                                                        <option value="general" disabled={sectionType !== null && sectionType !== 'general'}>General</option>
+                                                                                        <option value="value_only" disabled={sectionType !== null && sectionType !== 'value_only'}>Value</option>
+                                                                                    </>
+                                                                                );
+                                                                            })()}
+                                                                        </>
+                                                                    )}
+                                                                </select>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 p-0 aspect-square shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-black dark:hover:text-white"
+                                                                    onClick={() => deleteSpecRow(index)}
+                                                                    disabled={deleteSpec.isPending}
+                                                                    title="Delete Row"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="flex justify-between mt-4 items-center">
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                value={rowsToAdd}
+                                                onChange={(e) => setRowsToAdd(parseInt(e.target.value) || 1)}
+                                                className="w-16 h-9"
+                                            />
+                                            <Button type="button" variant="outline" size="sm" onClick={addSpecRows}>
+                                                <Plus className="mr-2 h-4 w-4" /> Add Rows
+                                            </Button>
                                         </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
+                                    </div>
+
+                                    <div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 items-start">
+                                        <Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
+                                            <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+                                                <li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
+                                                <li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
+                                                <li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         );
     }
