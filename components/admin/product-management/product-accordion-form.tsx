@@ -529,6 +529,14 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
     // Can publish validation
     const canPublish = !!(watchName && watchCategories && watchDesc && watchPrice !== undefined && watchPrice >= 0);
 
+    // Auto-revert to draft if published but requirements no longer met
+    useEffect(() => {
+        if (!canPublish && form.getValues('status') === 'published') {
+            form.setValue('status', 'draft', { shouldValidate: true });
+            toast("Status reverted to Draft", { description: "Required fields are missing." });
+        }
+    }, [canPublish, form.watch('status')]);
+
     // Handle section save and unlock next
     const handleSectionSave = async (sectionId: number) => {
         const formData = form.getValues();
@@ -725,9 +733,21 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                     Back
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">
-                        {currentProductId ? "Edit Product" : "Add New Product"}
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold tracking-tight">
+                            {currentProductId ? "Edit Product" : "Add New Product"}
+                        </h1>
+                        {currentProductId && (
+                            <div className={cn(
+                                "px-2.5 py-0.5 rounded-full text-xs font-semibold border",
+                                form.watch("status") === "published"
+                                    ? "bg-green-100 text-green-700 border-green-200"
+                                    : "bg-orange-100 text-orange-700 border-orange-200"
+                            )}>
+                                {form.watch("status") === "published" ? "Published" : "Draft"}
+                            </div>
+                        )}
+                    </div>
                     <p className="text-sm text-muted-foreground mt-1">
                         Complete each section to build your product listing.
                     </p>
@@ -1875,10 +1895,28 @@ export default function ProductAccordionForm({ productId, domain }: ProductAccor
                                 <RadioGroup
                                     onValueChange={field.onChange}
                                     value={field.value || "draft"}
-                                    className="flex flex-col space-y-1"
+                                    className="flex flex-col gap-3"
                                 >
-                                    <RadioGroupItem value="draft" label="Draft (Hidden from approval)" />
-                                    <RadioGroupItem value="published" label="Published (Submit for Approval)" disabled={!canPublish} />
+                                    <div className={cn(
+                                        "flex items-center space-x-2 border rounded-md p-3 transition-colors",
+                                        field.value === "draft" ? "border-orange-500 bg-orange-50/50" : "border-border hover:bg-muted/50"
+                                    )}>
+                                        <RadioGroupItem value="draft" id="status-draft" label="" />
+                                        <label htmlFor="status-draft" className="flex-1 cursor-pointer font-medium">
+                                            Draft <span className="text-muted-foreground font-normal text-sm ml-1">(Hidden from approval)</span>
+                                        </label>
+                                    </div>
+
+                                    <div className={cn(
+                                        "flex items-center space-x-2 border rounded-md p-3 transition-colors",
+                                        field.value === "published" ? "border-green-600 bg-green-50/50" : "border-border hover:bg-muted/50",
+                                        !canPublish && "opacity-50 cursor-not-allowed bg-muted"
+                                    )}>
+                                        <RadioGroupItem value="published" id="status-published" disabled={!canPublish} label="" />
+                                        <label htmlFor="status-published" className={cn("flex-1 font-medium", !canPublish ? "cursor-not-allowed" : "cursor-pointer")}>
+                                            Published <span className="text-muted-foreground font-normal text-sm ml-1">(Submit for Approval)</span>
+                                        </label>
+                                    </div>
                                 </RadioGroup>
                             </FormControl>
                             {!canPublish && (
