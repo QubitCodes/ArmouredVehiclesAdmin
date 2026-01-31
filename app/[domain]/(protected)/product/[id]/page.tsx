@@ -42,6 +42,10 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
             <div className="space-y-6">
                 <div className="flex flex-col gap-4 border-b pb-4">
                     <div className="flex items-start gap-4">
+                        <h1 className="text-2xl font-bold tracking-tight break-words">{product.name}</h1>
+                    </div>
+
+                    <div className="flex items-center justify-start gap-2">
                         <Button
                             variant="ghost"
                             onClick={() => router.back()}
@@ -50,10 +54,6 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
                             <ArrowLeft className="h-4 w-4" />
                             Back
                         </Button>
-                        <h1 className="text-2xl font-bold tracking-tight break-words">{product.name}</h1>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2">
                         <Button variant="outline" className="gap-2">
                             <Eye className="h-4 w-4" />
                             Preview
