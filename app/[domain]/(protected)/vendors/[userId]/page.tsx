@@ -365,7 +365,7 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
             {/* If fields are marked, only show Rejected option (or disable others) */}
 
             {/* General Approval Option */}
-            {(!hasMarkedFields && (authService.hasPermission("vendor.approve") || authService.hasPermission("vendor.controlled.approve"))) && (
+            {(!hasMarkedFields && authService.hasPermission("vendor.approve")) && (
               <option value="approved_general">Approved General</option>
             )}
 

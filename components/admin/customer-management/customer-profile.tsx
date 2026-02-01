@@ -708,7 +708,7 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                             onChange={(e) => setSelectedStatus(e.target.value)}
                         >
                             {/* General Approval Option */}
-                            {(!hasMarkedFields && (authService.hasPermission("customer.approve") || authService.hasPermission("customer.controlled.approve"))) && (
+                            {(!hasMarkedFields && authService.hasPermission("customer.approve")) && (
                                 <option value="approved_general">Approve (General)</option>
                             )}
 
