@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useVendor } from "@/hooks/admin/vendor-management/use-vendor";
 import { useVendorActions } from "@/hooks/admin/vendor-management/use-vendor-actions";
 import { cn } from "@/lib/utils";
@@ -138,12 +139,12 @@ export default function VendorDetailPage() {
 }
 
 function VendorActions({ vendor }: { vendor: any }) {
-  const [selectedAction, setSelectedAction] = useState<string>("");
+  const [isSuspended, setIsSuspended] = useState(!vendor.is_active);
   const [reason, setReason] = useState("");
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // No auto-selection logic
+    setIsSuspended(!vendor.is_active);
   }, [vendor.is_active]);
 
   const { mutate: updateStatus, isPending } = useMutation({
@@ -154,19 +155,39 @@ function VendorActions({ vendor }: { vendor: any }) {
       toast.success("Vendor status updated successfully");
       queryClient.invalidateQueries({ queryKey: ["vendor", vendor.id] });
       setReason("");
-      setSelectedAction(""); // Reset selection on success
+      // State sync handled by useEffect
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to update status");
+      // Revert switch on error if needed, but for now relies on manual fix or sync
+      setIsSuspended(!vendor.is_active);
     }
   });
 
+  const handleToggle = (checked: boolean) => {
+    setIsSuspended(checked);
+    // If turning OFF (activating), we might want to auto-show confirm, or just rely on the button below.
+    // Logic: 
+    // If Switch is TRUE (Suspended) -> Showing generic "Suspended" state UI?
+    // Actually, we want the "Pending Action" UI to appear when the *proposed* state differs from *actual* state.
+    // proposed = checked. actual = !vendor.is_active.
+  };
+
+  const hasPendingChange = isSuspended !== (!vendor.is_active);
+
   const handleAction = () => {
-    if (selectedAction === 'suspend' && !reason) {
+    const action = isSuspended ? 'suspend' : 'activate';
+
+    if (action === 'suspend' && !reason) {
       toast.error("Please provide a reason for suspension");
       return;
     }
-    updateStatus({ action: selectedAction as 'activate' | 'suspend', reason });
+    updateStatus({ action, reason });
+  };
+
+  const handleCancel = () => {
+    setIsSuspended(!vendor.is_active); // Revert to actual state
+    setReason("");
   };
 
   return (
@@ -174,76 +195,75 @@ function VendorActions({ vendor }: { vendor: any }) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary" />
-          Account Actions
+          Suspend Account
         </CardTitle>
-        <div className="w-56">
-          <Select
-            placeholder="Select Action..."
-            value={selectedAction}
-            onChange={(e) => setSelectedAction(e.target.value)}
-            className="font-semibold"
-          >
-            {vendor.is_active ? (
-              <option value="suspend">Suspend Account</option>
-            ) : (
-              <option value="activate">Activate Account</option>
-            )}
-          </Select>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="suspend-mode" className="text-sm font-medium text-muted-foreground">
+            {isSuspended ? "Suspended" : "Active"}
+          </Label>
+          <Switch
+            id="suspend-mode"
+            checked={isSuspended}
+            onCheckedChange={handleToggle}
+            disabled={isPending}
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {selectedAction && (
+        {hasPendingChange && (
           <div className="grid gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
-            {selectedAction === 'suspend' && (
-              <div className="space-y-2">
-                <Label
-                  htmlFor="reason"
-                  className="text-base font-semibold flex items-center gap-2"
-                >
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  Suspension Reason (Required)
-                </Label>
-                <Textarea
-                  id="reason"
-                  placeholder="Explain why the vendor is being suspended..."
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="min-h-[120px] border-destructive/20 focus-visible:ring-destructive/30"
-                />
-              </div>
-            )}
+            <div className="rounded-md bg-muted/50 p-4 border border-dashed">
+              <p className="text-sm font-medium mb-4">
+                You are about to <span className={isSuspended ? "text-destructive" : "text-green-600"}>{isSuspended ? "SUSPEND" : "ACTIVATE"}</span> this vendor.
+              </p>
+
+              {isSuspended && (
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="reason"
+                    className="text-base font-semibold flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    Suspension Reason (Required)
+                  </Label>
+                  <Textarea
+                    id="reason"
+                    placeholder="Explain why the vendor is being suspended..."
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="min-h-[120px] border-destructive/20 focus-visible:ring-destructive/30"
+                  />
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-4">
               <Button
                 size="lg"
                 className={cn(
                   "px-8 font-semibold shadow-md transition-all min-w-[140px]",
-                  selectedAction === "suspend"
+                  isSuspended
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    : "bg-primary text-primary-foreground"
+                    : "bg-green-600 text-white hover:bg-green-700"
                 )}
                 disabled={isPending}
                 onClick={handleAction}
               >
                 {isPending ? (
                   <Spinner className="mr-2 h-4 w-4 border-2" />
-                ) : selectedAction === "suspend" ? (
+                ) : isSuspended ? (
                   <XCircle className="mr-2 h-5 w-5" />
                 ) : (
                   <CheckCircle2 className="mr-2 h-5 w-5" />
                 )}
-                Confirm{" "}
-                {selectedAction === "suspend" ? "Suspension" : "Activation"}
+                Confirm {isSuspended ? "Suspension" : "Activation"}
               </Button>
               <Button
                 variant="outline"
                 size="lg"
                 className="px-8 font-semibold border-2 transition-all"
                 disabled={isPending}
-                onClick={() => {
-                  setSelectedAction("");
-                  setReason("");
-                }}
+                onClick={handleCancel}
               >
                 Cancel
               </Button>

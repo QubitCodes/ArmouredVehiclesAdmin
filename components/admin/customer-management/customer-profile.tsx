@@ -37,6 +37,7 @@ import { customerService, Customer } from "@/services/admin/customer.service";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authService } from "@/services/admin/auth.service";
 import { useEffect } from "react";
+import { Switch } from "@/components/ui/switch";
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
@@ -793,9 +794,14 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
 }
 
 function CustomerActions({ customer }: { customer: Customer }) {
-    const [selectedAction, setSelectedAction] = useState<string>("");
+    const [isSuspended, setIsSuspended] = useState(!customer.is_active);
     const [reason, setReason] = useState("");
     const queryClient = useQueryClient();
+
+    // Sync state with prop
+    useEffect(() => {
+        setIsSuspended(!customer.is_active);
+    }, [customer.is_active]);
 
     const { mutate: updateStatus, isPending } = useMutation({
         mutationFn: async ({ action, reason }: { action: 'activate' | 'suspend'; reason?: string }) => {
@@ -804,20 +810,35 @@ function CustomerActions({ customer }: { customer: Customer }) {
         onSuccess: () => {
             toast.success("Customer status updated successfully");
             queryClient.invalidateQueries({ queryKey: ["customer", customer.id] });
-            setSelectedAction("");
             setReason("");
+            // State sync is handled by useEffect when data refetches
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || "Failed to update status");
+            // Revert switch on error if needed
+            setIsSuspended(!customer.is_active);
         }
     });
 
+    const handleToggle = (checked: boolean) => {
+        setIsSuspended(checked);
+    };
+
+    const hasPendingChange = isSuspended !== (!customer.is_active);
+
     const handleAction = () => {
-        if (selectedAction === 'suspend' && !reason) {
+        const action = isSuspended ? 'suspend' : 'activate';
+
+        if (action === 'suspend' && !reason) {
             toast.error("Please provide a reason for suspension");
             return;
         }
-        updateStatus({ action: selectedAction as 'activate' | 'suspend', reason });
+        updateStatus({ action, reason });
+    };
+
+    const handleCancel = () => {
+        setIsSuspended(!customer.is_active); // Revert to actual state
+        setReason("");
     };
 
     return (
@@ -825,88 +846,68 @@ function CustomerActions({ customer }: { customer: Customer }) {
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary" />
-                    Account Actions
+                    Suspend Account
                 </CardTitle>
-                <div className="w-56">
-                    <Select
-                        placeholder="Change Status..."
-                        value={selectedAction}
-                        onChange={(e) => setSelectedAction(e.target.value)}
-                        className={cn(
-                            "font-semibold bg-primary text-white",
-                            selectedAction === "suspend"
-                                ? "bg-destructive border-destructive/50"
-                                : ""
-                        )}
-                    >
-                        {customer.is_active ? (
-                            <option value="suspend">Suspend Account</option>
-                        ) : (
-                            <option value="activate">Activate Account</option>
-                        )}
-                    </Select>
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="suspend-mode" className="text-sm font-medium text-muted-foreground">
+                        {isSuspended ? "Suspended" : "Active"}
+                    </Label>
+                    <Switch
+                        id="suspend-mode"
+                        checked={isSuspended}
+                        onCheckedChange={handleToggle}
+                        disabled={isPending}
+                    />
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
-                {selectedAction && (
+                {hasPendingChange && (
                     <div className="grid gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                        {selectedAction === 'suspend' && (
-                            <div className="space-y-2">
-                                <Label
-                                    htmlFor="reason"
-                                    className="text-base font-semibold flex items-center gap-2"
-                                >
-                                    <FileText className="h-4 w-4 text-muted-foreground" />
-                                    Suspension Reason (Required)
-                                </Label>
-                                <Textarea
-                                    id="reason"
-                                    placeholder="Explain why the customer is being suspended..."
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    className="min-h-[120px] border-destructive/20 focus-visible:ring-destructive/30"
-                                />
-                            </div>
-                        )}
+                        <div className="rounded-md bg-muted/50 p-4 border border-dashed">
+                            <p className="text-sm font-medium mb-4">
+                                You are about to <span className={isSuspended ? "text-destructive" : "text-green-600"}>{isSuspended ? "SUSPEND" : "ACTIVATE"}</span> this customer.
+                            </p>
+
+                            {isSuspended && (
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="suspend-reason"
+                                        className="text-base font-semibold flex items-center gap-2"
+                                    >
+                                        <FileText className="h-4 w-4 text-muted-foreground" />
+                                        Suspension Reason (Required)
+                                    </Label>
+                                    <Textarea
+                                        id="suspend-reason"
+                                        placeholder="Explain why the customer is being suspended..."
+                                        value={reason}
+                                        onChange={(e) => setReason(e.target.value)}
+                                        className="min-h-[120px] border-destructive/20 focus-visible:ring-destructive/30"
+                                    />
+                                </div>
+                            )}
+                        </div>
 
                         <div className="flex gap-4">
                             <Button
                                 size="lg"
                                 className={cn(
                                     "px-8 font-semibold shadow-md transition-all min-w-[140px]",
-                                    selectedAction === "suspend"
+                                    isSuspended
                                         ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                        : "bg-primary text-primary-foreground"
+                                        : "bg-green-600 text-white hover:bg-green-700"
                                 )}
                                 disabled={isPending}
                                 onClick={handleAction}
                             >
                                 {isPending ? (
                                     <Spinner className="mr-2 h-4 w-4 border-2" />
-                                ) : selectedAction === "suspend" ? (
+                                ) : isSuspended ? (
                                     <XCircle className="mr-2 h-5 w-5" />
                                 ) : (
                                     <CheckCircle2 className="mr-2 h-5 w-5" />
                                 )}
-                                Confirm{" "}
-                                {selectedAction === "suspend" ? "Suspension" : "Activation"}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="lg"
-                                className="px-8 font-semibold border-2 transition-all"
-                                disabled={isPending}
-                                onClick={() => {
-                                    setSelectedAction("");
-                                    setReason("");
-                                }}
-                            >
-                                Cancel
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
+                            </CardContent>
+                        </Card>
+                        );
 }
