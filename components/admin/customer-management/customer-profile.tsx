@@ -798,6 +798,10 @@ function CustomerActions({ customer }: { customer: Customer }) {
     const [reason, setReason] = useState("");
     const queryClient = useQueryClient();
 
+    if (!authService.hasPermission("customer.manage")) {
+        return null;
+    }
+
     // Sync state with prop
     useEffect(() => {
         setIsSuspended(!customer.is_active);

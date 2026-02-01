@@ -143,6 +143,10 @@ function VendorActions({ vendor }: { vendor: any }) {
   const [reason, setReason] = useState("");
   const queryClient = useQueryClient();
 
+  if (!authService.hasPermission("vendor.manage")) {
+    return null;
+  }
+
   useEffect(() => {
     setIsSuspended(!vendor.is_active);
   }, [vendor.is_active]);
