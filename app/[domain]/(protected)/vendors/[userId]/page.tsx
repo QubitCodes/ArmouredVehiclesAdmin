@@ -259,9 +259,24 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [comment, setComment] = useState("");
 
-  // No pre-selection logic
-  // useEffect dependency fixed
+  // Pre-select status and reason from vendor profile
   useEffect(() => {
+    if (vendor && (vendor.userProfile || vendor.profile)) {
+      const profile = vendor.userProfile || vendor.profile;
+
+      // Map existing status to state
+      if (profile.onboarding_status) {
+        setSelectedStatus(profile.onboarding_status);
+      }
+
+      // Map reason if rejected or needs update
+      // Check for specific reason fields depending on status
+      if (profile.onboarding_status === 'rejected' && profile.rejection_reason) {
+        setComment(profile.rejection_reason);
+      } else if (profile.onboarding_status === 'update_needed' && profile.update_needed_reason) {
+        setComment(profile.update_needed_reason);
+      }
+    }
   }, [vendor]);
 
   // Force rejection if fields are marked

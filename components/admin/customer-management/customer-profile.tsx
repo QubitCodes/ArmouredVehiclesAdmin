@@ -615,7 +615,19 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
         // Check permissions on mount
         const hasPermission = authService.hasPermission("customer.controlled.approve");
         setCanApproveControlled(hasPermission);
-    }, []);
+
+        // Pre-select status and reason
+        if (profile.onboarding_status) {
+            setSelectedStatus(profile.onboarding_status);
+        }
+
+        // Map reason if rejected or needs update
+        if (profile.onboarding_status === 'rejected' && profile.rejection_reason) {
+            setNote(profile.rejection_reason);
+        } else if (profile.onboarding_status === 'update_needed' && profile.update_needed_reason) {
+            setNote(profile.update_needed_reason);
+        }
+    }, [profile]);
 
     // Force rejection if fields are marked
     const hasMarkedFields = markedFields && markedFields.size > 0;
