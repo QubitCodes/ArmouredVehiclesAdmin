@@ -907,7 +907,21 @@ function CustomerActions({ customer }: { customer: Customer }) {
                                 ) : (
                                     <CheckCircle2 className="mr-2 h-5 w-5" />
                                 )}
-                            </CardContent>
-                        </Card>
-                        );
+                                Confirm {isSuspended ? "Suspension" : "Activation"}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="px-8 font-semibold border-2 transition-all"
+                                disabled={isPending}
+                                onClick={handleCancel}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
 }
