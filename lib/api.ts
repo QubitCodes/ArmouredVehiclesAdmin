@@ -28,42 +28,25 @@ const api = axios.create({
 // Helper function to determine which auth service to use
 function getAuthService(url?: string) {
   if (typeof window !== 'undefined') {
-    const userStr = localStorage.getItem('user_details');
-    if (userStr) {
-        try {
-            const user = JSON.parse(userStr);
-            if (user.userType === 'vendor') {
-                return vendorAuthService;
-            }
-        } catch (e) {
-            console.error('Error parsing user details', e);
-        }
+    // 1. Check URL Context (Strongest Indicator)
+    if (window.location.pathname.startsWith('/vendor')) {
+        return vendorAuthService;
     }
-  }
 
-  // Fallback for Server-side or if no user details found (e.g. initial login)
-  // We might still need some context or default to Admin if unsure.
-  // Actually, if we are logging in, we don't have a token yet so we don't call this usually.
-  // But for SSR, we might need cookies. Check cookies if localStorage is not available?
-  // Since User asked to avoid URL logic, we rely on stored state. 
-  // However, `getAuthService` is called by interceptors. 
-  // If we are server-side, we technically don't have localStorage. 
-  // For SSR, we might need to rely on cookie names directly/indirectly. 
-  // `authService` reads `admin_access_token` and `vendorAuthService` reads `vendor_access_token`. 
-  // We could just check which token exists? A user could be both. 
-  
-  // Revised Strategy: Check which token exists in cookies.
-  if (typeof window === 'undefined') {
-      // Server side context - checking cookies via request headers is hard here without passing req.
-      // But typically this api instance is used client side or in actions.
-      // If we are really stuck, the URL hint was actually useful. 
-      // But user said "Why not just retrieve user_type from local storage?". 
-      // So I will stick to the client-side localStorage as primary.
-      return authService; 
-  }
+    // 2. Check LocalStorage for Vendor
+    const vendorUserStr = localStorage.getItem('vendor_user_details');
+    if (vendorUserStr) {
+        return vendorAuthService;
+    }
 
-  // If client side and no local storage, maybe check cookie existence?
-  if (Cookies.get("vendor_access_token")) return vendorAuthService;
+    // 3. Check Cookie for Vendor
+    if (Cookies.get("vendor_access_token")) {
+        return vendorAuthService;
+    }
+
+    // 4. Fallback to Admin (Default)
+    return authService;
+  }
   
   return authService;
 }
@@ -73,9 +56,11 @@ api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const authService = getAuthService(config.url);
     const token = authService.getToken();
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     // Don't set Content-Type for FormData - browser will set it with boundary
     if (config.data instanceof FormData) {
       delete config.headers["Content-Type"];
@@ -117,60 +102,71 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // If error is 401 and we haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // If already refreshing, queue this request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
+    // If error is 401
+    if (error.response?.status === 401) {
+      // 1. If we haven't retried yet, try to refresh
+      if (!originalRequest._retry) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              return api(originalRequest);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          const authService = getAuthService(originalRequest.url);
+          const newToken = await authService.refreshAccessToken();
+
+          if (newToken) {
+            processQueue(null, newToken);
             if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
             }
             return api(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const authService = getAuthService(originalRequest.url);
-        const newToken = await authService.refreshAccessToken();
-
-        if (newToken) {
-          processQueue(null, newToken);
-
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          } else {
+            // Refresh failed (soft)
+            processQueue(error, null);
+            if (typeof window !== "undefined") {
+              authService.clearTokens();
+              const isVendorPath = window.location.pathname.startsWith("/vendor");
+              window.location.href = isVendorPath ? "/vendor/login" : "/admin/login";
+            }
+            return Promise.reject(error);
           }
-
-          return api(originalRequest);
-        } else {
-          processQueue(error, null);
-          // Redirect to login if refresh fails
+        } catch (refreshError) {
+          // Refresh failed (hard)
+          processQueue(refreshError as AxiosError, null);
           if (typeof window !== "undefined") {
+            const authService = getAuthService(originalRequest.url); // Re-get auth service safe ref
             authService.clearTokens();
-            const isVendorEndpoint = originalRequest.url?.includes("/vendor/") || originalRequest.url?.startsWith("/vendor");
-            window.location.href = isVendorEndpoint ? "/vendor/login" : "/admin/login";
+            const isVendorPath = window.location.pathname.startsWith("/vendor");
+            window.location.href = isVendorPath ? "/vendor/login" : "/admin/login";
           }
-          return Promise.reject(error);
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
-      } catch (refreshError) {
-        processQueue(refreshError as AxiosError, null);
-        // Redirect to login if refresh fails
+      } else {
+        // 2. We ALREADY retried (originalRequest._retry is true), and it failed AGAIN with 401.
+        // This is the "twice" condition.
         if (typeof window !== "undefined") {
-           authService.clearTokens();
-          const isVendorEndpoint = originalRequest.url?.includes("/vendor/") || originalRequest.url?.startsWith("/vendor");
-          window.location.href = isVendorEndpoint ? "/vendor/login" : "/admin/login";
+          const authService = getAuthService(originalRequest.url);
+          authService.clearTokens();
+          const isVendorPath = window.location.pathname.startsWith("/vendor");
+          window.location.href = isVendorPath ? "/vendor/login" : "/admin/login";
         }
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+        return Promise.reject(error);
       }
     }
 

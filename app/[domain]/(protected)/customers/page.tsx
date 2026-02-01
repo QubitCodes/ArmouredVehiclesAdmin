@@ -18,7 +18,9 @@ function CustomersContent() {
     const searchParams = useSearchParams();
     const search = searchParams.get("search") || "";
     const page = Number(searchParams.get("page")) || 1;
+    const onboardingStatus = searchParams.get("onboarding_status") || "all";
     const status = searchParams.get("status") || "all";
+    const controlled = searchParams.get("controlled") || "all";
 
     // Use React Query to fetch customers
     const { data, isLoading, error } = useCustomers({
@@ -26,6 +28,8 @@ function CustomersContent() {
         page,
         limit: 10,
         status: status !== "all" ? status : undefined,
+        onboarding_status: onboardingStatus !== "all" ? onboardingStatus : undefined,
+        controlled: controlled !== "all" ? controlled : undefined,
     });
 
     const customers = data?.customers || [];
@@ -71,12 +75,56 @@ function CustomersContent() {
                 </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-4">
-                <Select value={status} onChange={handleStatusChange} className="w-40 h-11 bg-bg-light border border-border-light">
+            <div className="flex flex-wrap items-center justify-end gap-3 mt-4">
+                <Select
+                    value={onboardingStatus}
+                    onChange={(e) => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set("onboarding_status", e.target.value);
+                        params.delete("page");
+                        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+                    }}
+                    className="w-[180px] h-11 bg-bg-light border border-border-light"
+                >
+                    <option value="all">All Approvals</option>
+                    <option value="not_started">Not Started</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="pending_verification">Pending Verification</option>
+                    <option value="approved_general">Approved (General)</option>
+                    <option value="approved_controlled">Approved (Controlled)</option>
+                    <option value="rejected">Rejected</option>
+                </Select>
+
+                <Select
+                    value={status}
+                    onChange={(e) => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set("status", e.target.value);
+                        params.delete("page");
+                        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+                    }}
+                    className="w-40 h-11 bg-bg-light border border-border-light"
+                >
                     <option value="all">All Statuses</option>
                     <option value="active">Active</option>
                     <option value="suspended">Suspended</option>
                 </Select>
+
+                <Select
+                    value={controlled}
+                    onChange={(e) => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set("controlled", e.target.value);
+                        params.delete("page");
+                        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+                    }}
+                    className="w-40 h-11 bg-bg-light border border-border-light"
+                >
+                    <option value="all">Controlled (All)</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </Select>
+
                 <SearchInput placeholder="Search by name, email or phone..." />
             </div>
 

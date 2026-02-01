@@ -20,20 +20,7 @@ export const useReferenceData = (type: string) => {
   });
 };
 
-export const useProductColors = () => {
-  return useQuery({
-    queryKey: ["references", "product_colors"],
-    queryFn: async () => {
-      const data = await referenceService.getData("product_colors");
-      return data.map((item: any) => ({
-        value: item.name,
-        label: item.name,
-        color: item.hex_code || "#000000",
-      }));
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-};
+
 export const useBrands = () => {
   return useQuery({
     queryKey: ["brands"],

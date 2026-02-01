@@ -271,9 +271,9 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
 
   useEffect(() => {
     if (hasMarkedFields) {
-      if (selectedStatus !== "rejected" && selectedStatus !== "") {
-        toast.warning("You must reject the vendor when fields are marked for deletion.");
-        setSelectedStatus("rejected");
+      if (selectedStatus !== "rejected" && selectedStatus !== "update_needed" && selectedStatus !== "") {
+        toast.warning("You must reject or request an update when fields are marked for deletion.");
+        setSelectedStatus("update_needed"); // Soft default
       }
     }
   }, [hasMarkedFields, selectedStatus]);
@@ -282,9 +282,9 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
     useVendorActions(vendor.id);
 
   const handleAction = async () => {
-    if (selectedStatus === "rejected") {
+    if (selectedStatus === "rejected" || selectedStatus === "update_needed") {
       if (!comment) {
-        toast.error("Please provide a reason for rejection in the comments");
+        toast.error("Please provide a reason/comment");
         return;
       }
       try {
@@ -335,6 +335,7 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
             )}
 
             <option value="rejected">Rejected</option>
+            <option value="update_needed">Update Needed</option>
           </Select>
         </div>
       </CardHeader>
@@ -356,7 +357,9 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
                 placeholder={
                   selectedStatus === "rejected"
                     ? "Explain why the vendor is being rejected..."
-                    : "Add any notes about this approval..."
+                    : selectedStatus === "update_needed"
+                      ? "Explain what needs to be updated..."
+                      : "Add any notes about this approval..."
                 }
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
@@ -367,10 +370,10 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
                     : ""
                 )}
               />
-              {hasMarkedFields && selectedStatus === "rejected" && (
+              {hasMarkedFields && (selectedStatus === "rejected" || selectedStatus === "update_needed") && (
                 <p className="text-sm text-destructive font-medium flex items-center gap-2">
                   <Info className="h-4 w-4" />
-                  {markedFields!.size} field(s) marked for clearing will be removed upon rejection.
+                  {markedFields!.size} field(s) marked for clearing will be removed.
                 </p>
               )}
             </div>
@@ -388,7 +391,7 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
               >
                 {isPending ? (
                   <Spinner className="mr-2 h-4 w-4 border-2" />
-                ) : selectedStatus === "rejected" ? (
+                ) : (selectedStatus === "rejected" || selectedStatus === "update_needed") ? (
                   <XCircle className="mr-2 h-5 w-5" />
                 ) : (
                   <CheckCircle2 className="mr-2 h-5 w-5" />

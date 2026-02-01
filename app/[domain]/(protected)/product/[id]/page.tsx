@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil, Eye } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DraftAlert } from "@/components/admin/product-management/draft-alert";
 
 interface ProductViewPageProps {
     params: Promise<{ id: string; domain: string }>;
@@ -73,12 +74,24 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
                     </div>
                 </div>
 
+                <DraftAlert
+                    status={product.status}
+                    product={{
+                        name: product.name,
+                        mainCategoryId: product.mainCategoryId,
+                        description: product.description,
+                        basePrice: product.basePrice || product.base_price,
+                        hasCoverImage: !!product.image,
+                        complianceConfirmed: !!product.complianceConfirmed || !!(product as any).compliance_confirmed
+                    }}
+                />
+
                 <ProductDetailsView
                     productId={resolvedParams.id}
                     domain={resolvedParams.domain}
                     product={product}
                 />
             </div>
-        </Suspense>
+        </Suspense >
     );
 }

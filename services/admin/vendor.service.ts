@@ -32,6 +32,7 @@ export interface VendorUserProfile {
   terms_accepted: boolean;
   terms_accepted_at: string | null;
   nature_of_business: string | null;
+  controlled_items: boolean;
   controlled_dual_use_items: string | null;
   license_types: string | null;
   end_use_markets: string | null;
@@ -95,6 +96,10 @@ export interface Vendor {
   userProfile?: VendorUserProfile | null;
   stats?: VendorStats;
   recentOrders?: unknown[];
+  
+  // Computed
+  product_count?: number;
+  pending_product_count?: number;
 }
 
 export interface GetVendorsResponse {
@@ -112,7 +117,9 @@ export interface GetVendorsParams {
   page?: number;
   limit?: number;
   search?: string;
+  status?: string;
   onboarding_status?: string;
+  controlled?: string;
 }
 
 class VendorService {

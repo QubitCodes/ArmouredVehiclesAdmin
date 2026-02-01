@@ -383,7 +383,8 @@ export function VendorProfileView({ user, profile, markedFields, toggleMarkField
                                             <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase",
                                                 profile?.onboarding_status?.includes("approved") ? "bg-green-100 text-green-700" :
                                                     profile?.onboarding_status === "rejected" ? "bg-red-100 text-red-700" :
-                                                        "bg-gray-100 text-gray-700"
+                                                        profile?.onboarding_status === "update_needed" ? "bg-yellow-100 text-yellow-700" :
+                                                            "bg-gray-100 text-gray-700"
                                             )}>
                                                 {profile?.onboarding_status?.replace(/_/g, " ") || "Pending"}
                                             </span>
@@ -450,6 +451,7 @@ export function VendorProfileView({ user, profile, markedFields, toggleMarkField
             {/* Legal & Compliance */}
             {profile && (
                 <RenderSection title="Legal & Compliance" icon={Shield}>
+                    {renderRow("controlled_items", "Sell Controlled Products")}
                     {renderRow("nature_of_business")}
                     {renderRow("license_types")}
                     {renderRow("end_use_markets")}

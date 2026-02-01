@@ -68,7 +68,7 @@ import {
   useBulkUpdateSpecifications,
   useDeleteSpecification,
 } from "@/hooks/admin/product-management/use-product-specifications";
-import { useProductColors, useBrands } from "@/hooks/admin/use-references";
+import { useBrands } from "@/hooks/admin/use-references";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { ProductSpecification } from "@/services/admin/product-specification.service";
 import type {
@@ -386,7 +386,6 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
   // Specifications state (moved to top level to follow React hooks rules)
   const { data: specificationsData = [], isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId);
-  const { data: productColors = [] } = useProductColors();
   const { data: brands = [], isLoading: isLoadingBrands } = useBrands();
   const createSpec = useCreateSpecification(currentProductId);
   const updateSpec = useUpdateSpecification(currentProductId);

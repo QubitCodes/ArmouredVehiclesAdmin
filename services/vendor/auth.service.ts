@@ -117,11 +117,12 @@ class VendorAuthService {
         throw new Error(errorData.error || "Failed to refresh token");
       }
 
-      const data = await response.json();
+      const responseBody = await response.json();
+      const data = responseBody.data;
 
       // Assuming the API returns { accessToken, refreshToken } or similar
       // Adjust based on your API response structure
-      if (data.accessToken) {
+      if (data && data.accessToken) {
         this.setAccessToken(data.accessToken);
 
         // Update refresh token if provided

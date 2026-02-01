@@ -37,6 +37,22 @@ export default function VendorOnboardingLayout({
     <div className="min-h-screen flex flex-col">
       <GlobalHeader />
       <main className="flex-1">
+        {profileData?.profile?.onboarding_status === 'rejected' && (
+          <div className="bg-destructive/10 border-b border-destructive/20 p-4">
+            <div className="container mx-auto flex gap-3 text-destructive">
+              <div className="font-semibold">Application Rejected:</div>
+              <div>{profileData.profile.rejection_reason || "Your application was rejected."}</div>
+            </div>
+          </div>
+        )}
+        {profileData?.profile?.onboarding_status === 'update_needed' && (
+          <div className="bg-yellow-500/10 border-b border-yellow-500/20 p-4">
+            <div className="container mx-auto flex gap-3 text-yellow-700 dark:text-yellow-500">
+              <div className="font-semibold">Update Required:</div>
+              <div>{profileData.profile.rejection_reason || "Please update your application details."}</div>
+            </div>
+          </div>
+        )}
         {children}
       </main>
     </div>

@@ -37,6 +37,8 @@ export interface GetCustomersParams {
   limit?: number;
   search?: string;
   status?: string;
+  onboarding_status?: string;
+  controlled?: string;
 }
 
 class CustomerService {

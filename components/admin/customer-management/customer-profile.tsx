@@ -482,7 +482,8 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
                                 <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase",
                                     profile?.onboarding_status?.includes("approved") ? "bg-green-100 text-green-700" :
                                         profile?.onboarding_status === "rejected" ? "bg-red-100 text-red-700" :
-                                            "bg-gray-100 text-gray-700"
+                                            profile?.onboarding_status === "update_needed" ? "bg-yellow-100 text-yellow-700" :
+                                                "bg-gray-100 text-gray-700"
                                 )}>
                                     {profile?.onboarding_status?.replace(/_/g, " ") || "Pending"}
                                 </span>
@@ -569,7 +570,8 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
             {/* Legal & Compliance */}
             {profile && (
                 <RenderSection title="Legal & Compliance" icon={Shield}>
-                    {renderRow("nature_of_business")}
+                    {renderRow("controlled_items", "Buy Controlled Products")}
+                    {/* {renderRow("nature_of_business")} */}
                     {renderRow("license_types")}
                     {renderRow("end_use_markets")}
                     {renderRow("operating_countries")}
@@ -579,7 +581,7 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
             )}
 
             {/* Payment Information */}
-            {profile && (
+            {/* {profile && (
                 <RenderSection title="Payment Information" icon={CreditCard}>
                     {renderRow("preferred_currency")}
                     {renderRow("bank_country")}
@@ -589,7 +591,7 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
                     {renderRow("proof_type")}
                     {renderRow("bank_proof_url", "Bank Proof")}
                 </RenderSection>
-            )}
+            )} */}
 
             {/* Onboarding Review */}
             <OnboardingReview customer={customer} markedFields={markedFields} />
@@ -620,9 +622,10 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
 
     useEffect(() => {
         if (hasMarkedFields) {
-            if (selectedStatus !== "rejected" && selectedStatus !== "") {
-                toast.warning("You must reject the customer when fields are marked for clearing.");
-                setSelectedStatus("rejected");
+            // Allow both 'rejected' and 'update_needed' for clearing fields
+            if (selectedStatus !== "rejected" && selectedStatus !== "update_needed" && selectedStatus !== "") {
+                toast.warning("You must reject or request an update when fields are marked for clearing.");
+                setSelectedStatus("update_needed"); // Default to update_needed as softer rejection
             }
         }
     }, [hasMarkedFields, selectedStatus]);
@@ -643,9 +646,9 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
     });
 
     const handleUpdate = () => {
-        if (selectedStatus === 'rejected') {
+        if (selectedStatus === 'rejected' || selectedStatus === 'update_needed') {
             if (!note) {
-                toast.error("Please provide a reason for rejection");
+                toast.error("Please provide a reason");
                 return;
             }
             updateOnboarding({
@@ -665,6 +668,7 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
             case 'approved_general': return 'text-green-600 bg-green-100 dark:bg-green-900/30';
             case 'approved_controlled': return 'text-purple-600 bg-purple-100 dark:bg-purple-900/30';
             case 'rejected': return 'text-red-600 bg-red-100 dark:bg-red-900/30';
+            case 'update_needed': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30';
             case 'pending_verification': return 'text-orange-600 bg-orange-100 dark:bg-orange-900/30';
             default: return 'text-gray-600 bg-gray-100 dark:bg-gray-800';
         }
@@ -697,6 +701,7 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                                 <option value="approved_controlled">Approve (Controlled)</option>
                             )}
                             <option value="rejected">Reject Application</option>
+                            <option value="update_needed">Request Update</option>
                             <option value="pending_verification">Set to Pending</option>
                         </Select>
                     </div>
@@ -710,11 +715,11 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                                 className="text-base font-semibold flex items-center gap-2"
                             >
                                 <FileText className="h-4 w-4 text-muted-foreground" />
-                                {selectedStatus === 'rejected' ? 'Rejection Reason (Required)' : 'Review Note (Optional)'}
+                                {selectedStatus === 'rejected' || selectedStatus === 'update_needed' ? 'Reason (Required)' : 'Review Note (Optional)'}
                             </Label>
                             <Textarea
                                 id="review-note"
-                                placeholder={selectedStatus === 'rejected' ? "Explain why the application is rejected..." : "Add any internal notes about this approval..."}
+                                placeholder={selectedStatus === 'rejected' ? "Explain why the application is rejected..." : selectedStatus === 'update_needed' ? "Explain what needs to be updated..." : "Add any internal notes about this approval..."}
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
                                 className={cn(
@@ -722,10 +727,10 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                                     selectedStatus === 'rejected' ? "border-destructive/20 focus-visible:ring-destructive/30" : ""
                                 )}
                             />
-                            {hasMarkedFields && selectedStatus === "rejected" && (
+                            {hasMarkedFields && (selectedStatus === "rejected" || selectedStatus === "update_needed") && (
                                 <p className="text-sm text-destructive font-medium flex items-center gap-2">
                                     <AlertCircle className="h-4 w-4" />
-                                    {markedFields.size} field(s) marked for clearing will be removed upon rejection.
+                                    {markedFields.size} field(s) marked for clearing will be removed.
                                 </p>
                             )}
                         </div>
@@ -744,12 +749,12 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                             >
                                 {isPending ? (
                                     <Spinner className="mr-2 h-4 w-4 border-2" />
-                                ) : selectedStatus === "rejected" ? (
-                                    <XCircle className="mr-2 h-5 w-5" />
+                                ) : (selectedStatus === "rejected" || selectedStatus === "update_needed") ? (
+                                    <AlertCircle className="mr-2 h-5 w-5" />
                                 ) : (
                                     <CheckCircle2 className="mr-2 h-5 w-5" />
                                 )}
-                                {selectedStatus === "rejected" ? "Confirm Rejection" : "Confirm Decision"}
+                                {selectedStatus === "rejected" ? "Confirm Rejection" : selectedStatus === "update_needed" ? "Confirm Update Request" : "Confirm Decision"}
                             </Button>
                             <Button
                                 variant="outline"

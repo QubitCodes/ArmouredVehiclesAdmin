@@ -17,7 +17,9 @@ function VendorsContent() {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
-  const onboardingStatus = searchParams.get("onboarding_status") || "approved_general";
+  const onboardingStatus = searchParams.get("onboarding_status") || "all";
+  const status = searchParams.get("status") || "all";
+  const controlled = searchParams.get("controlled") || "all";
 
 
   // Use React Query to fetch vendors with search, pagination, and onboarding_status parameters
@@ -26,6 +28,8 @@ function VendorsContent() {
     page,
     limit: 10,
     onboarding_status: onboardingStatus !== "all" ? onboardingStatus : undefined,
+    status: status !== "all" ? status : undefined,
+    controlled: controlled !== "all" ? controlled : undefined,
   });
 
   const vendors = data?.vendors || [];
@@ -107,9 +111,18 @@ function VendorsContent() {
         </p>
       </div>
 
-      <div className="flex items-center justify-end gap-3">
-        <Select value={onboardingStatus} onChange={handleStatusChange} className="w-50 h-11 bg-bg-light border border-border-light">
-          <option value="all">All</option>
+      <div className="flex flex-wrap items-center justify-end gap-3 mt-4">
+        <Select
+          value={onboardingStatus}
+          onChange={(e) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("onboarding_status", e.target.value);
+            params.delete("page");
+            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+          }}
+          className="w-[180px] h-11 bg-bg-light border border-border-light"
+        >
+          <option value="all">All Approvals</option>
           <option value="not_started">Not Started</option>
           <option value="in_progress">In Progress</option>
           <option value="pending_verification">Pending Verification</option>
@@ -117,6 +130,37 @@ function VendorsContent() {
           <option value="approved_controlled">Approved (Controlled)</option>
           <option value="rejected">Rejected</option>
         </Select>
+
+        <Select
+          value={status}
+          onChange={(e) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("status", e.target.value);
+            params.delete("page");
+            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+          }}
+          className="w-40 h-11 bg-bg-light border border-border-light"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+        </Select>
+
+        <Select
+          value={controlled}
+          onChange={(e) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("controlled", e.target.value);
+            params.delete("page");
+            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+          }}
+          className="w-40 h-11 bg-bg-light border border-border-light"
+        >
+          <option value="all">Controlled (All)</option>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </Select>
+
         <SearchInput placeholder="Search by name or email..." />
       </div>
 

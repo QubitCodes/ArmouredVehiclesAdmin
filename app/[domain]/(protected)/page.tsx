@@ -9,7 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { useDashboard } from "@/hooks/admin/dashboard/use-dashboard";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 import { DashboardWidget } from "@/services/admin/dashboard.service";
 
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
   // Check onboarding status for vendors
   const { data: profileData, isLoading: isProfileLoading } = useOnboardingProfile();
   const onboardingStatus = profileData?.profile?.onboarding_status;
-  const isRestricted = domain === "vendor" && (onboardingStatus === 'pending_verification' || onboardingStatus === 'rejected');
+  const isRestricted = domain === "vendor" && (onboardingStatus === 'pending_verification' || onboardingStatus === 'rejected' || onboardingStatus === 'update_needed');
 
   useEffect(() => {
     if (error) {
@@ -57,6 +57,30 @@ export default function AdminDashboard() {
   }, [error, isRestricted]);
 
   const isLoading = isStatsLoading || (domain === "vendor" && isProfileLoading);
+  const router = useRouter(); // Currently unused but needed for redirection
+  const onboardingStep = profileData?.user?.onboardingStep;
+
+  // Sticky redirection for vendors
+  useEffect(() => {
+    if (domain === "vendor" && !isProfileLoading && profileData) {
+      // If step is not null, force redirect to that step
+      if (onboardingStep !== null && onboardingStep !== undefined) {
+        const stepMap: Record<number, string> = {
+          0: "create-store",
+          1: "company-information",
+          2: "contact-person",
+          3: "declaration",
+          4: "account-preferences",
+          5: "bank-account",
+          6: "verification",
+        };
+        const stepPath = stepMap[onboardingStep];
+        if (stepPath) {
+          router.push(`/vendor/${stepPath}`);
+        }
+      }
+    }
+  }, [domain, isProfileLoading, profileData, onboardingStep, router]);
 
   if (isLoading) {
     return (
@@ -91,7 +115,17 @@ export default function AdminDashboard() {
                   <h3 className="font-semibold text-lg">Application Rejected</h3>
                 </div>
                 <p className="mt-2 text-sm text-destructive/90">
-                  Your vendor application has been rejected. Please contact support.
+                  {profileData?.profile?.rejection_reason || "Your vendor application has been rejected. Please contact support."}
+                </p>
+              </div>
+            ) : onboardingStatus === 'update_needed' ? (
+              <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-6">
+                <div className="flex items-center gap-3 text-yellow-600 dark:text-yellow-500">
+                  <AlertCircle className="h-6 w-6" />
+                  <h3 className="font-semibold text-lg">Update Required</h3>
+                </div>
+                <p className="mt-2 text-sm text-yellow-600/90 dark:text-yellow-500/90">
+                  {profileData?.profile?.rejection_reason || "Your application requires updates. Please check your email or profile for details."}
                 </p>
               </div>
             ) : (
