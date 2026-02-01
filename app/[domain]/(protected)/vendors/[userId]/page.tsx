@@ -258,12 +258,10 @@ function VendorActions({ vendor }: { vendor: any }) {
 function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFields?: Set<string> }) {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [comment, setComment] = useState("");
-  const [canApproveControlled, setCanApproveControlled] = useState(false);
 
+  // No pre-selection logic
+  // useEffect dependency fixed
   useEffect(() => {
-    const hasPermission = authService.hasPermission("vendor.controlled.approve");
-    setCanApproveControlled(hasPermission);
-    // No pre-selection logic
   }, [vendor]);
 
   // Force rejection if fields are marked
@@ -327,11 +325,14 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
           >
             {/* If fields are marked, only show Rejected option (or disable others) */}
 
-            {(canApproveControlled && !hasMarkedFields) && (
-              <option value="approved_controlled">Approved Controlled</option>
-            )}
-            {!hasMarkedFields && (
+            {/* General Approval Option */}
+            {(!hasMarkedFields && (authService.hasPermission("vendor.approve") || authService.hasPermission("vendor.controlled.approve"))) && (
               <option value="approved_general">Approved General</option>
+            )}
+
+            {/* Controlled Approval Option */}
+            {(!hasMarkedFields && authService.hasPermission("vendor.controlled.approve")) && (
+              <option value="approved_controlled">Approved Controlled</option>
             )}
 
             <option value="rejected">Rejected</option>

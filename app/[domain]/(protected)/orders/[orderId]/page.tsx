@@ -389,7 +389,17 @@ export default function OrderDetailPage() {
                   <option value="order_received">Order Received</option>
                   <option value="vendor_approved">Vendor Approved</option>
                   <option value="vendor_rejected">Vendor Rejected</option>
-                  <option value="approved">Approved</option>
+
+                  {/* General Approval - Visible if has 'order.approve' */}
+                  {(authService.hasPermission("order.approve")) && (
+                    <option value="approved">Approved</option>
+                  )}
+
+                  {/* Controlled Approval - Visible if has 'order.controlled.approve' */}
+                  {(authService.hasPermission("order.controlled.approve")) && (
+                    <option value="approved_controlled">Approved (Controlled)</option>
+                  )}
+
                   <option value="rejected">Rejected</option>
                   <option value="cancelled">Cancelled</option>
                 </>

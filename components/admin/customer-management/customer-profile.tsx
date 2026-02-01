@@ -694,12 +694,16 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                             value={selectedStatus}
                             onChange={(e) => setSelectedStatus(e.target.value)}
                         >
-                            {(!hasMarkedFields) && (
+                            {/* General Approval Option */}
+                            {(!hasMarkedFields && (authService.hasPermission("customer.approve") || authService.hasPermission("customer.controlled.approve"))) && (
                                 <option value="approved_general">Approve (General)</option>
                             )}
-                            {(canApproveControlled && !hasMarkedFields) && (
+
+                            {/* Controlled Approval Option */}
+                            {((canApproveControlled || authService.hasPermission("customer.controlled.approve")) && !hasMarkedFields) && (
                                 <option value="approved_controlled">Approve (Controlled)</option>
                             )}
+
                             <option value="rejected">Reject Application</option>
                             <option value="update_needed">Request Update</option>
                             <option value="pending_verification">Set to Pending</option>

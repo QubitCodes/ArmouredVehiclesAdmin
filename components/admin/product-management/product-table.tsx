@@ -142,6 +142,7 @@ export function ProductTable({
 
   const statusOptions = [
     { value: "approved", label: "Approved" },
+    { value: "approved_controlled", label: "Approved (Controlled)" },
     { value: "rejected", label: "Rejected" },
     { value: "pending", label: "Pending" },
   ];
@@ -353,11 +354,21 @@ export function ProductTable({
                         )}
                         disabled={!isAdmin || (updateStatusMutation.isPending && updateStatusMutation.variables?.id === product.id)}
                       >
-                        {statusOptions.map((option) => (
-                          <option key={option.value} value={option.value} className="bg-background text-foreground">
-                            {option.label}
-                          </option>
-                        ))}
+                        {statusOptions
+                          .filter(option => {
+                            if (option.value === "approved" || option.value === "approved_general") {
+                              return authService.hasPermission("product.approve") || authService.hasPermission("product.controlled.approve");
+                            }
+                            if (option.value === "approved_controlled") {
+                              return authService.hasPermission("product.controlled.approve");
+                            }
+                            return true;
+                          })
+                          .map((option) => (
+                            <option key={option.value} value={option.value} className="bg-background text-foreground">
+                              {option.label}
+                            </option>
+                          ))}
                       </Select>
                     </div>
                   )}
