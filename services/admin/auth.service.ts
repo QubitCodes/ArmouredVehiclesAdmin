@@ -175,6 +175,25 @@ class AuthService {
 
     return false;
   }
+
+  /**
+   * Check if user has ANY of the provided permissions
+   */
+  hasAnyPermission(permissions: string[], allowVendor: boolean = false): boolean {
+    const user = this.getUserDetails();
+    if (!user) return false;
+
+    if (user.userType === "super_admin") return true;
+    if (user.userType === "vendor") return allowVendor;
+
+    // Admin check
+    if (user.userType === "admin") {
+      if (!user.permissions || !Array.isArray(user.permissions)) return false;
+      return permissions.some(p => user.permissions.includes(p));
+    }
+
+    return false;
+  }
 }
 
 export const authService = new AuthService();

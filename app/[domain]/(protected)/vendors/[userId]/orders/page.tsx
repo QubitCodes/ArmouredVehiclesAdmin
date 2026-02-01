@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
@@ -9,14 +9,32 @@ import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { useOrders } from "@/hooks/admin/order-management/use-orders";
 import { OrderTable } from "@/components/admin/order-management/order-table";
+import { authService } from "@/services/admin/auth.service";
 
 function VendorOrdersContent() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const vendorId = params.userId as string;
   const domain = (params?.domain as string) || "admin";
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
+
+  // Permission Check
+  useEffect(() => {
+    const hasOrderPerm = authService.hasAnyPermission([
+      'order.view',
+      'order.manage',
+      'order.approve',
+      'order.controlled.approve'
+    ], true);
+
+    if (!hasOrderPerm) {
+      toast.error("You do not have permission to view orders.");
+      router.push(`/${domain}/vendors/${vendorId}`);
+    }
+  }, [domain, router, vendorId]);
+
 
   // Fetch orders for this vendor with search and pagination parameters
   const { data, isLoading, error } = useOrders({

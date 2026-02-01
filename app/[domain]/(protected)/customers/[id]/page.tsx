@@ -40,10 +40,22 @@ export default function CustomerDetailPage() {
     const [markedFields, setMarkedFields] = useState<Set<string>>(new Set());
     const [canPerformActions, setCanPerformActions] = useState(false);
 
+    // Order Permission State
+    const [canViewOrders, setCanViewOrders] = useState(false);
+
     useEffect(() => {
         // Simple permission check (can be refined based on actual permission names)
         const perm = authService.hasPermission("customer.approve") || authService.hasPermission("customer.controlled.approve");
         setCanPerformActions(perm);
+
+        // Check if user has ANY of the order permissions for the Orders Tab
+        const hasOrderPerm = authService.hasAnyPermission([
+            'order.view',
+            'order.manage',
+            'order.approve',
+            'order.controlled.approve'
+        ], false);
+        setCanViewOrders(hasOrderPerm);
     }, []);
 
     const toggleMarkField = (field: string) => {
@@ -70,6 +82,10 @@ export default function CustomerDetailPage() {
     }, [error]);
 
     const handleTabChange = (tab: string) => {
+        if (tab === 'orders' && !canViewOrders) {
+            toast.error("You do not have permission to view orders.");
+            return;
+        }
         const params = new URLSearchParams(searchParams.toString());
         params.set("tab", tab);
         router.replace(`${pathname}?${params.toString()}`);
@@ -141,18 +157,21 @@ export default function CustomerDetailPage() {
                         <Info className="h-4 w-4" />
                         <span>Info</span>
                     </button>
-                    <button
-                        onClick={() => handleTabChange('orders')}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
-                            currentTab === 'orders'
-                                ? "text-primary border-primary"
-                                : "text-muted-foreground border-transparent hover:text-foreground hover:border-muted-foreground"
-                        )}
-                    >
-                        <ShoppingCart className="h-4 w-4" />
-                        <span>Orders</span>
-                    </button>
+
+                    {canViewOrders && (
+                        <button
+                            onClick={() => handleTabChange('orders')}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
+                                currentTab === 'orders'
+                                    ? "text-primary border-primary"
+                                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-muted-foreground"
+                            )}
+                        >
+                            <ShoppingCart className="h-4 w-4" />
+                            <span>Orders</span>
+                        </button>
+                    )}
                 </nav>
             </div>
 
@@ -166,7 +185,7 @@ export default function CustomerDetailPage() {
                         canPerformActions={canPerformActions}
                     />
                 )}
-                {currentTab === 'orders' && <CustomerOrders customerId={customerId} basePath={`/${domain}/orders`} />}
+                {currentTab === 'orders' && canViewOrders && <CustomerOrders customerId={customerId} basePath={`/${domain}/orders`} />}
             </div>
 
         </div>

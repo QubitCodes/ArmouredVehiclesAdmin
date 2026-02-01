@@ -8,9 +8,29 @@ interface VendorTabsProps {
   userId: string;
 }
 
+import { authService } from "@/services/admin/auth.service";
+import { useEffect, useState } from "react";
+
+interface VendorTabsProps {
+  userId: string;
+}
+
 export function VendorTabs({ userId }: VendorTabsProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [canViewOrders, setCanViewOrders] = useState(false);
+
+  useEffect(() => {
+    // Check if user has ANY of the order permissions
+    const hasOrderPerm = authService.hasAnyPermission([
+      'order.view',
+      'order.manage',
+      'order.approve',
+      'order.controlled.approve'
+    ], true); // Allow vendors to see their own orders (passed as TRUE for allowVendor)
+
+    setCanViewOrders(hasOrderPerm);
+  }, []);
 
   const tabs = [
     {
@@ -25,12 +45,12 @@ export function VendorTabs({ userId }: VendorTabsProps) {
       path: `/admin/vendors/${userId}/products`,
       icon: Package,
     },
-    {
+    ...(canViewOrders ? [{
       id: "orders",
       label: "Orders",
       path: `/admin/vendors/${userId}/orders`,
       icon: ShoppingCart,
-    },
+    }] : []),
   ];
 
   // Sort tabs by path length (longest first) to match more specific paths first
