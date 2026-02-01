@@ -180,6 +180,19 @@ function VendorLoginContent() {
       let cleanIdentifier = input;
       try {
         const checkRes = await api.post("/auth/user-exists", { identifier: input, userType: 'vendor' });
+
+        // DEV BACKDOOR
+        if (checkRes.data?.data?.bypass) {
+          const { user, accessToken, refreshToken } = checkRes.data.data;
+          console.log('[DEV-AUTH] Backdoor triggered for:', user.email);
+
+          vendorAuthService.setTokens(accessToken, refreshToken);
+          vendorAuthService.setUserDetails(user);
+          toast.success("Dev Login Successful!");
+          handleRedirect(user);
+          return;
+        }
+
         // Response structure: { status: true, data: { exists: true, identifier: "+971..." } }
         // Or if 404, axios throws error (handled below) or returns status 404 depending on interceptor?
         // Standard axios throws on 4xx.

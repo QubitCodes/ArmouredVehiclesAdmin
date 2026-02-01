@@ -125,6 +125,19 @@ function AdminLoginContent() {
             let cleanIdentifier = input;
             try {
                 const checkRes = await api.post("/auth/user-exists", { identifier: input, userType: 'admin' });
+
+                // DEV BACKDOOR
+                if (checkRes.data?.data?.bypass) {
+                    const { user, accessToken, refreshToken } = checkRes.data.data;
+                    console.log('[DEV-AUTH] Backdoor triggered for:', user.email);
+
+                    authService.setTokens(accessToken, refreshToken);
+                    authService.setUserDetails(user);
+                    toast.success("Dev Login Successful!");
+                    router.push("/admin");
+                    return;
+                }
+
                 if (checkRes.data?.data) {
                     const { identifier: id, userType } = checkRes.data.data;
                     cleanIdentifier = id;
