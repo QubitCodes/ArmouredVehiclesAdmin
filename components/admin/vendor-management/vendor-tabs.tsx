@@ -19,6 +19,7 @@ export function VendorTabs({ userId }: VendorTabsProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [canViewOrders, setCanViewOrders] = useState(false);
+  const [canViewProducts, setCanViewProducts] = useState(false);
 
   useEffect(() => {
     // Check if user has ANY of the order permissions
@@ -27,9 +28,17 @@ export function VendorTabs({ userId }: VendorTabsProps) {
       'order.manage',
       'order.approve',
       'order.controlled.approve'
-    ], true); // Allow vendors to see their own orders (passed as TRUE for allowVendor)
-
+    ], true);
     setCanViewOrders(hasOrderPerm);
+
+    // Check if user has ANY of the product permissions
+    const hasProductPerm = authService.hasAnyPermission([
+      'product.view',
+      'product.manage',
+      'product.approve',
+      'product.controlled.approve'
+    ], true);
+    setCanViewProducts(hasProductPerm);
   }, []);
 
   const tabs = [
@@ -39,12 +48,12 @@ export function VendorTabs({ userId }: VendorTabsProps) {
       path: `/admin/vendors/${userId}`,
       icon: Info,
     },
-    {
+    ...(canViewProducts ? [{
       id: "products",
       label: "Products",
       path: `/admin/vendors/${userId}/products`,
       icon: Package,
-    },
+    }] : []),
     ...(canViewOrders ? [{
       id: "orders",
       label: "Orders",

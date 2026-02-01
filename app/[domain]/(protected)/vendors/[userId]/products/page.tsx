@@ -12,6 +12,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { authService } from "@/services/admin/auth.service";
 
 function VendorProductsContent() {
   const router = useRouter();
@@ -19,10 +20,26 @@ function VendorProductsContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const userId = params.userId as string;
+  const domain = (params?.domain as string) || "admin";
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
   const rawStatus = searchParams.get("approval_status") || "all";
   const approvalStatus = rawStatus || "all";
+
+  // Permission Check
+  useEffect(() => {
+    const hasProductPerm = authService.hasAnyPermission([
+      'product.view',
+      'product.manage',
+      'product.approve',
+      'product.controlled.approve'
+    ], true);
+
+    if (!hasProductPerm) {
+      toast.error("You do not have permission to view products.");
+      router.push(`/${domain}/vendors/${userId}`);
+    }
+  }, [domain, router, userId]);
 
   const handleStatusFilterChange = (newStatus: string) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -40,8 +57,8 @@ function VendorProductsContent() {
     search: search || undefined,
     page,
     limit: 10,
-    approval_status: (approvalStatus === "all" || !approvalStatus) 
-      ? undefined 
+    approval_status: (approvalStatus === "all" || !approvalStatus)
+      ? undefined
       : approvalStatus,
   });
 
