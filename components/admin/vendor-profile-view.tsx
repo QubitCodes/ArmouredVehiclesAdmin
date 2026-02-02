@@ -198,20 +198,22 @@ const formatValue = (value: unknown, fieldName: string): string | string[] => {
 export function VendorProfileView({ user, profile, markedFields, toggleMarkField, canPerformActions, hideUserInfo = false }: VendorProfileViewProps) {
 
     // Render row logic
+    // Render row logic
     const renderRow = (fieldName: string, customLabel?: string, overrideValue?: React.ReactNode) => {
         const value = overrideValue !== undefined ? overrideValue : profile?.[fieldName];
-        // Pass value if overrideValue is not provided, else pass helper logic
-        // Actually overrideValue is only for Company Phone custom render.
-        // If overrideValue is NULL/undefined, we get value from profile.
-        // But overrideValue might be passed as a ReactNode. We need to handle this.
+        // Calculate raw and formatted values upfront for use in both display and logic checks
+        const rawValue = profile?.[fieldName];
+        const formattedValue = formatValue(rawValue, fieldName);
 
         let displayValue: React.ReactNode = "—";
 
-        if (overrideValue) {
+        if (overrideValue !== undefined) {
+            // If override is provided, we use it directly.
+            // Typically if an override is provided (e.g. for a very custom field), we assume the caller handles "missing" state or we don't show "Not Provided".
+            // However, to be safe, if overrideValue is null/undefined we fall back, but here we checked !== undefined.
             displayValue = overrideValue;
         } else {
-            const rawValue = profile?.[fieldName];
-            const formattedValue = formatValue(rawValue, fieldName);
+            // Existing logic to determine displayValue based on field type
 
             const isEmail = fieldName.toLowerCase().includes("email") && rawValue;
             const isPhone =
@@ -287,16 +289,28 @@ export function VendorProfileView({ user, profile, markedFields, toggleMarkField
 
         const isMarked = markedFields?.has(fieldName);
 
+        // Logic based on formattedValue. Note: If overrideValue is used, we might still want to check rawValue? 
+        // If overrideValue is explicitly passed, let's assume it should be displayed as is.
+        // BUT if it's not passed, we use formattedValue to check for missing data.
+        const isMissing = overrideValue === undefined && (formattedValue === "—" || formattedValue === "" || formattedValue === null || (Array.isArray(formattedValue) && formattedValue.length === 0));
+
         return (
             <TableRow key={fieldName} className={cn(isMarked && "bg-destructive/10")}>
-                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide", isMarked && "line-through opacity-50")}>
+                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide align-top py-4", isMarked && "line-through opacity-50")}>
                     {customLabel || formatFieldName(fieldName)}
                 </TableCell>
-                <TableCell className={cn(isMarked && "line-through opacity-50 text-destructive")}>
-                    {displayValue}
+                <TableCell className={cn("align-top py-4", isMarked && "line-through opacity-50 text-destructive")}>
+                    {isMissing ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Not Provided
+                        </span>
+                    ) : (
+                        displayValue
+                    )}
                 </TableCell>
-                {canPerformActions && (
-                    <TableCell className="w-[80px] text-right">
+                {canPerformActions && toggleMarkField && (
+                    <TableCell className="w-[80px] text-right align-top py-3">
                         <Button
                             variant="ghost"
                             size="icon"

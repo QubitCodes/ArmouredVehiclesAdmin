@@ -9,9 +9,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { useOrders } from "@/hooks/admin/order-management/use-orders";
+import { useParams } from "next/navigation";
 import { OrderTable } from "@/components/admin/order-management/order-table";
 
 function OrdersContent() {
+  const params = useParams();
+  const domain = (params?.domain as string) || "admin";
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const page = Number(searchParams.get("page")) || 1;
@@ -23,7 +26,7 @@ function OrdersContent() {
   useEffect(() => {
     const user = authService.getUserDetails();
     if (user && user.userType) {
-        setUserRole(user.userType.toLowerCase());
+      setUserRole(user.userType.toLowerCase());
     }
   }, []);
 
@@ -63,23 +66,23 @@ function OrdersContent() {
       </div>
 
       <div className="flex items-center justify-between">
-         <div className="flex items-center space-x-2">
-             {userRole !== 'vendor' && (
-                 <>
-                    <input 
-                    type="checkbox" 
-                    id="show-all" 
-                    checked={showAll} 
-                    onChange={(e) => setShowAll(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <label htmlFor="show-all" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Show All Orders (All Vendors)
-                    </label>
-                 </>
-             )}
-         </div>
-         <SearchInput placeholder="Search by order ID or customer" />
+        <div className="flex items-center space-x-2">
+          {userRole !== 'vendor' && (
+            <>
+              <input
+                type="checkbox"
+                id="show-all"
+                checked={showAll}
+                onChange={(e) => setShowAll(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="show-all" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Show All Orders (All Vendors)
+              </label>
+            </>
+          )}
+        </div>
+        <SearchInput placeholder="Search by order ID or customer" />
       </div>
 
       {isLoading ? (
@@ -93,7 +96,7 @@ function OrdersContent() {
         </div>
       ) : (
         <>
-          <OrderTable orders={orders} />
+          <OrderTable orders={orders} basePath={`/${domain}/orders`} />
           <Pagination
             currentPage={pagination.page}
             totalPages={pagination.totalPages}

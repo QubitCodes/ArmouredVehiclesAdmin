@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, useSearchParams, usePathname, useParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
@@ -14,6 +14,8 @@ import { Users } from "lucide-react";
 
 function CustomersContent() {
     const router = useRouter();
+    const params = useParams();
+    const domain = (params?.domain as string) || "admin";
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const search = searchParams.get("search") || "";
@@ -139,7 +141,7 @@ function CustomersContent() {
                 </div>
             ) : (
                 <>
-                    <CustomerTable customers={customers} />
+                    <CustomerTable customers={customers} basePath={`/${domain}/customers`} />
                     {customers.length > 0 && <Pagination
                         currentPage={pagination.page}
                         totalPages={pagination.totalPages}

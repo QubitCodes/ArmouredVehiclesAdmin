@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import api from "@/lib/api";
 import { authService } from "@/services/admin/auth.service";
+import { vendorAuthService } from "@/services/vendor/auth.service";
 
 function AdminLoginContent() {
     const router = useRouter();
@@ -87,6 +88,8 @@ function AdminLoginContent() {
                 }
 
                 if (data.accessToken) {
+                    // Clear conflicting vendor sessions
+                    vendorAuthService.clearTokens();
                     authService.setTokens(data.accessToken, data.refreshToken || "");
                 }
 

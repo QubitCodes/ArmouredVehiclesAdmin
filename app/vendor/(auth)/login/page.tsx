@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import api from "@/lib/api";
 import { vendorAuthService } from "@/services/vendor/auth.service";
+import { authService } from "@/services/admin/auth.service";
 
 function VendorLoginContent() {
   const router = useRouter();
@@ -138,8 +139,11 @@ function VendorLoginContent() {
 
       if (status && data) {
         if (data.accessToken && data.refreshToken) {
+          // Clear any conflicting admin sessions
+          authService.clearTokens();
           vendorAuthService.setTokens(data.accessToken, data.refreshToken);
         } else if (data.token) {
+          authService.clearTokens();
           vendorAuthService.setAccessToken(data.token);
         }
 

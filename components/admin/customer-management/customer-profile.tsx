@@ -5,12 +5,12 @@ import { toast } from "sonner";
 import {
     User,
     Mail,
-    Phone,
+    CheckCircle2,
     Shield,
     FileText,
-    CheckCircle2,
     AlertCircle,
     XCircle,
+    Phone,
     Building2,
     CreditCard,
     Globe,
@@ -248,9 +248,10 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
     const profile = (customer.profile as any) || null;
 
     // Render row logic
+    // Render row logic
     const renderRow = (fieldName: string, customLabel?: string, overrideValue?: React.ReactNode) => {
-        const rawValue = overrideValue !== undefined ? overrideValue : profile?.[fieldName];
-        const formattedValue = formatValue(profile?.[fieldName], fieldName);
+        const rawValue = profile?.[fieldName];
+        const formattedValue = formatValue(rawValue, fieldName);
 
         let displayValue: React.ReactNode = "—";
 
@@ -331,13 +332,23 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
 
         const isMarked = markedFields?.has(fieldName);
 
+        // Fix: logic based on formattedValue, not displayValue
+        const isMissing = overrideValue === undefined && (formattedValue === "—" || formattedValue === "" || formattedValue === null || (Array.isArray(formattedValue) && formattedValue.length === 0));
+
         return (
             <TableRow key={fieldName} className={cn(isMarked && "bg-destructive/10")}>
-                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide", isMarked && "line-through opacity-50")}>
+                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide align-top py-4", isMarked && "line-through opacity-50")}>
                     {customLabel || formatFieldName(fieldName)}
                 </TableCell>
-                <TableCell className={cn(isMarked && "line-through opacity-50 text-destructive")}>
-                    {displayValue}
+                <TableCell className={cn("align-top py-4", isMarked && "line-through opacity-50 text-destructive")}>
+                    {isMissing ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Not Provided
+                        </span>
+                    ) : (
+                        displayValue
+                    )}
                 </TableCell>
                 {canPerformActions && toggleMarkField && (
                     <TableCell className="w-[80px] text-right">

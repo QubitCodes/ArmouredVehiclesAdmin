@@ -8,9 +8,10 @@ import { normalizeImageUrl } from "@/lib/utils";
 
 interface CustomerTableProps {
     customers: Customer[];
+    basePath?: string;
 }
 
-export function CustomerTable({ customers }: CustomerTableProps) {
+export function CustomerTable({ customers, basePath = "/admin/customers" }: CustomerTableProps) {
     const router = useRouter();
 
     if (customers.length === 0) {
@@ -22,7 +23,7 @@ export function CustomerTable({ customers }: CustomerTableProps) {
     }
 
     const handleCustomerClick = (customerId: string) => {
-        router.push(`/admin/customers/${customerId}`);
+        router.push(`${basePath}/${customerId}`);
     };
 
     const formatPhone = (phone: string | null, countryCode: string | null): string => {
