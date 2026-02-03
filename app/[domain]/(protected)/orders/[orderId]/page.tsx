@@ -77,8 +77,15 @@ export default function OrderDetailPage() {
   // Payment Confirmation Dialog State
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
-    payment_mode: "",
+    payment_mode: "Bank Transfer",
     transaction_id: "",
+    sender_bank: "",
+    sender_name: "",
+    receipt_no: "",
+    collected_by: "",
+    cheque_no: "",
+    issuing_bank: "",
+    notes: ""
   });
 
   const handlePaymentStatusChange = (newStatus: string) => {
@@ -90,22 +97,71 @@ export default function OrderDetailPage() {
   };
 
   const handlePaymentConfirm = () => {
-    if (!paymentForm.payment_mode || !paymentForm.transaction_id) {
-      toast.error("Please fill in all payment details");
+    // Basic validation
+    if (paymentForm.payment_mode === "Bank Transfer" && (!paymentForm.transaction_id || !paymentForm.sender_bank)) {
+      toast.error("Please fill in reference number and bank name");
       return;
     }
 
-    const transaction_details = JSON.stringify({
+    const newPaymentEntry: any = {
       payment_mode: paymentForm.payment_mode,
-      transaction_id: paymentForm.transaction_id,
-    });
+      transaction_id: paymentForm.transaction_id || `MANUAL-${Date.now()}`,
+      manual_entry: true,
+      timestamp: new Date().toISOString(),
+      offline_details: {}
+    };
+
+    if (paymentForm.payment_mode === "Bank Transfer") {
+      newPaymentEntry.offline_details = {
+        sender_bank: paymentForm.sender_bank,
+        sender_name: paymentForm.sender_name
+      };
+    } else if (paymentForm.payment_mode === "Cash") {
+      newPaymentEntry.offline_details = {
+        collected_by: paymentForm.collected_by,
+        receipt_no: paymentForm.receipt_no
+      };
+    } else if (paymentForm.payment_mode === "Cheque") {
+      newPaymentEntry.offline_details = {
+        cheque_no: paymentForm.cheque_no,
+        issuing_bank: paymentForm.issuing_bank
+      };
+    }
+
+    if (paymentForm.notes) {
+      newPaymentEntry.notes = paymentForm.notes;
+    }
+
+    // Parse existing or start new array
+    let currentDetails: any[] = [];
+    try {
+      const raw = (order as any).transaction_details;
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        currentDetails = Array.isArray(parsed) ? parsed : [parsed];
+      }
+    } catch (e) {
+      console.error("Error parsing transaction_details", e);
+    }
+
+    const transaction_details = JSON.stringify([...currentDetails, newPaymentEntry]);
 
     updateOrder({
       payment_status: "paid",
       transaction_details,
     });
     setIsPaymentDialogOpen(false);
-    setPaymentForm({ payment_mode: "", transaction_id: "" });
+    setPaymentForm({
+      payment_mode: "Bank Transfer",
+      transaction_id: "",
+      sender_bank: "",
+      sender_name: "",
+      receipt_no: "",
+      collected_by: "",
+      cheque_no: "",
+      issuing_bank: "",
+      notes: ""
+    });
   };
 
   // Shipment Confirmation Dialog State
@@ -935,34 +991,109 @@ export default function OrderDetailPage() {
       )}
       {/* Payment Confirmation Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Confirm Payment</DialogTitle>
+            <DialogTitle>Confirm Offline Payment</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="payment_mode">Payment Mode</Label>
-              <Input
-                id="payment_mode"
-                placeholder="e.g. Credit Card, Bank Transfer"
+              <Label htmlFor="payment_mode">Payment Type</Label>
+              <Select
                 value={paymentForm.payment_mode}
-                onChange={(e) =>
-                  setPaymentForm({ ...paymentForm, payment_mode: e.target.value })
-                }
-              />
+                onChange={(e) => setPaymentForm({ ...paymentForm, payment_mode: e.target.value })}
+                className="h-10 text-sm"
+              >
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
+              </Select>
             </div>
+
+            {paymentForm.payment_mode === "Bank Transfer" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="transaction_id">Reference Number *</Label>
+                  <Input
+                    id="transaction_id"
+                    placeholder="e.g., TRN-12345678"
+                    value={paymentForm.transaction_id}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, transaction_id: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="sender_bank">Sender Bank *</Label>
+                  <Input
+                    id="sender_bank"
+                    placeholder="e.g., Chase Bank"
+                    value={paymentForm.sender_bank}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, sender_bank: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2 col-span-2">
+                  <Label htmlFor="sender_name">Account Name / Sender Name</Label>
+                  <Input
+                    id="sender_name"
+                    placeholder="e.g., John Doe's Business Account"
+                    value={paymentForm.sender_name}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, sender_name: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {paymentForm.payment_mode === "Cash" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="collected_by">Collected By *</Label>
+                  <Input
+                    id="collected_by"
+                    placeholder="Staff name"
+                    value={paymentForm.collected_by}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, collected_by: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="receipt_no">Receipt No</Label>
+                  <Input
+                    id="receipt_no"
+                    placeholder="Manual receipt ID"
+                    value={paymentForm.receipt_no}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, receipt_no: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {paymentForm.payment_mode === "Cheque" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="cheque_no">Cheque Number *</Label>
+                  <Input
+                    id="cheque_no"
+                    placeholder="000123"
+                    value={paymentForm.cheque_no}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, cheque_no: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="issuing_bank">Issuing Bank *</Label>
+                  <Input
+                    id="issuing_bank"
+                    placeholder="Bank Name"
+                    value={paymentForm.issuing_bank}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, issuing_bank: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-2">
-              <Label htmlFor="transaction_id">Transaction ID</Label>
+              <Label htmlFor="notes">Notes (Internal)</Label>
               <Input
-                id="transaction_id"
-                placeholder="Enter transaction reference"
-                value={paymentForm.transaction_id}
-                onChange={(e) =>
-                  setPaymentForm({
-                    ...paymentForm,
-                    transaction_id: e.target.value,
-                  })
-                }
+                id="notes"
+                placeholder="Optional comments about this payment"
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
               />
             </div>
           </div>
@@ -1029,44 +1160,95 @@ export default function OrderDetailPage() {
       </Dialog>
       {/* View Payment Details Dialog */}
       <Dialog open={viewPaymentDialogOpen} onOpenChange={setViewPaymentDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Payment Details</DialogTitle>
+            <DialogTitle>Payment Details History</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            {(order as any).transaction_details ? (
-              <>
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="text-muted-foreground">Payment Mode:</span>
-                  <span className="font-semibold text-foreground">
-                    {typeof (order as any).transaction_details === 'string'
-                      ? JSON.parse((order as any).transaction_details).payment_mode
-                      : (order as any).transaction_details?.payment_mode || "—"}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1 border-b pb-2">
-                  <span className="text-muted-foreground">Transaction Reference:</span>
-                  <span className="font-mono bg-muted p-2 rounded break-all text-sm">
-                    {typeof (order as any).transaction_details === 'string'
-                      ? JSON.parse((order as any).transaction_details).transaction_id
-                      : (order as any).transaction_details?.transaction_id || "—"}
-                  </span>
-                </div>
-                {order.updated_at && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Last Updated:</span>
-                    <span className="font-semibold text-foreground">
-                      {formatDate(order.updated_at as any)}
-                    </span>
+          <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+            {(() => {
+              const raw = (order as any).transaction_details;
+              if (!raw) return <p className="text-center text-muted-foreground">No details available.</p>;
+
+              let payments: any[] = [];
+              try {
+                const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                payments = Array.isArray(parsed) ? parsed : [parsed];
+              } catch (e) {
+                return <p className="text-center text-red-500">Error rendering details.</p>;
+              }
+
+              return payments.map((payment, idx) => (
+                <div key={idx} className="bg-muted/30 rounded-lg p-4 border border-border/50 space-y-3 relative">
+                  <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Entry #{idx + 1}</span>
+                    {payment.timestamp && (
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {formatDate(payment.timestamp)}
+                      </span>
+                    )}
                   </div>
-                )}
-              </>
-            ) : (
-              <p className="text-center text-muted-foreground">No details available.</p>
-            )}
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Mode</p>
+                      <p className="font-semibold text-foreground">{payment.payment_mode || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Reference ID</p>
+                      <p className="font-mono text-xs break-all text-primary">{payment.transaction_id || "—"}</p>
+                    </div>
+
+                    {/* Offline Specific Details */}
+                    {payment.offline_details?.sender_bank && (
+                      <div className="col-span-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Sender Bank</p>
+                        <p className="font-medium">{payment.offline_details.sender_bank}</p>
+                      </div>
+                    )}
+                    {payment.offline_details?.sender_name && (
+                      <div className="col-span-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Account Name</p>
+                        <p className="font-medium text-foreground">{payment.offline_details.sender_name}</p>
+                      </div>
+                    )}
+                    {payment.offline_details?.collected_by && (
+                      <div className="col-span-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Collected By</p>
+                        <p className="font-medium">{payment.offline_details.collected_by}</p>
+                      </div>
+                    )}
+                    {payment.offline_details?.receipt_no && (
+                      <div className="col-span-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Receipt No</p>
+                        <p className="font-medium">{payment.offline_details.receipt_no}</p>
+                      </div>
+                    )}
+                    {payment.offline_details?.cheque_no && (
+                      <div className="col-span-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Cheque No</p>
+                        <p className="font-medium">{payment.offline_details.cheque_no}</p>
+                      </div>
+                    )}
+                    {payment.offline_details?.issuing_bank && (
+                      <div className="col-span-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Issuing Bank</p>
+                        <p className="font-medium">{payment.offline_details.issuing_bank}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {payment.notes && (
+                    <div className="mt-2 pt-2 border-t border-border/50">
+                      <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Notes</p>
+                      <p className="text-xs italic text-foreground/80">{payment.notes}</p>
+                    </div>
+                  )}
+                </div>
+              ));
+            })()}
           </div>
           <DialogFooter>
-            <Button onClick={() => setViewPaymentDialogOpen(false)}>Close</Button>
+            <Button variant="secondary" onClick={() => setViewPaymentDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
