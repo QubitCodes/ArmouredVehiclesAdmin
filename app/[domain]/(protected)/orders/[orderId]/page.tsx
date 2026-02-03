@@ -342,10 +342,12 @@ export default function OrderDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-foreground">
-              {order.total_amount
-                ? `${parseFloat(String(order.total_amount)).toFixed(2)} ${order.currency || "AED"
-                }`
-                : "—"}
+              {((order as any).group_total_amount && userRole !== 'vendor')
+                ? `${parseFloat(String((order as any).group_total_amount)).toFixed(2)} ${order.currency || "AED"}`
+                : (order.total_amount
+                  ? `${parseFloat(String(order.total_amount)).toFixed(2)} ${order.currency || "AED"}`
+                  : "—")
+              }
             </p>
           </CardContent>
         </Card>
