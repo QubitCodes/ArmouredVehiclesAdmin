@@ -501,7 +501,7 @@ export default function OrderDetailPage() {
             </Select>
 
             {/* Payment Details Button */}
-            {(String(order.payment_status) === "paid" && (order as any).transaction_details) && (
+            {(order as any).transaction_details && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1182,10 +1182,17 @@ export default function OrderDetailPage() {
 
               if (payments.length === 0) return <p className="text-center text-muted-foreground">No details available.</p>;
 
-              return payments.map((payment, idx) => (
+              // Sort by timestamp descending (latest first)
+              const sortedPayments = [...payments].sort((a, b) => {
+                return new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime();
+              });
+
+              return sortedPayments.map((payment, idx) => (
                 <div key={idx} className="bg-muted/30 rounded-lg p-4 border border-border/50 space-y-3 relative">
                   <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Entry #{idx + 1}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {idx === 0 ? "Latest Attempt" : `Previous Attempt (${sortedPayments.length - idx})`}
+                    </span>
                     {payment.timestamp && (
                       <span className="text-[10px] text-muted-foreground font-medium">
                         {formatDate(payment.timestamp)}
@@ -1203,16 +1210,35 @@ export default function OrderDetailPage() {
                             Paid
                           </span>
                         )}
+                        {payment.payment_status === 'pending' && (
+                          <span className="inline-flex items-center rounded-full bg-yellow-50 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20">
+                            Pending
+                          </span>
+                        )}
+                        {(payment.payment_status === 'incomplete' || payment.payment_status === 'cancelled') && (
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-600/20">
+                            {payment.payment_status === 'incomplete' ? 'Incomplete' : 'Cancelled'}
+                          </span>
+                        )}
+                        {payment.payment_status === 'failed' && (
+                          <span className="inline-flex items-center rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+                            Failed
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Reference ID</p>
+                      <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">
+                        {String(payment.transaction_id || payment.session_id || "").startsWith('cs_') ? "Stripe Session ID" : "Reference ID"}
+                      </p>
                       <p className="font-mono text-xs break-all text-primary">{payment.transaction_id || payment.session_id || "—"}</p>
                     </div>
 
                     {payment.amount_total && (
                       <div>
-                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Amount Paid</p>
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">
+                          {payment.payment_status === 'paid' ? "Amount Paid" : "Amount Attempted"}
+                        </p>
                         <p className="font-semibold text-foreground">
                           {(payment.amount_total / 100).toFixed(2)} {payment.currency?.toUpperCase() || 'AED'}
                         </p>
