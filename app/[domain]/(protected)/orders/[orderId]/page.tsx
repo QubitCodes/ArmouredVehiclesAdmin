@@ -24,7 +24,8 @@ import {
   UserCog,
   Info,
   Copy,
-  AlertTriangle
+  AlertTriangle,
+  Store
 } from "lucide-react";
 import Image from "next/image";
 
@@ -140,6 +141,10 @@ export default function OrderDetailPage() {
     setIsShipmentDialogOpen(false);
     setShipmentForm({ tracking_number: "", provider: "FedEx" });
   };
+
+  // View Details Dialog State
+  const [viewPaymentDialogOpen, setViewPaymentDialogOpen] = useState(false);
+  const [viewShipmentDialogOpen, setViewShipmentDialogOpen] = useState(false);
 
   // Handle errors
   useEffect(() => {
@@ -435,6 +440,19 @@ export default function OrderDetailPage() {
               <option value="failed">Failed</option>
               <option value="refunded">Refunded</option>
             </Select>
+
+            {/* Payment Details Button */}
+            {(String(order.payment_status) === "paid" && (order as any).transaction_details) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 text-xs h-8"
+                onClick={() => setViewPaymentDialogOpen(true)}
+              >
+                <Info className="h-3.5 w-3.5 mr-2" />
+                View Details
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -489,6 +507,15 @@ export default function OrderDetailPage() {
                 </>
               )}
             </Select>
+
+            {/* Shipment Details Button */}
+            {((order.shipment_status === 'shipped' || order.shipment_status === 'delivered' || order.shipment_status === 'vendor_shipped') &&
+              (order.tracking_number || (order as any).shipment_details)) && (
+                <Button variant="outline" size="sm" className="w-full mt-2 text-xs h-8" onClick={() => setViewShipmentDialogOpen(true)}>
+                  <Info className="h-3.5 w-3.5 mr-2" />
+                  View Details
+                </Button>
+              )}
           </CardContent>
         </Card>
       </div>
@@ -509,48 +536,51 @@ export default function OrderDetailPage() {
 
             return ordersToDisplay.map((subOrder, groupIndex) => (
               <div key={subOrder.id} className="border-b last:border-b-0">
-                {/* Sub-Header for Grouped Orders */}
-                {ordersToDisplay.length > 1 && (
-                  <div className="bg-muted/50 px-6 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-foreground flex items-center gap-1">
-                        Sub-Order {formatOrderId(subOrder.order_id || subOrder.id.slice(0, 8))}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 ml-1 text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10"
-                          onClick={() => copyToClipboard(formatOrderId(subOrder.order_id || subOrder.id))}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </span>
-                      <span className="text-muted-foreground mx-2">|</span>
+                {/* Sub-Header for Grouped Orders - Always Show */}
+                <div className="bg-muted/50 px-6 py-3 flex items-center justify-between">
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                      Sub-Order {formatOrderId(subOrder.order_id || subOrder.id.slice(0, 8))}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 ml-1 text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10"
+                        onClick={() => copyToClipboard(formatOrderId(subOrder.order_id || subOrder.id))}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </span>
+                    <span className="text-muted-foreground mx-2 hidden sm:inline">|</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium hidden sm:inline">Sold by:</span>
                       {subOrder.vendor ? (
                         <a
                           href={`/${domain}/vendors/${subOrder.vendor.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                          className="text-sm font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1.5 bg-background/50 px-2 py-0.5 rounded-md border border-transparent hover:border-border hover:shadow-sm"
                         >
-                          <UserCircle className="h-3 w-3" />
+                          <Store className="h-3.5 w-3.5 text-primary" />
                           {subOrder.vendor.username || subOrder.vendor.name}
                         </a>
                       ) : (subOrder.vendor_id === 'admin' || !subOrder.vendor_id ? (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Shield className="h-3 w-3" />
+                        <span className="text-sm font-semibold text-foreground flex items-center gap-1.5 bg-background/50 px-2 py-0.5 rounded-md">
+                          <Shield className="h-3.5 w-3.5 text-primary" />
                           Armoured Vehicles (Admin)
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">Vendor ID: {subOrder.vendor_id.slice(0, 8)}</span>
                       ))}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(subOrder.order_status).replace('text-', 'bg-').replace('600', '100')} ${getStatusColor(subOrder.order_status)}`}>
-                        {subOrder.order_status?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </span>
-                    </div>
                   </div>
-                )}
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(subOrder.order_status).replace('text-', 'bg-').replace('600', '100')} ${getStatusColor(subOrder.order_status)}`}>
+                      {subOrder.order_status?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                    </span>
+                  </div>
+                </div>
+
 
                 {/* Items List */}
                 <div className="divide-y divide-border">
@@ -561,7 +591,12 @@ export default function OrderDetailPage() {
                         className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 hover:bg-muted/5 transition-colors"
                       >
                         {/* Product Image */}
-                        <div className="relative h-24 w-24 flex-shrink-0 rounded-xl overflow-hidden bg-muted border">
+                        <a
+                          href={`/${domain}/product/${item.product?.id || item.productId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative h-24 w-24 flex-shrink-0 rounded-xl overflow-hidden bg-muted border hover:opacity-80 transition-opacity"
+                        >
                           {item.product?.media && item.product.media.length > 0 ? (
                             <Image
                               src={normalizeImageUrl(item.product.media[0].url) || ""}
@@ -584,15 +619,20 @@ export default function OrderDetailPage() {
                               className="object-cover opacity-50"
                             />
                           )}
-                        </div>
+                        </a>
 
                         {/* Product Info */}
                         <div className="flex-grow min-w-0">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <h3 className="text-base font-bold text-foreground line-clamp-1">
+                              <a
+                                href={`/${domain}/product/${item.product?.id || item.productId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-base font-bold text-foreground line-clamp-1 hover:text-primary hover:underline"
+                              >
                                 {item.product?.name || item.productName}
-                              </h3>
+                              </a>
                               <div className="flex items-center gap-3 mt-1">
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-xs font-mono font-medium">
                                   <Tag className="h-3 w-3" />
@@ -654,8 +694,21 @@ export default function OrderDetailPage() {
                   <div className="w-full max-w-xs space-y-2">
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Subtotal (Base):</span>
-                      <span className="font-medium">{order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.vat_amount || "0")).toFixed(2)}</span>
+                      <span className="font-medium">{order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.vat_amount || "0") - parseFloat(subOrder.total_shipping || "0") - parseFloat(subOrder.total_packing || "0")).toFixed(2)}</span>
                     </div>
+                    {/* Shipping & Packing - Hide if 0 */}
+                    {parseFloat(subOrder.total_shipping || "0") > 0 && (
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Shipping:</span>
+                        <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.total_shipping || "0").toFixed(2)}</span>
+                      </div>
+                    )}
+                    {parseFloat(subOrder.total_packing || "0") > 0 && (
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Packing:</span>
+                        <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.total_packing || "0").toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>VAT (5%):</span>
                       <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.vat_amount || "0").toFixed(2)}</span>
@@ -969,6 +1022,98 @@ export default function OrderDetailPage() {
             <Button onClick={handleShipmentConfirm} disabled={isUpdating}>
               Confirm Shipment
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* View Payment Details Dialog */}
+      <Dialog open={viewPaymentDialogOpen} onOpenChange={setViewPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {(order as any).transaction_details ? (
+              <>
+                <div className="flex justify-between items-center border-b pb-2">
+                  <span className="text-muted-foreground">Payment Mode:</span>
+                  <span className="font-semibold text-foreground">
+                    {typeof (order as any).transaction_details === 'string'
+                      ? JSON.parse((order as any).transaction_details).payment_mode
+                      : (order as any).transaction_details?.payment_mode || "—"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 border-b pb-2">
+                  <span className="text-muted-foreground">Transaction Reference:</span>
+                  <span className="font-mono bg-muted p-2 rounded break-all text-sm">
+                    {typeof (order as any).transaction_details === 'string'
+                      ? JSON.parse((order as any).transaction_details).transaction_id
+                      : (order as any).transaction_details?.transaction_id || "—"}
+                  </span>
+                </div>
+                {order.updated_at && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Last Updated:</span>
+                    <span className="font-semibold text-foreground">
+                      {formatDate(order.updated_at as any)}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-center text-muted-foreground">No details available.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setViewPaymentDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Shipment Details Dialog */}
+      <Dialog open={viewShipmentDialogOpen} onOpenChange={setViewShipmentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Shipment Tracking</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {(order.tracking_number || (order as any).shipment_details) ? (
+              <>
+                <div className="flex justify-between items-center border-b pb-2">
+                  <span className="text-muted-foreground">Provider:</span>
+                  <span className="font-semibold text-foreground">
+                    {(order as any).shipment_details?.provider || "FedEx"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 border-b pb-2">
+                  <span className="text-muted-foreground">Tracking Number:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono bg-muted p-2 rounded break-all flex-1 text-sm">
+                      {order.tracking_number || (order as any).shipment_details?.tracking_number || "—"}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => copyToClipboard(order.tracking_number || (order as any).shipment_details?.tracking_number)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                {order.updated_at && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Last Updated:</span>
+                    <span className="font-semibold text-foreground">
+                      {formatDate(order.updated_at as any)}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-center text-muted-foreground">No tracking details recorded.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setViewShipmentDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
