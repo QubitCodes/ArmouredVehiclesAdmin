@@ -66,8 +66,8 @@ export default function OrderDetailPage() {
     const user = authService.getUserDetails();
     if (user && user.userType) {
       setUserRole(user.userType.toLowerCase());
-      // Check for orders.manage permission
-      if (user.userType === 'super_admin' || authService.hasPermission('orders.manage')) {
+      // Check for order.manage permission
+      if (user.userType === 'super_admin' || authService.hasPermission('order.manage')) {
         setCanManageOrders(true);
       }
     }
@@ -432,7 +432,7 @@ export default function OrderDetailPage() {
             <Select
               value={order.payment_status || "pending"}
               onChange={(e) => handlePaymentStatusChange(e.target.value)}
-              disabled={isUpdating || userRole === 'vendor' || (!canManageOrders && userRole !== 'vendor') || (order.order_status !== "approved" && userRole !== 'admin')} // Disabled for vendor always
+              disabled={isUpdating || userRole === 'vendor' || !canManageOrders} // Disabled for vendor always, enabled for authorized admins
               className="h-9 text-xs"
             >
               <option value="pending">Pending</option>
@@ -476,7 +476,7 @@ export default function OrderDetailPage() {
             <Select
               value={order.shipment_status || "pending"}
               onChange={(e) => handleShipmentStatusChange(e.target.value)}
-              disabled={isUpdating || (!canManageOrders && userRole !== 'vendor') || (userRole === 'vendor' && !['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending'))}
+              disabled={isUpdating || !canManageOrders || (userRole === 'vendor' && !['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending'))}
               className="h-9 text-xs"
             >
               {userRole === 'vendor' ? (
