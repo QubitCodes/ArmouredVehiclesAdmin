@@ -25,7 +25,8 @@ import {
   Info,
   Copy,
   AlertTriangle,
-  Store
+  Store,
+  Download
 } from "lucide-react";
 import Image from "next/image";
 
@@ -1162,7 +1163,7 @@ export default function OrderDetailPage() {
       <Dialog open={viewPaymentDialogOpen} onOpenChange={setViewPaymentDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Payment Details History</DialogTitle>
+            <DialogTitle>Payment Details</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
             {(() => {
@@ -1172,10 +1173,14 @@ export default function OrderDetailPage() {
               let payments: any[] = [];
               try {
                 const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                payments = Array.isArray(parsed) ? parsed : [parsed];
+                const candidates = Array.isArray(parsed) ? parsed : [parsed];
+                // Filter out empty entries (like legacy default {})
+                payments = candidates.filter(p => p && (p.payment_mode || p.transaction_id || p.session_id));
               } catch (e) {
                 return <p className="text-center text-red-500">Error rendering details.</p>;
               }
+
+              if (payments.length === 0) return <p className="text-center text-muted-foreground">No details available.</p>;
 
               return payments.map((payment, idx) => (
                 <div key={idx} className="bg-muted/30 rounded-lg p-4 border border-border/50 space-y-3 relative">
@@ -1191,12 +1196,52 @@ export default function OrderDetailPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Mode</p>
-                      <p className="font-semibold text-foreground">{payment.payment_mode || "—"}</p>
+                      <p className="font-semibold text-foreground flex items-center gap-1.5">
+                        {payment.payment_mode || "—"}
+                        {payment.payment_status === 'paid' && (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            Paid
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Reference ID</p>
-                      <p className="font-mono text-xs break-all text-primary">{payment.transaction_id || "—"}</p>
+                      <p className="font-mono text-xs break-all text-primary">{payment.transaction_id || payment.session_id || "—"}</p>
                     </div>
+
+                    {payment.amount_total && (
+                      <div>
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Amount Paid</p>
+                        <p className="font-semibold text-foreground">
+                          {(payment.amount_total / 100).toFixed(2)} {payment.currency?.toUpperCase() || 'AED'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Stripe Card Details */}
+                    {payment.payment_details?.last4 && (
+                      <div>
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-tighter">Card Info</p>
+                        <p className="font-medium text-foreground capitalize">
+                          {payment.payment_details.brand} •••• {payment.payment_details.last4}
+                        </p>
+                      </div>
+                    )}
+
+                    {payment.receipt_url && (
+                      <div className="col-span-2">
+                        <a
+                          href={payment.receipt_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#D35400] text-[11px] font-bold hover:underline flex items-center gap-1"
+                        >
+                          <Download className="h-3 w-3" />
+                          Download Receipt
+                        </a>
+                      </div>
+                    )}
 
                     {/* Offline Specific Details */}
                     {payment.offline_details?.sender_bank && (
