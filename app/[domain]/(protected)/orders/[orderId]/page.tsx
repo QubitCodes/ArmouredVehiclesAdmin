@@ -501,17 +501,35 @@ export default function OrderDetailPage() {
             </Select>
 
             {/* Payment Details Button */}
-            {(order as any).transaction_details && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 text-xs h-8"
-                onClick={() => setViewPaymentDialogOpen(true)}
-              >
-                <Info className="h-3.5 w-3.5 mr-2" />
-                View Details
-              </Button>
-            )}
+            {(() => {
+              const raw = (order as any).transaction_details;
+              if (!raw) return null;
+
+              let payments: any[] = [];
+              try {
+                const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                payments = Array.isArray(parsed) ? parsed : [parsed];
+              } catch (e) {
+                return null;
+              }
+
+              const hasPaid = payments.some(p => p && p.payment_status === 'paid');
+
+              // Hide button if not super_admin and no successful payments
+              if (userRole !== 'super_admin' && !hasPaid) return null;
+
+              return (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2 text-xs h-8"
+                  onClick={() => setViewPaymentDialogOpen(true)}
+                >
+                  <Info className="h-3.5 w-3.5 mr-2" />
+                  View Details
+                </Button>
+              );
+            })()}
           </CardContent>
         </Card>
 
@@ -1176,6 +1194,12 @@ export default function OrderDetailPage() {
                 const candidates = Array.isArray(parsed) ? parsed : [parsed];
                 // Filter out empty entries (like legacy default {})
                 payments = candidates.filter(p => p && (p.payment_mode || p.transaction_id || p.session_id));
+
+                // RESTRICTION: Only super_admin sees non-paid attempts. 
+                // Others only see 'paid' attempts.
+                if (userRole !== 'super_admin') {
+                  payments = payments.filter(p => p.payment_status === 'paid');
+                }
               } catch (e) {
                 return <p className="text-center text-red-500">Error rendering details.</p>;
               }
@@ -1191,7 +1215,7 @@ export default function OrderDetailPage() {
                 <div key={idx} className="bg-muted/30 rounded-lg p-4 border border-border/50 space-y-3 relative">
                   <div className="flex justify-between items-center border-b border-border/50 pb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      {idx === 0 ? "Latest Attempt" : `Previous Attempt (${sortedPayments.length - idx})`}
+                      {userRole === 'super_admin' ? (idx === 0 ? "Latest Attempt" : `Previous Attempt (${sortedPayments.length - idx})`) : `Payment Entry`}
                     </span>
                     {payment.timestamp && (
                       <span className="text-[10px] text-muted-foreground font-medium">
