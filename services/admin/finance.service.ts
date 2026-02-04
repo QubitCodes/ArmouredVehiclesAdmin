@@ -1,6 +1,6 @@
 import api from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
 
 export const financeService = {
   async getWalletBalance() {
@@ -26,7 +26,7 @@ export const financeService = {
 
     // Axios handles Multipart automatically when passing FormData
     const res = await api.post(`/payouts/${id}/approve`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' } 
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;
   },
@@ -35,10 +35,10 @@ export const financeService = {
     const res = await api.post(`/payouts/${id}/reject`, { adminNote: reason }); // Changed 'reason' to 'adminNote' to match backend PayoutController
     return res.data;
   },
-  
+
   async triggerUnlockProcess() {
-      // Placeholder for unlock process
-      return { success: true, message: "Use Cron Job for now" };
+    // Placeholder for unlock process
+    return { success: true, message: "Use Cron Job for now" };
   },
 
   /**
@@ -62,7 +62,7 @@ export const financeService = {
    * Used by admin to approve/mark as paid/reject
    */
   async updatePayoutStatus(
-    id: string, 
+    id: string,
     status: 'approved' | 'paid' | 'rejected',
     adminNote?: string,
     transactionReference?: string,
@@ -72,24 +72,24 @@ export const financeService = {
       const res = await api.post(`/payouts/${id}/reject`, { adminNote });
       return res.data;
     }
-    
+
     if (status === 'approved') {
       // Approve only (no wallet debit, no receipt needed)
       const formData = new FormData();
       if (adminNote) formData.append('adminNote', adminNote);
-      
+
       const res = await api.post(`/payouts/${id}/approve`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       return res.data;
     }
-    
+
     // For paid status (requires transaction reference, debits wallet)
     const formData = new FormData();
     if (adminNote) formData.append('adminNote', adminNote);
     if (transactionReference) formData.append('transactionReference', transactionReference);
     if (receipt) formData.append('receipt', receipt);
-    
+
     const res = await api.post(`/payouts/${id}/pay`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });

@@ -80,23 +80,23 @@ class AuthService {
    * Store user details
    */
   setUserDetails(user: any): void {
-      if (typeof window === "undefined") return;
-      localStorage.setItem("admin_user_details", JSON.stringify(user));
+    if (typeof window === "undefined") return;
+    localStorage.setItem("admin_user_details", JSON.stringify(user));
   }
 
   /**
    * Get user details (checks both admin and vendor storage keys for unified components)
    */
   getUserDetails(): any {
-      if (typeof window === "undefined") return null;
-      // Try admin first, then vendor (for unified components in [domain] routes)
-      const adminStr = localStorage.getItem("admin_user_details");
-      if (adminStr) return JSON.parse(adminStr);
-      
-      const vendorStr = localStorage.getItem("vendor_user_details");
-      if (vendorStr) return JSON.parse(vendorStr);
-      
-      return null;
+    if (typeof window === "undefined") return null;
+    // Try admin first, then vendor (for unified components in [domain] routes)
+    const adminStr = localStorage.getItem("admin_user_details");
+    if (adminStr) return JSON.parse(adminStr);
+
+    const vendorStr = localStorage.getItem("vendor_user_details");
+    if (vendorStr) return JSON.parse(vendorStr);
+
+    return null;
   }
 
   /**
@@ -104,7 +104,7 @@ class AuthService {
    */
   async refreshAccessToken(): Promise<string | null> {
     const refreshToken = this.getRefreshToken();
-    
+
     if (!refreshToken) {
       return null;
     }
@@ -130,16 +130,16 @@ class AuthService {
 
       const responseBody: TokenResponse = await response.json();
       const data = responseBody.data;
-      
+
       // Assuming the API returns { status: true, data: { accessToken, refreshToken } }
       if (data && data.accessToken) {
         this.setAccessToken(data.accessToken);
-        
+
         // Update refresh token if provided
         if (data.refreshToken) {
           this.setRefreshToken(data.refreshToken);
         }
-        
+
         return data.accessToken;
       }
 
@@ -167,10 +167,10 @@ class AuthService {
 
     if (user.userType === "super_admin") return true;
     if (user.userType === "vendor") return allowVendor;
-    
+
     // Admin check
     if (user.userType === "admin") {
-        return user.permissions?.includes(permission) || false;
+      return user.permissions?.includes(permission) || false;
     }
 
     return false;
