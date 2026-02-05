@@ -26,6 +26,7 @@ export interface Order {
   payment_method?: string;
   transaction_details?: string | null;
   shipment_details?: string | null;
+  invoice_comments?: string | null;
   user?: {
     id: string;
     name: string;
@@ -95,9 +96,9 @@ class OrderService {
     try {
       const response = await api.get<GetOrdersResponse>("/admin/orders", {
         params: {
-            ...params,
-            vendor_id: params.vendorId, // Map camelCase to snake_case
-            vendorId: undefined // Remove camelCase to avoid duplication
+          ...params,
+          vendor_id: params.vendorId, // Map camelCase to snake_case
+          vendorId: undefined // Remove camelCase to avoid duplication
         },
       });
       return response.data;

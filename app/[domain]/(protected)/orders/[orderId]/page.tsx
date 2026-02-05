@@ -47,6 +47,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { InvoiceSection, InvoiceCommentModal } from "@/components/admin/invoices";
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -197,6 +198,29 @@ export default function OrderDetailPage() {
     });
     setIsShipmentDialogOpen(false);
     setShipmentForm({ tracking_number: "", provider: "FedEx" });
+  };
+
+  // Invoice Comment Modal State
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+
+  const handleOrderStatusChange = (newStatus: string) => {
+    if (newStatus === 'vendor_approved' || newStatus === 'approved' || newStatus === 'approved_controlled') {
+      setPendingStatus(newStatus);
+      setIsInvoiceModalOpen(true);
+    } else {
+      updateOrder({ order_status: newStatus as any });
+    }
+  };
+
+  const handleInvoiceCommentConfirm = async (comments: string | null) => {
+    if (pendingStatus) {
+      updateOrder({
+        order_status: pendingStatus as any,
+        invoice_comments: comments
+      } as any);
+      setPendingStatus(null);
+    }
   };
 
   // View Details Dialog State
@@ -436,7 +460,7 @@ export default function OrderDetailPage() {
             {/* Order Status Select */}
             <Select
               value={order.order_status || "order_received"}
-              onChange={(e) => updateOrder({ order_status: e.target.value as any })}
+              onChange={(e) => handleOrderStatusChange(e.target.value)}
               disabled={isUpdating || roleLoading || (!canManageOrders && userRole !== 'vendor') || (userRole === 'vendor' && !['order_received', 'vendor_approved', 'vendor_rejected'].includes(order.order_status))}
               className="h-9 text-xs"
             >
@@ -447,6 +471,12 @@ export default function OrderDetailPage() {
                   <option value="order_received">Order Received</option>
                   <option value="vendor_approved">Approve Order</option>
                   <option value="vendor_rejected">Reject Order</option>
+
+                  {/* Read-only statuses for Vendor display */}
+                  <option value="approved">Approved</option>
+                  <option value="approved_controlled">Approved (Controlled)</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Cancelled</option>
                 </>
               ) : (
                 <>
@@ -553,7 +583,15 @@ export default function OrderDetailPage() {
             <Select
               value={order.shipment_status || "pending"}
               onChange={(e) => handleShipmentStatusChange(e.target.value)}
-              disabled={isUpdating || !canManageOrders || (userRole === 'vendor' && !['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending'))}
+              disabled={
+                isUpdating ||
+                (userRole !== 'vendor' && !canManageOrders) ||
+                (userRole === 'vendor' && (
+                  order.payment_status !== 'paid' ||
+                  !['approved', 'approved_controlled'].includes(order.order_status) ||
+                  !['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending')
+                ))
+              }
               className="h-9 text-xs"
             >
               {userRole === 'vendor' ? (
@@ -815,6 +853,9 @@ export default function OrderDetailPage() {
           })()}
         </CardContent>
       </Card>
+
+      {/* Invoices Section */}
+      <InvoiceSection orderId={orderId} userRole={userRole} />
 
       {/* Customer Information - HIDDEN FOR VENDOR */}
       {userRole !== 'vendor' && order.user && (
@@ -1396,6 +1437,12 @@ export default function OrderDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <InvoiceCommentModal
+        open={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        onSubmit={handleInvoiceCommentConfirm}
+        isLoading={isUpdating}
+      />
     </div>
   );
 }
