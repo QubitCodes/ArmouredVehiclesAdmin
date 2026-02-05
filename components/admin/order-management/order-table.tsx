@@ -94,6 +94,8 @@ export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTablePro
     }
   }, []);
 
+  let order_count = 0;
+
   return (
     <div className="w-full">
       <div className="w-full overflow-hidden mb-1">
@@ -113,6 +115,7 @@ export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTablePro
 
       <div className="w-full space-y-1">
         {orders.map((order) => (
+          order_count = (order as any).sub_order_count,
           <div
             key={order.id} // Representative ID
             onClick={() => router.push(`${basePath}/${order.id}`)}
@@ -123,11 +126,14 @@ export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTablePro
               {/* Grouped Order ID */}
               <div className="flex flex-col justify-center">
                 <span className="font-mono text-sm font-medium text-foreground">
-                  {(order as any).order_group_id ? (order as any).order_group_id.slice(0, 8).toUpperCase() : (order.order_id || order.id.slice(0, 8))}
+                  {/* {order_count ? order_count.slice(0, 8).toUpperCase() : (order.order_id || order.id.slice(0, 8))} */}
+
+                  {(order.order_id || order.id.slice(0, 8))}
                 </span>
                 {(order as any).order_group_id && (
                   <span className="text-[10px] text-muted-foreground">
-                    {(order as any).sub_order_count ? `Group ID (${(order as any).sub_order_count} Orders)` : 'Group ID'}
+                    ({order_count} Order{order_count > 1 ? 's' : ''})
+                    {/* {order_count ? `(${order_count} Order${order_count > 1 ? 's' : ''})` : 'Group ID'} */}
                   </span>
                 )}
               </div>
