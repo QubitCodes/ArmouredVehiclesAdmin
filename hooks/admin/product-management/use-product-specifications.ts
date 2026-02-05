@@ -16,12 +16,12 @@ export function useProductSpecifications(productId: string | number | null | und
 /**
  * Hook to create a specification
  */
-export function useCreateSpecification(productId: string | number | null | undefined) {
+export function useCreateSpecification(productId: string) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (data: CreateSpecificationRequest) => {
-			if (!productId || isNaN(Number(productId))) {
+			if (!productId) {
 				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
 			}
 			return productSpecificationService.createSpecification(productId, data);
@@ -39,12 +39,12 @@ export function useCreateSpecification(productId: string | number | null | undef
 /**
  * Hook to update a single specification
  */
-export function useUpdateSpecification(productId: string | number | null | undefined) {
+export function useUpdateSpecification(productId: string) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: ({ specId, data }: { specId: string; data: UpdateSpecificationRequest }) => {
-			if (!productId || isNaN(Number(productId))) {
+			if (!productId) {
 				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
 			}
 			return productSpecificationService.updateSpecification(productId, specId, data);
@@ -62,12 +62,12 @@ export function useUpdateSpecification(productId: string | number | null | undef
 /**
  * Hook to bulk update specifications
  */
-export function useBulkUpdateSpecifications(productId: string | number | null | undefined) {
+export function useBulkUpdateSpecifications(productId: string) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (specifications: ProductSpecification[]) => {
-			if (!productId || isNaN(Number(productId))) {
+			if (!productId) {
 				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
 			}
 			return productSpecificationService.bulkUpdateSpecifications(productId, specifications);
@@ -85,12 +85,12 @@ export function useBulkUpdateSpecifications(productId: string | number | null | 
 /**
  * Hook to delete a specification
  */
-export function useDeleteSpecification(productId: string | number | null | undefined) {
+export function useDeleteSpecification(productId: string) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (specId: string) => {
-			if (!productId || isNaN(Number(productId))) {
+			if (!productId) {
 				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
 			}
 			return productSpecificationService.deleteSpecification(productId, specId);
