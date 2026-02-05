@@ -5,10 +5,10 @@ import { toast } from 'sonner';
 /**
  * Hook to fetch product specifications
  */
-export function useProductSpecifications(productId: string | number | null | undefined) {
+export function useProductSpecifications(productId: string | null) {
 	return useQuery({
 		queryKey: ['product-specifications', productId],
-		queryFn: () => productSpecificationService.getSpecifications(productId!),
+		queryFn: () => productSpecificationService.getSpecifications(productId || null),
 		enabled: !!productId,
 	});
 }
@@ -16,14 +16,14 @@ export function useProductSpecifications(productId: string | number | null | und
 /**
  * Hook to create a specification
  */
-export function useCreateSpecification(productId: string) {
+export function useCreateSpecification(productId: string | null) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (data: CreateSpecificationRequest) => {
-			// if (!productId) {
-			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			// }
+			if (!productId) {
+				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			}
 			return productSpecificationService.createSpecification(productId, data);
 		},
 		onSuccess: () => {
@@ -39,14 +39,14 @@ export function useCreateSpecification(productId: string) {
 /**
  * Hook to update a single specification
  */
-export function useUpdateSpecification(productId: string) {
+export function useUpdateSpecification(productId: string | null) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: ({ specId, data }: { specId: string; data: UpdateSpecificationRequest }) => {
-			// if (!productId) {
-			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			// }
+			if (!productId) {
+				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			}
 			return productSpecificationService.updateSpecification(productId, specId, data);
 		},
 		onSuccess: () => {
@@ -62,14 +62,14 @@ export function useUpdateSpecification(productId: string) {
 /**
  * Hook to bulk update specifications
  */
-export function useBulkUpdateSpecifications(productId: string) {
+export function useBulkUpdateSpecifications(productId: string | null) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (specifications: ProductSpecification[]) => {
-			// if (!productId) {
-			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			// }
+			if (!productId) {
+				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			}
 			return productSpecificationService.bulkUpdateSpecifications(productId, specifications);
 		},
 		onSuccess: () => {
@@ -85,14 +85,14 @@ export function useBulkUpdateSpecifications(productId: string) {
 /**
  * Hook to delete a specification
  */
-export function useDeleteSpecification(productId: string) {
+export function useDeleteSpecification(productId: string | null) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (specId: string) => {
-			// if (!productId) {
-			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			// }
+			if (!productId) {
+				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			}
 			return productSpecificationService.deleteSpecification(productId, specId);
 		},
 		onSuccess: () => {

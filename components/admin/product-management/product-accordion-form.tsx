@@ -228,15 +228,15 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 	const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
 
 	// Data Fetching & Hooks
-	const { data: specificationsData = [], isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId || "");
+	const { data: specificationsData = [], isLoading: isLoadingSpecs } = useProductSpecifications(currentProductId || null);
 	const { data: brands = [], isLoading: isLoadingBrands } = useBrands();
 	const { data: mainCategories = [], isLoading: isLoadingCategories } = useMainCategories();
 
 	// Mutations
-	const createSpec = useCreateSpecification(currentProductId || "");
-	const updateSpec = useUpdateSpecification(currentProductId || "");
-	const deleteSpec = useDeleteSpecification(currentProductId || "");
-	const bulkUpdateSpecs = useBulkUpdateSpecifications(currentProductId || "");
+	const createSpec = useCreateSpecification(currentProductId || null);
+	const updateSpec = useUpdateSpecification(currentProductId || null);
+	const deleteSpec = useDeleteSpecification(currentProductId || null);
+	const bulkUpdateSpecs = useBulkUpdateSpecifications(currentProductId || null);
 	const createProductMutation = useCreateProduct();
 	const updateProductMutation = useUpdateProduct();
 	const { mutateAsync: deleteMedia } = useDeleteProductMedia();
