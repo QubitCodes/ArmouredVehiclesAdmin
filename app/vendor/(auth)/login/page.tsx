@@ -364,7 +364,7 @@ function VendorLoginContent() {
               <form onSubmit={handleContinue} className="space-y-4">
                 <Input
                   type="text"
-                  placeholder="Email or Phone (e.g. +971...)"
+                  placeholder="Email or Phone"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="h-11"
