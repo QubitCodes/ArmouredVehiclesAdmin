@@ -18,12 +18,25 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
-        protocol: "https",
-        hostname: "armapi2.qubyt.codes",
-        port: "",
+        protocol: "http",
+        hostname: "localhost",
+        port: "3000",
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3001",
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3002",
         pathname: "/**",
       },
     ],
+    unoptimized: true,
   },
   env: {
     SA_LOGIN: process.env.SA_LOGIN,
