@@ -21,9 +21,9 @@ export function useCreateSpecification(productId: string) {
 
 	return useMutation({
 		mutationFn: (data: CreateSpecificationRequest) => {
-			if (!productId) {
-				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			}
+			// if (!productId) {
+			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			// }
 			return productSpecificationService.createSpecification(productId, data);
 		},
 		onSuccess: () => {
@@ -44,9 +44,9 @@ export function useUpdateSpecification(productId: string) {
 
 	return useMutation({
 		mutationFn: ({ specId, data }: { specId: string; data: UpdateSpecificationRequest }) => {
-			if (!productId) {
-				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			}
+			// if (!productId) {
+			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			// }
 			return productSpecificationService.updateSpecification(productId, specId, data);
 		},
 		onSuccess: () => {
@@ -67,9 +67,9 @@ export function useBulkUpdateSpecifications(productId: string) {
 
 	return useMutation({
 		mutationFn: (specifications: ProductSpecification[]) => {
-			if (!productId) {
-				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			}
+			// if (!productId) {
+			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			// }
 			return productSpecificationService.bulkUpdateSpecifications(productId, specifications);
 		},
 		onSuccess: () => {
@@ -90,9 +90,9 @@ export function useDeleteSpecification(productId: string) {
 
 	return useMutation({
 		mutationFn: (specId: string) => {
-			if (!productId) {
-				throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
-			}
+			// if (!productId) {
+			// 	throw new Error(`Invalid Product ID: ${productId}. Please save the product properly first.`);
+			// }
 			return productSpecificationService.deleteSpecification(productId, specId);
 		},
 		onSuccess: () => {

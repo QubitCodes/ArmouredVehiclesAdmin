@@ -309,7 +309,7 @@ const getSlugFromTabId = (tabId: number): string => {
 };
 
 interface ProductFormProps {
-  productId?: string;
+  productId: string;
   defaultValues?: Partial<ProductFormValues>;
   isVendor?: boolean;
 }
@@ -324,9 +324,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   // Read initial tab from URL query parameter
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(() => getTabIdFromSlug(tabFromUrl));
-  const [currentProductId, setCurrentProductId] = useState<string | null>(
-    productId || null
-  );
+  const [currentProductId, setCurrentProductId] = useState<string>(productId);
 
   /**
    * Update URL when tab changes (without triggering React navigation/re-render)
