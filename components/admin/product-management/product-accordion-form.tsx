@@ -630,7 +630,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 
 			// Append files
 			if (sectionId === 4) {
-				if (coverImageFile) fd.append('files', coverImageFile);
+				if (coverImageFile) fd.append('coverImage', coverImageFile);
 				galleryFiles.forEach(file => fd.append('files', file));
 			}
 

@@ -129,7 +129,7 @@ const specificationsSchema = z.object({
   packingDimensionUnit: z.string().optional(),
   packingWeight: z.number().optional(),
   packingWeightUnit: z.string().optional(),
-  minOrderQuantity: z.number().optional(),
+  minOrderQuantity: z.string().optional(),
   vehicleFitment: z.array(z.string()).optional(),
   specifications: z.array(z.string()).optional(),
 });
@@ -573,7 +573,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
         packingWeight: parseNumber(getVal("packingWeight", "packing_weight")),
         packingWeightUnit: (getVal("packingWeightUnit", "packing_weight_unit") as string) || "kg",
 
-        minOrderQuantity: parseNumber(getVal("minOrderQuantity", "min_order_quantity")),
+        minOrderQuantity: String(getVal("minOrderQuantity", "min_order_quantity") ?? ""),
         productionLeadTime: parseNumber(getVal("productionLeadTime", "production_lead_time")),
 
         // Declarations
@@ -1159,7 +1159,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
 
       // Append Files
       if (coverImageFile) {
-        fd.append('files', coverImageFile);
+        fd.append('coverImage', coverImageFile);
       }
 
       // Append Gallery Files
