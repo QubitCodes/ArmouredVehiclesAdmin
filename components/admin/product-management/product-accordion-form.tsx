@@ -142,7 +142,7 @@ const productSchema = z.object({
 	packingCharge: z.coerce.number().min(0).optional(),
 	currency: z.string().optional(),
 	productionLeadTime: z.coerce.number().optional().nullable(),
-	minOrderQuantity: z.number().optional(),
+	minOrderQuantity: z.string().optional(),
 	stock: z.number().optional(),
 	readyStockAvailable: z.boolean().optional(),
 	pricingTerms: z.array(z.string()).optional(),
@@ -1707,9 +1707,9 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 								<FormLabel>Minimum Order Quantity (MOQ)</FormLabel>
 								<FormControl>
 									<Input
-										type="number"
+										placeholder="e.g. 5 Units"
+										{...field}
 										value={field.value ?? ""}
-										onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
 										disabled={isReadOnly}
 									/>
 								</FormControl>

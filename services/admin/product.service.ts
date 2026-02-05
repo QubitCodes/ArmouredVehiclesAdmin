@@ -44,7 +44,7 @@ export interface Product {
   model?: string;
   year?: number;
   condition?: string;
-  minOrderQuantity?: number;
+  minOrderQuantity?: string;
   productionLeadTime?: number;
   requiresExportLicense?: boolean;
   readyStockAvailable?: boolean;
@@ -93,7 +93,7 @@ export interface CreateProductRequest {
   basePrice: number;
   currency?: string;
   stock?: number;
-  minOrderQuantity?: number;
+  minOrderQuantity?: string;
   condition?: string;
   make?: string;
   model?: string;
@@ -241,8 +241,8 @@ class ProductService {
    */
   async adminUpdateProductStatus(id: string, approval_status: string) {
     try {
-      const response = await api.patch(`/admin/products/${id}`, { 
-        approval_status 
+      const response = await api.patch(`/admin/products/${id}`, {
+        approval_status
       });
       return response.data;
     } catch (error) {
