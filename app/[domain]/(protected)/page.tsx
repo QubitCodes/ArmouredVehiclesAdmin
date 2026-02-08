@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import {
   Users, Store, ShoppingCart, Package, UserCheck, AlertCircle,
-  DollarSign, OctagonAlert, Clock, Shield, ShieldAlert, UserPlus, Loader, LucideIcon
+  DollarSign, OctagonAlert, Clock, Shield, ShieldAlert, UserPlus, Loader, LucideIcon,
+  Info
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -12,6 +13,7 @@ import { useDashboard } from "@/hooks/admin/dashboard/use-dashboard";
 import { useParams, useRouter } from "next/navigation";
 import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
 import { DashboardWidget } from "@/services/admin/dashboard.service";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /**
  * Icon Name to Lucide Component Mapping
@@ -96,6 +98,27 @@ export default function AdminDashboard() {
   // Widgets from API (SDUI)
   const widgets: DashboardWidget[] = stats?.items || [];
 
+  // Group widgets by category
+  const groupedWidgets = widgets.reduce((groups, widget) => {
+    const category = widget.category || 'Overview';
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(widget);
+    return groups;
+  }, {} as Record<string, DashboardWidget[]>);
+
+  // Define sort order for categories (optional, but helps consistency)
+  const categoryOrder = ['Vendors', 'Customers', 'Controlled Area', 'Products', 'Orders', 'Orders & Revenue', 'Revenue', 'Overview'];
+  const sortedCategories = Object.keys(groupedWidgets).sort((a, b) => {
+    const idxA = categoryOrder.indexOf(a);
+    const idxB = categoryOrder.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="flex w-full flex-col gap-6">
       <div>
@@ -105,9 +128,9 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-col gap-8">
         {isRestricted ? (
-          <div className="col-span-full">
+          <div className="w-full">
             {onboardingStatus === 'rejected' ? (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6">
                 <div className="flex items-center gap-3 text-destructive">
@@ -142,28 +165,45 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
-            {widgets.map((widget, index) => {
-              const Icon = iconMap[widget.icon] || Package;
-              const theme = themeMap[widget.theme] || themeMap.blue;
-              return (
-                <Card key={index} className="overflow-hidden gap-2 border-border/40 hover:shadow-md transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {widget.title}
-                    </CardTitle>
-                    <div className={`${theme.bg} p-2 rounded-md`}>
-                      <Icon className={`h-4 w-4 ${theme.text}`} />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-foreground">{widget.value}</div>
-                    {widget.subValue && (
-                      <p className="text-xs text-muted-foreground mt-1">{widget.subValue}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {sortedCategories.map((category) => (
+              <div key={category} className="space-y-4">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground/80 border-b pb-2">{category}</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {groupedWidgets[category].map((widget, index) => {
+                    const Icon = iconMap[widget.icon] || Package;
+                    const theme = themeMap[widget.theme] || themeMap.blue;
+                    return (
+                      <Card key={index} className="overflow-hidden gap-2 border-border/40 hover:shadow-md transition-shadow">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            {widget.title}
+                            {widget.description && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Info className="h-4 w-4 text-muted-foreground/50 cursor-pointer hover:text-muted-foreground transition-colors" />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 text-sm bg-popover text-popover-foreground shadow-md border rounded-md p-3" side="top" align="start">
+                                  {widget.description}
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </CardTitle>
+                          <div className={`${theme.bg} p-2 rounded-md`}>
+                            <Icon className={`h-4 w-4 ${theme.text}`} />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-3xl font-bold text-foreground">{widget.value}</div>
+                          {widget.subValue && (
+                            <p className="text-xs text-muted-foreground mt-1">{widget.subValue}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </>
         )}
       </div>

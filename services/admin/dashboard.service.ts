@@ -11,6 +11,8 @@ export interface DashboardWidget {
 	subValue?: string;
 	icon: string; // Lucide icon name
 	theme: string; // Tailwind color key (e.g., 'blue', 'emerald', 'amber')
+	category?: string;
+	description?: string;
 }
 
 /**
@@ -28,17 +30,17 @@ class DashboardService {
 	async getDashboardStats(): Promise<DashboardData> {
 		try {
 			const response = await api.get<ApiResponse<DashboardData>>('/admin/dashboard');
-			
+
 			if (!response?.data) {
 				console.error('Dashboard API returned empty response:', response);
 				throw new Error('Dashboard API returned empty response');
 			}
-			
+
 			if (!response.data.status) {
 				console.error('Dashboard API returned failure:', response.data);
 				throw new Error(response.data.message || 'Failed to fetch dashboard stats');
 			}
-			
+
 			return response.data.data || { items: [] };
 		} catch (error: any) {
 			console.error('Error fetching dashboard stats:', error?.response?.data || error?.message || error);
