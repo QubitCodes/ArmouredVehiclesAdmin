@@ -9,6 +9,8 @@ interface DraftAlertProps {
         basePrice?: number;
         hasCoverImage?: boolean;
         complianceConfirmed?: boolean;
+        hasSize?: boolean;
+        hasWeight?: boolean;
     };
     className?: string;
 }
@@ -22,6 +24,8 @@ export function DraftAlert({ status, product, className }: DraftAlertProps) {
         { key: 'description', label: 'Description' },
         { key: 'basePrice', label: 'Base Price' },
         { key: 'hasCoverImage', label: 'Cover Image' },
+        { key: 'hasSize', label: 'Size (Specs)' },
+        { key: 'hasWeight', label: 'Weight (Specs)' },
         { key: 'complianceConfirmed', label: 'Compliance Declaration' },
     ] as const;
 
@@ -31,7 +35,7 @@ export function DraftAlert({ status, product, className }: DraftAlertProps) {
         if (val === undefined || val === null) return true;
         if (typeof val === 'string' && val.trim() === '') return true;
         if (typeof val === 'number' && val < 0) return true;
-        if (typeof val === 'boolean' && val === false) return true; // Check for hasCoverImage
+        if (typeof val === 'boolean' && val === false) return true; // Check for hasCoverImage, hasSize, hasWeight
         return false;
     });
 

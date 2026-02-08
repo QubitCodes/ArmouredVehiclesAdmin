@@ -7,7 +7,7 @@
   /* Custom Colors */
   --color-bg-light: #F0EBE3;
   --color-bg-medium: #EBE3D6;
-  
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -55,7 +55,7 @@
   /* Custom Color Palette */
   --color-bg-light: #F0EBE3;
   --color-bg-medium: #EBE3D6;
-  
+
   --radius: 0.625rem;
   --background: #EBE3D6;
   --foreground: #1a1a1a;
@@ -130,22 +130,29 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
   }
-  
+
   /* Apply Orbitron font to all headings */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
   }
 
   /* Remove spinners from number inputs */
-  input[type="number"]::-webkit-inner-spin-button, 
-  input[type="number"]::-webkit-outer-spin-button { 
-    -webkit-appearance: none; 
-    margin: 0; 
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
+
   input[type="number"] {
     -moz-appearance: textfield;
   }
@@ -155,13 +162,20 @@
   .font-heading {
     font-family: var(--font-heading);
   }
-  
+
   .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
+    /* Chrome, Safari and Opera */
+  }
+
+  .clip-path-supplier {
+    clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0% 50%);
   }
 }

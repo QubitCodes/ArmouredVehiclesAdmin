@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "@/services/admin/auth.service";
 import { AxiosError } from "axios";
 import {
@@ -36,6 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrder } from "@/hooks/admin/order-management/use-order";
 import { Select } from "@/components/ui/select";
 import { useUpdateOrder } from "@/hooks/admin/order-management/use-update-order";
+import { useUpdateOrderById } from "@/hooks/admin/order-management/use-update-order-by-id";
 import { normalizeImageUrl } from "@/lib/utils";
 import {
   Dialog,
@@ -46,8 +48,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { InvoiceSection, InvoiceCommentModal } from "@/components/admin/invoices";
+import { PickupScheduleDialog } from "@/components/admin/order-management/PickupScheduleDialog";
+import { RateCalculatorDialog } from "@/components/admin/order-management/RateCalculatorDialog";
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -56,8 +60,11 @@ export default function OrderDetailPage() {
   const domain = (params?.domain as string) || "admin";
 
   const { data: order, isLoading, error } = useOrder(orderId);
-  const { mutate: updateOrder, isPending: isUpdating } =
+
+  const { mutate: updateOrder, mutateAsync: updateOrderAsync, isPending: isUpdating } =
     useUpdateOrder(orderId);
+  const { mutate: updateOrderById, mutateAsync: updateOrderByIdAsync } = useUpdateOrderById();
+  const queryClient = useQueryClient();
 
   // User Role State needed for header display logic
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -90,11 +97,76 @@ export default function OrderDetailPage() {
     notes: ""
   });
 
+  // FedEx Pickup Dialog State
+  const [isFedExPickupOpen, setIsFedExPickupOpen] = useState(false);
+  const [pendingShipmentStatus, setPendingShipmentStatus] = useState<string | null>(null);
+  const [pickupTargetOrderId, setPickupTargetOrderId] = useState<string | null>(null);
+
+  // Calculate weight for the target order (sub-order or main)
+  const pickupOrderWeight = useMemo(() => {
+    if (!order) return 1;
+    let targetItems: any[] = [];
+
+    // If pickupTargetOrderId is set and different from main order, try to find sub-order items
+    if (pickupTargetOrderId && pickupTargetOrderId !== order.id) {
+      const subOrder = order.grouped_orders?.find(o => o.id === pickupTargetOrderId);
+      if (subOrder && subOrder.items) {
+        targetItems = subOrder.items;
+      } else if (subOrder && subOrder.vendor_id) {
+        // Fallback: filter items by vendor
+        targetItems = order.items?.filter(i => (i.product as any)?.vendor?.id === subOrder.vendor_id) || [];
+      }
+    }
+
+    // If no target items found yet (or main order), use all items
+    if (targetItems.length === 0) {
+      targetItems = order.items || [];
+    }
+
+    if (targetItems.length === 0) return 1;
+
+    return targetItems.reduce((sum, item) => {
+      const w = Number((item.product as any)?.weight_value || 1);
+      return sum + (w * item.quantity);
+    }, 0);
+  }, [order, pickupTargetOrderId]);
+
+  // Calculate package count (total quantity of items)
+  const pickupOrderPackageCount = useMemo(() => {
+    if (!order) return 1;
+    let targetItems: any[] = [];
+
+    if (pickupTargetOrderId && pickupTargetOrderId !== order.id) {
+      const subOrder = order.grouped_orders?.find(o => o.id === pickupTargetOrderId);
+      if (subOrder && subOrder.items) {
+        targetItems = subOrder.items;
+      } else if (subOrder && subOrder.vendor_id) {
+        targetItems = order.items?.filter(i => (i.product as any)?.vendor?.id === subOrder.vendor_id) || [];
+      }
+    }
+
+    if (targetItems.length === 0) {
+      targetItems = order.items || [];
+    }
+
+    if (targetItems.length === 0) return 1;
+
+    return targetItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  }, [order, pickupTargetOrderId]);
+
   const handlePaymentStatusChange = (newStatus: string) => {
     if (newStatus === "paid") {
       setIsPaymentDialogOpen(true);
     } else {
-      updateOrder({ payment_status: newStatus as any });
+      // Update ALL sub-orders if grouped
+      const groupedOrders: any[] = (order as any).grouped_orders || [];
+      if (groupedOrders.length > 0) {
+        groupedOrders.forEach(o => {
+          updateOrderById({ id: o.id || o.order_id, data: { payment_status: newStatus as any } });
+        });
+      } else {
+        updateOrder({ payment_status: newStatus as any });
+      }
     }
   };
 
@@ -173,9 +245,15 @@ export default function OrderDetailPage() {
     provider: "FedEx",
   });
 
+  // FedEx Pickup Dialog State (Moved up for clarity, but keeping here for replace context if needed)
+  // const [isFedExPickupOpen, setIsFedExPickupOpen] = useState(false);
+  // const [pendingShipmentStatus, setPendingShipmentStatus] = useState<string | null>(null);
+
   const handleShipmentStatusChange = (newStatus: string) => {
+    // FedEx pickup flow for shipped status
     if (newStatus === "shipped") {
-      setIsShipmentDialogOpen(true);
+      setPendingShipmentStatus(newStatus);
+      setIsFedExPickupOpen(true);
     } else {
       updateOrder({ shipment_status: newStatus as any });
     }
@@ -192,20 +270,51 @@ export default function OrderDetailPage() {
       provider: shipmentForm.provider,
     });
 
-    updateOrder({
-      shipment_status: "shipped",
-      shipment_details,
-    });
+    // Check if we are targeting a sub-order
+    if (pickupTargetOrderId && pickupTargetOrderId !== orderId) {
+      updateOrderById({
+        id: pickupTargetOrderId,
+        data: {
+          shipment_status: "shipped",
+          shipment_details: JSON.stringify({
+            tracking_number: shipmentForm.tracking_number,
+            provider: shipmentForm.provider,
+          })
+        }
+      });
+    } else {
+      updateOrder({
+        shipment_status: "shipped",
+        shipment_details,
+      });
+    }
     setIsShipmentDialogOpen(false);
     setShipmentForm({ tracking_number: "", provider: "FedEx" });
+  };
+
+  /**
+   * Handle successful FedEx pickup scheduling
+   */
+  const handleFedExPickupSuccess = (result: {
+    trackingNumber: string;
+    labelUrl: string;
+    pickupConfirmation?: string;
+  }) => {
+    // Refetch order data to get updated shipment info
+    // The order will be updated by the backend
+    toast.success(`Pickup scheduled! Tracking: ${result.trackingNumber}`);
+    setPendingShipmentStatus(null);
+    // Invalidate order query to refetch fresh data (no page reload needed)
+    queryClient.invalidateQueries({ queryKey: ['order', orderId] });
   };
 
   // Invoice Comment Modal State
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [pendingStatusOrderId, setPendingStatusOrderId] = useState<string | null>(null);
 
   const handleOrderStatusChange = (newStatus: string) => {
-    if (newStatus === 'vendor_approved' || newStatus === 'approved' || newStatus === 'approved_controlled') {
+    if (newStatus === 'approved' || newStatus === 'approved_controlled') {
       setPendingStatus(newStatus);
       setIsInvoiceModalOpen(true);
     } else {
@@ -213,19 +322,53 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleSubOrderStatusChange = (subOrderId: string, newStatus: string) => {
+    if (newStatus === 'approved' || newStatus === 'approved_controlled') {
+      setPendingStatus(newStatus);
+      setPendingStatusOrderId(subOrderId);
+      setIsInvoiceModalOpen(true);
+    } else {
+      updateOrderById({ id: subOrderId, data: { order_status: newStatus as any } });
+    }
+  };
+
+  const handleSubOrderShipmentChange = (subOrderId: string, newStatus: string) => {
+    if (newStatus === "processing") {
+      setPickupTargetOrderId(subOrderId);
+      setPendingShipmentStatus(newStatus);
+      setIsFedExPickupOpen(true);
+    } else {
+      updateOrderById({ id: subOrderId, data: { shipment_status: newStatus as any } });
+    }
+  };
+
   const handleInvoiceCommentConfirm = async (comments: string | null) => {
     if (pendingStatus) {
-      updateOrder({
-        order_status: pendingStatus as any,
-        invoice_comments: comments
-      } as any);
+      const targetId = pendingStatusOrderId || orderId;
+      try {
+        if (pendingStatusOrderId) {
+          await updateOrderByIdAsync({ id: targetId, data: { order_status: pendingStatus as any, invoice_comments: comments } });
+        } else {
+          await updateOrderAsync({
+            order_status: pendingStatus as any,
+            invoice_comments: comments
+          } as any);
+        }
+        // Invalidate both order and invoices to ensure UI is fresh
+        queryClient.invalidateQueries({ queryKey: ['invoices', orderId] });
+      } catch (error) {
+        console.error("Failed to update order status", error);
+      }
       setPendingStatus(null);
+      setPendingStatusOrderId(null);
     }
   };
 
   // View Details Dialog State
   const [viewPaymentDialogOpen, setViewPaymentDialogOpen] = useState(false);
   const [viewShipmentDialogOpen, setViewShipmentDialogOpen] = useState(false);
+  const [viewingShipmentOrder, setViewingShipmentOrder] = useState<any>(null); // Track which order to view shipment for
+  const [isRateCalculatorOpen, setIsRateCalculatorOpen] = useState(false);
 
   // Handle errors
   useEffect(() => {
@@ -306,15 +449,15 @@ export default function OrderDetailPage() {
   const getStatusColor = (status?: string) => {
     switch (status) {
       case "approved":
-      case "vendor_approved":
+      case "approved_controlled":
         return "text-green-600 dark:text-green-500";
       case "pending_review":
       case "pending_approval":
       case "order_received":
         return "text-yellow-600 dark:text-yellow-500";
       case "rejected":
+      case "admin_rejected":
       case "cancelled":
-      case "vendor_rejected":
         return "text-red-600 dark:text-red-500";
       default:
         return "text-orange-600 dark:text-orange-500";
@@ -433,74 +576,7 @@ export default function OrderDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Order Status Card */}
-        <Card className="border-none shadow-sm flex flex-col gap-0 justify-center">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <Package className="h-3.5 w-3.5" />
-              Order Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p
-              className={`text-lg font-bold ${getStatusColor(
-                order.order_status
-              )}`}
-            >
-              {order.order_status
-                ? order.order_status
-                  .split("_")
-                  .map(
-                    (word: string) =>
-                      word.charAt(0).toUpperCase() + word.slice(1)
-                  )
-                  .join(" ")
-                : "Pending"}
-            </p>
-            {/* Order Status Select */}
-            <Select
-              value={order.order_status || "order_received"}
-              onChange={(e) => handleOrderStatusChange(e.target.value)}
-              disabled={isUpdating || roleLoading || (!canManageOrders && userRole !== 'vendor') || (userRole === 'vendor' && !['order_received', 'vendor_approved', 'vendor_rejected'].includes(order.order_status))}
-              className="h-9 text-xs"
-            >
-              {roleLoading ? (
-                <option disabled>Loading options...</option>
-              ) : userRole === 'vendor' ? (
-                <>
-                  <option value="order_received">Order Received</option>
-                  <option value="vendor_approved">Approve Order</option>
-                  <option value="vendor_rejected">Reject Order</option>
 
-                  {/* Read-only statuses for Vendor display */}
-                  <option value="approved">Approved</option>
-                  <option value="approved_controlled">Approved (Controlled)</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled</option>
-                </>
-              ) : (
-                <>
-                  <option value="order_received">Order Received</option>
-                  <option value="vendor_approved">Vendor Approved</option>
-                  <option value="vendor_rejected">Vendor Rejected</option>
-
-                  {/* General Approval - Visible if has 'order.approve' */}
-                  {(authService.hasPermission("order.approve")) && (
-                    <option value="approved">Approved</option>
-                  )}
-
-                  {/* Controlled Approval - Visible if has 'order.controlled.approve' */}
-                  {(authService.hasPermission("order.controlled.approve")) && (
-                    <option value="approved_controlled">Approved (Controlled)</option>
-                  )}
-
-                  <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled</option>
-                </>
-              )}
-            </Select>
-          </CardContent>
-        </Card>
 
         {/* Payment Status Card */}
         <Card className="border-none shadow-sm flex flex-col gap-0 justify-center">
@@ -563,76 +639,8 @@ export default function OrderDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Shipment Status Card */}
-        <Card className="border-none shadow-sm flex flex-col gap-0 justify-center">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <ShoppingBag className="h-3.5 w-3.5" />
-              Shipment Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p
-              className={`text-lg font-bold capitalize ${getShipmentStatusColor(
-                order.shipment_status || "pending"
-              )}`}
-            >
-              {" "}
-              {order.shipment_status ? order.shipment_status.replace('_', ' ') : "Pending"}
-            </p>
-            <Select
-              value={order.shipment_status || "pending"}
-              onChange={(e) => handleShipmentStatusChange(e.target.value)}
-              disabled={
-                isUpdating ||
-                (userRole !== 'vendor' && !canManageOrders) ||
-                (userRole === 'vendor' && (
-                  order.payment_status !== 'paid' ||
-                  !['approved', 'approved_controlled'].includes(order.order_status) ||
-                  !['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending')
-                ))
-              }
-              className="h-9 text-xs"
-            >
-              {userRole === 'vendor' ? (
-                <>
-                  <option value="pending">Pending</option>
-                  <option value="vendor_shipped">Shipped to Warehouse</option>
-                  {(!['pending', 'vendor_shipped'].includes(order.shipment_status || 'pending')) && (
-                    <>
-                      <option value="admin_received">Received at Warehouse</option>
-                      <option value="processing">Processing</option>
-                      <option value="shipped">Shipped to Customer</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="returned">Returned</option>
-                      <option value="cancelled">Cancelled</option>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <option value="pending">Pending</option>
-                  <option value="vendor_shipped">Vendor Shipped</option>
-                  <option value="admin_received">Received at Warehouse</option>
-                  <option value="processing">Processing</option>
-                  <option value="shipped">Shipped to Customer</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="returned">Returned</option>
-                  <option value="cancelled">Cancelled</option>
-                </>
-              )}
-            </Select>
-
-            {/* Shipment Details Button */}
-            {((order.shipment_status === 'shipped' || order.shipment_status === 'delivered' || order.shipment_status === 'vendor_shipped') &&
-              (order.tracking_number || (order as any).shipment_details)) && (
-                <Button variant="outline" size="sm" className="w-full mt-2 text-xs h-8" onClick={() => setViewShipmentDialogOpen(true)}>
-                  <Info className="h-3.5 w-3.5 mr-2" />
-                  View Details
-                </Button>
-              )}
-          </CardContent>
-        </Card>
+        {/* Invoices Section - Moved to grid */}
+        <InvoiceSection orderId={orderId} userRole={userRole} className="col-span-2" />
       </div>
 
       <Card className="border-none shadow-md gap-0 overflow-hidden">
@@ -652,9 +660,9 @@ export default function OrderDetailPage() {
             return ordersToDisplay.map((subOrder, groupIndex) => (
               <div key={subOrder.id} className="border-b last:border-b-0">
                 {/* Sub-Header for Grouped Orders - Always Show */}
-                <div className="bg-muted/50 px-6 py-3 flex items-center justify-between">
+                <div className="bg-muted/50 px-6 py-3 flex flex-row items-start justify-between gap-4">
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-start gap-1.5">
                     <span className="text-sm font-semibold text-foreground flex items-center gap-1">
                       Sub-Order {formatOrderId(subOrder.order_id || subOrder.id.slice(0, 8))}
                       <Button
@@ -666,9 +674,9 @@ export default function OrderDetailPage() {
                         <Copy className="h-3 w-3" />
                       </Button>
                     </span>
-                    <span className="text-muted-foreground mx-2 hidden sm:inline">|</span>
+
                     <div className="flex items-center gap-1.5">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium hidden sm:inline">Sold by:</span>
+                      <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Sold by:</span>
                       {subOrder.vendor ? (
                         <a
                           href={`/${domain}/vendors/${subOrder.vendor.id}`}
@@ -689,10 +697,83 @@ export default function OrderDetailPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(subOrder.order_status).replace('text-', 'bg-').replace('600', '100')} ${getStatusColor(subOrder.order_status)}`}>
-                      {subOrder.order_status?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                    </span>
+
+                  <div className="flex flex-col items-end gap-2">
+                    {/* Order Status Select */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground text-right w-16">Status</span>
+                      <Select
+                        value={subOrder.order_status || "order_received"}
+                        onChange={(e) => handleSubOrderStatusChange(subOrder.id, e.target.value)}
+                        disabled={isUpdating || roleLoading || (!canManageOrders && userRole !== 'vendor') || (userRole === 'vendor' && subOrder.order_status !== 'order_received')}
+                        className="h-8 text-xs w-[140px]"
+                      >
+                        {roleLoading ? (
+                          <option disabled>Loading options...</option>
+                        ) : userRole === 'vendor' ? (
+                          <>
+                            <option value="order_received">Order Received</option>
+                            <option value="approved">Approve Order</option>
+                            <option value="rejected">Reject Order</option>
+                            <option value="admin_rejected">Admin Rejected</option>
+                            <option value="cancelled">Cancelled</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="order_received">Order Received</option>
+                            {(authService.hasPermission("order.approve")) && (
+                              <option value="approved">Approved</option>
+                            )}
+                            <option value="rejected">Rejected</option>
+                            <option value="admin_rejected">Admin Rejected</option>
+                            <option value="cancelled">Cancelled</option>
+                          </>
+                        )}
+                      </Select>
+                    </div>
+
+                    {/* Shipment Status Select */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground text-right w-16">Shipment</span>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={subOrder.shipment_status || "pending"}
+                          onChange={(e) => handleSubOrderShipmentChange(subOrder.id, e.target.value)}
+                          disabled={
+                            isUpdating ||
+                            (userRole !== 'vendor' && !canManageOrders) ||
+                            (userRole === 'vendor' && (
+                              order.payment_status !== 'paid' ||
+                              !['approved', 'approved_controlled'].includes(subOrder.order_status)
+                            ))
+                          }
+                          className="h-8 text-xs w-[140px]"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="processing">Processing (Schedule Pickup)</option>
+                          <option value="shipped">Shipped</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="returned">Returned</option>
+                          <option value="cancelled">Cancelled</option>
+                        </Select>
+                        {/* Shipment Details Button */}
+                        {((['processing', 'shipped', 'delivered'].includes(subOrder.shipment_status)) &&
+                          (subOrder.tracking_number || (subOrder as any).shipment_details)) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => {
+                                setViewingShipmentOrder(subOrder);
+                                setViewShipmentDialogOpen(true);
+                              }}
+                              title="View Shipment Details"
+                            >
+                              <Info className="h-4 w-4" />
+                            </Button>
+                          )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -854,8 +935,7 @@ export default function OrderDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Invoices Section */}
-      <InvoiceSection orderId={orderId} userRole={userRole} />
+
 
       {/* Customer Information - HIDDEN FOR VENDOR */}
       {userRole !== 'vendor' && order.user && (
@@ -1390,50 +1470,98 @@ export default function OrderDetailPage() {
       </Dialog>
 
       {/* View Shipment Details Dialog */}
-      <Dialog open={viewShipmentDialogOpen} onOpenChange={setViewShipmentDialogOpen}>
+      <Dialog open={viewShipmentDialogOpen} onOpenChange={(open) => {
+        setViewShipmentDialogOpen(open);
+        if (!open) setViewingShipmentOrder(null);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Shipment Tracking</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            {(order.tracking_number || (order as any).shipment_details) ? (
-              <>
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="text-muted-foreground">Provider:</span>
-                  <span className="font-semibold text-foreground">
-                    {(order as any).shipment_details?.provider || "FedEx"}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1 border-b pb-2">
-                  <span className="text-muted-foreground">Tracking Number:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono bg-muted p-2 rounded break-all flex-1 text-sm">
-                      {order.tracking_number || (order as any).shipment_details?.tracking_number || "—"}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => copyToClipboard(order.tracking_number || (order as any).shipment_details?.tracking_number)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                {order.updated_at && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Last Updated:</span>
+            {(() => {
+              const targetOrder = viewingShipmentOrder || order;
+              const hasShipment = targetOrder.tracking_number || (targetOrder as any).shipment_details;
+
+              if (!hasShipment) {
+                return <p className="text-center text-muted-foreground">No tracking details recorded.</p>;
+              }
+
+              const sDetails = (targetOrder as any).shipment_details?.customer_shipment || (targetOrder as any).shipment_details;
+
+              return (
+                <>
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="text-muted-foreground">Provider:</span>
                     <span className="font-semibold text-foreground">
-                      {formatDate(order.updated_at as any)}
+                      {(targetOrder as any).shipment_details?.provider || "FedEx"}
                     </span>
                   </div>
-                )}
-              </>
-            ) : (
-              <p className="text-center text-muted-foreground">No tracking details recorded.</p>
-            )}
+                  <div className="flex flex-col gap-1 border-b pb-2">
+                    <span className="text-muted-foreground">Tracking Number:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono bg-muted p-2 rounded break-all flex-1 text-sm">
+                        {targetOrder.tracking_number || sDetails?.tracking_number || "—"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => copyToClipboard(targetOrder.tracking_number || sDetails?.tracking_number)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {/* Label URL */}
+                  {((targetOrder as any).label_url || sDetails?.label_url) && (
+                    <div className="flex justify-between items-center border-b pb-2">
+                      <span className="text-muted-foreground">Shipping Label:</span>
+                      <a
+                        href={(targetOrder as any).label_url || sDetails?.label_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary font-semibold hover:underline flex items-center gap-1"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </a>
+                    </div>
+                  )}
+                  {/* Pickup Confirmation */}
+                  {sDetails?.pickup_confirmation && (
+                    <div className="flex justify-between items-center border-b pb-2">
+                      <span className="text-muted-foreground">Pickup Confirmation:</span>
+                      <span className="font-mono bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                        {sDetails.pickup_confirmation}
+                      </span>
+                    </div>
+                  )}
+                  {/* Pickup Date */}
+                  {sDetails?.pickup_date && (
+                    <div className="flex justify-between items-center border-b pb-2">
+                      <span className="text-muted-foreground">Pickup Date:</span>
+                      <span className="font-semibold text-foreground">
+                        {sDetails.pickup_date}
+                      </span>
+                    </div>
+                  )}
+                  {targetOrder.updated_at && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Last Updated:</span>
+                      <span className="font-semibold text-foreground">
+                        {formatDate(targetOrder.updated_at as any)}
+                      </span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
           <DialogFooter>
-            <Button onClick={() => setViewShipmentDialogOpen(false)}>Close</Button>
+            <Button onClick={() => {
+              setViewShipmentDialogOpen(false);
+              setViewingShipmentOrder(null);
+            }}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1442,6 +1570,29 @@ export default function OrderDetailPage() {
         onClose={() => setIsInvoiceModalOpen(false)}
         onSubmit={handleInvoiceCommentConfirm}
         isLoading={isUpdating}
+      />
+
+      {/* FedEx Pickup Schedule Dialog */}
+      <PickupScheduleDialog
+        open={isFedExPickupOpen}
+        onClose={() => {
+          setIsFedExPickupOpen(false);
+          setPendingShipmentStatus(null);
+        }}
+        orderId={orderId}
+        currentStatus={order.shipment_status || "pending"}
+        targetStatus={pendingShipmentStatus || "processing"}
+        defaultWeight={pickupOrderWeight}
+        defaultPackageCount={pickupOrderPackageCount}
+        onSuccess={handleFedExPickupSuccess}
+      />
+
+      {/* FedEx Rate Calculator Dialog */}
+      <RateCalculatorDialog
+        open={isRateCalculatorOpen}
+        onClose={() => setIsRateCalculatorOpen(false)}
+        orderId={orderId}
+        orderCurrency={order.currency}
       />
     </div>
   );

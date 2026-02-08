@@ -5,12 +5,12 @@ export interface Order {
   order_id?: string;
   user_id: string;
   tracking_number?: string | null;
-  order_status: "order_received" | "vendor_approved" | "vendor_rejected" | "approved" | "rejected" | "cancelled" | "processing" | "shipped" | "delivered" | "returned" | "Order Received" | "Pending Review" | "Approved" | "pending_review" | "pending_approval";
+  order_status: "order_received" | "approved" | "rejected" | "admin_rejected" | "cancelled";
   total_amount: number;
   currency: string;
   type?: "direct" | "request"; // Added 'type' field, assuming it's optional based on other fields
   payment_status?: "pending" | "paid" | "failed" | "refunded" | null;
-  shipment_status?: "pending" | "vendor_shipped" | "admin_received" | "processing" | "shipped" | "delivered" | "returned" | "cancelled" | null;
+  shipment_status?: "pending" | "processing" | "shipped" | "delivered" | "returned" | "cancelled" | null;
   comments?: string | null; // Added 'comments' field
   trackingNumber?: string; // Added 'trackingNumber' field
   estimatedDelivery?: string; // Added 'estimatedDelivery' field

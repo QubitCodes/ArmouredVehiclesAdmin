@@ -12,7 +12,7 @@ export interface Admin {
   avatar?: string | null;
   email_verified?: boolean;
   phone_verified?: boolean;
-  completion_percentage?: number;
+  // completion_percentage?: number;
   token_version?: number;
   onboarding_step?: number;
   is_active: boolean;

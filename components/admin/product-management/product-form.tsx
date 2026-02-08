@@ -251,7 +251,6 @@ const SECTIONS = [
     icon: ShoppingCart,
     fields: [
       "basePrice",
-      "shippingCharge",
       "packingCharge",
       "currency",
       "pricingTerms",
@@ -550,7 +549,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
           parseNumber(getVal("basePrice", "base_price")) ||
           parseNumber(getVal("price", "price")) ||
           0,
-        shippingCharge: parseNumber(getVal("shippingCharge", "shipping_charge")),
+
         packingCharge: parseNumber(getVal("packingCharge", "packing_charge")),
         currency: (getVal("currency", "currency") as string) || "AED",
         condition: (getVal("condition", "condition") as string) || "new",
@@ -1045,7 +1044,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
     categoryId: 'category_id',
     subCategoryId: 'sub_category_id',
     basePrice: 'base_price',
-    shippingCharge: 'shipping_charge',
+
     packingCharge: 'packing_charge',
     individualProductPricing: 'individual_product_pricing',
     brandId: 'brand_id'

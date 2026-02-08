@@ -428,12 +428,15 @@ export function VendorProfileView({ user, profile, markedFields, toggleMarkField
                         ) : "—"
                     )}
 
-                    {renderRow("country_of_registration")}
+                    {renderRow("address_line1", "Address Line 1")}
+                    {renderRow("address_line2", "Address Line 2")}
+                    {renderRow("city")}
+                    {renderRow("state", "State / Province")}
+                    {renderRow("country_of_registration", "Country of Registration")}
                     {renderRow("trade_brand_name")}
                     {renderRow("year_of_establishment")}
-                    {renderRow("entity_type")}
+                    {renderRow("entity_type", "Entity Type", profile?.entityType?.name || profile?.entity_type)}
                     {renderRow("official_website")}
-                    {renderRow("city_office_address")}
                     {renderRow("duns_number")}
                     {renderRow("tax_vat_number")}
                     {renderRow("tax_issuing_date")}

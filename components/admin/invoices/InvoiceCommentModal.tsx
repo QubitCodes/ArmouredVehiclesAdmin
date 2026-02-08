@@ -89,37 +89,39 @@ export function InvoiceCommentModal({
                         value={comments}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setComments(e.target.value)}
                         disabled={submitting || isLoading}
-                        className="min-h-[160px] w-full bg-[#EBE3D6] border-[#BDAA91] text-lg rounded-xl focus-visible:ring-[#3D4A26] resize-none p-4"
+                        className="min-h-[160px] w-full bg-white border-[#BDAA91] text-lg rounded-xl focus-visible:ring-[#3D4A26] resize-none p-4 shadow-sm"
                     />
                     <p className="text-sm text-[#6D6255] font-medium tracking-tight">
                         These comments will be visible on the printed invoice.
                     </p>
                 </div>
 
-                <DialogFooter className="flex flex-col sm:flex-row gap-4 sm:justify-end items-center mt-4">
+                <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:justify-end items-center mt-4 w-full">
                     <Button
                         variant="ghost"
                         onClick={handleClose}
                         disabled={submitting || isLoading}
-                        className="text-lg font-orbitron uppercase tracking-widest px-8"
+                        className="text-base font-orbitron uppercase tracking-widest px-6 hover:bg-[#EBE3D6] text-[#6D6255]"
                     >
-                        Cancel
+                        CANCEL
                     </Button>
-                    <Button
-                        variant="outline"
-                        onClick={handleSkip}
-                        disabled={submitting || isLoading}
-                        className="text-lg font-orbitron uppercase tracking-widest px-10 border-[#BDAA91] bg-white/50"
-                    >
-                        {submitting ? '...' : 'Skip & Approve'}
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={submitting || isLoading}
-                        className="text-lg font-orbitron uppercase tracking-widest py-6"
-                    >
-                        {submitting ? '...' : 'ADD & APPROVE'}
-                    </Button>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={handleSkip}
+                            disabled={submitting || isLoading}
+                            className="text-base font-orbitron uppercase tracking-widest px-6 border-[#BDAA91] bg-white hover:bg-[#F9F9F9] text-[#3D4A26]"
+                        >
+                            {submitting ? '...' : 'SKIP & APPROVE'}
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={submitting || isLoading}
+                            className="text-base font-orbitron uppercase tracking-widest px-6 bg-[#3D4A26] hover:bg-[#2C361B] text-white shadow-md"
+                        >
+                            {submitting ? '...' : 'ADD & APPROVE'}
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

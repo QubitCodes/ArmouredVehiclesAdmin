@@ -58,7 +58,11 @@ const companyInformationSchema = z.object({
     month: z.number().optional(),
     year: z.number().optional(),
   }),
-  cityOfficeAddress: z.string().min(1, "City & Office Address is required"),
+  addressLine1: z.string().min(1, "Address Line 1 is required"),
+  addressLine2: z.string().optional(),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State / Province is required"),
+  postalCode: z.string().min(1, "Postal / Zip Code is required"),
   officialWebsite: z
     .string()
     .url("Please enter a valid website URL")
@@ -93,16 +97,11 @@ const companyInformationSchema = z.object({
 
 type CompanyInformationFormValues = z.infer<typeof companyInformationSchema>;
 
-const entityTypes = [
-  { value: "manufacturer", label: "Manufacturer" },
-  { value: "distributor", label: "Distributor" },
-  { value: "trader", label: "Trader" },
-  { value: "government_entity", label: "Government Entity" },
-  { value: "oem_dealer", label: "OEM Dealer" },
-  { value: "integrator", label: "Integrator" },
-  { value: "service_provider", label: "Service Provider" },
-  { value: "other", label: "Other" },
-];
+// Entity Type Option Type
+type EntityTypeOption = {
+  id: number;
+  name: string;
+};
 
 // Helper function to convert date object to ISO date string
 function dateObjectToISOString(dateObj: { day?: number; month?: number; year?: number }): string | undefined {
@@ -131,14 +130,17 @@ export default function CompanyInformationPage() {
   const form = useForm<CompanyInformationFormValues>({
     resolver: zodResolver(companyInformationSchema),
     defaultValues: {
-      countryOfRegistration: "United Arab Emirates",
+      countryOfRegistration: "ae",
       registeredCompanyName: "",
       yearOfEstablishment: "",
       tradeBrandName: "",
       legalEntityId: "",
       issueDate: {},
       expiryDate: {},
-      cityOfficeAddress: "",
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      postalCode: "",
       officialWebsite: "",
       entityType: "",
       dunsNumber: "",
@@ -148,23 +150,28 @@ export default function CompanyInformationPage() {
     },
   });
 
-  // {
-  //   "countryOfRegistration": "string",
-  //   "registeredCompanyName": "string",
-  //   "tradeBrandName": "string",
-  //   "yearOfEstablishment": 0,
-  //   "legalEntityId": "string",
-  //   "legalEntityIssueDate": "2026-01-05",
-  //   "legalEntityExpiryDate": "2026-01-05",
-  //   "cityOfficeAddress": "string",
-  //   "officialWebsite": "string",
-  //   "entityType": "manufacturer",
-  //   "dunsNumber": "string",
-  //   "vatCertificateFile": "string",
-  //   "taxVatNumber": "string",
-  //   "taxIssuingDate": "2026-01-05",
-  //   "taxExpiryDate": "2026-01-05"
-  // }
+  const [states, setStates] = useState<any[]>([]);
+  const [statesLoading, setStatesLoading] = useState<boolean>(false);
+  const [entityTypes, setEntityTypes] = useState<EntityTypeOption[]>([]);
+  const [entityTypesLoading, setEntityTypesLoading] = useState<boolean>(false);
+
+  // Fetch Entity Types
+  useEffect(() => {
+    const fetchEntityTypes = async () => {
+      setEntityTypesLoading(true);
+      try {
+        const response = await api.get("/references/entity-type");
+        if (response.data.status) {
+          setEntityTypes(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch entity types:", error);
+      } finally {
+        setEntityTypesLoading(false);
+      }
+    };
+    fetchEntityTypes();
+  }, []);
 
   // Auto-fill form when profile data is available
   useEffect(() => {
@@ -182,17 +189,30 @@ export default function CompanyInformationPage() {
         };
       };
 
+      // Helper to find country code from profile value
+      const countryCode = (() => {
+        const val = p.country_of_registration || "United Arab Emirates";
+        const found = (countries as Country[]).find(
+          c => c.value === val.toLowerCase() || c.label.toLowerCase() === val.toLowerCase()
+        );
+        return found ? found.value : "ae";
+      })();
+
       form.reset({
-        countryOfRegistration: p.country_of_registration || "United Arab Emirates",
+        countryOfRegistration: countryCode,
         registeredCompanyName: p.registered_company_name || "",
         yearOfEstablishment: p.year_of_establishment ? String(p.year_of_establishment) : "",
         tradeBrandName: p.trade_brand_name || "",
         legalEntityId: p.legal_entity_id || "",
         issueDate: parseDate(p.legal_entity_issue_date),
         expiryDate: parseDate(p.legal_entity_expiry_date),
-        cityOfficeAddress: p.city_office_address || "",
+        addressLine1: p.address_line1 || p.city_office_address || "",
+        addressLine2: p.address_line2 || "",
+        state: p.state || "",
+        city: p.city || "",
+        postalCode: p.postal_code || "",
         officialWebsite: p.official_website || "",
-        entityType: p.entity_type || "",
+        entityType: p.entity_type ? String(p.entity_type) : "",
         dunsNumber: p.duns_number || "",
         taxVatNumber: p.tax_vat_number || "",
         taxIssueDate: parseDate(p.tax_issuing_date),
@@ -202,28 +222,9 @@ export default function CompanyInformationPage() {
       // Handle file preview if URL exists
       if (p.govt_compliance_reg_url) {
         setImagePreview(p.govt_compliance_reg_url);
-        // Determine type based on extension or assume image if no extension
         const isPdf = p.govt_compliance_reg_url.toLowerCase().endsWith('.pdf');
         setFileType(isPdf ? 'pdf' : 'image');
 
-        // We can't convert URL to File object automatically for the form's file input,
-        // but we can assume it's valid if there's a URL.
-        // If the user uploads a new file, it will override this.
-        // For validation, we might need to adjust the schema or skip validation if URL exists.
-        // Currently schema requires 'vatCertificate' to be File only if user interacts with it?
-        // Actually schema says: .refine((file) => file instanceof File ...
-        // We might need to manually set a dummy File or make the field optional if URL exists.
-        // For now, let's keep the user required to re-upload if they want to change,
-        // OR we trust the backend check. 
-        // But frontend validation will fail if we don't put a file.
-        // Let's create a dummy file object to satisfy z.instanceof(File) if needed, 
-        // OR better, update validation to allow if URL exists. 
-        // For this task scope, let's just show preview. The user might need to re-upload to submit Step 1 again,
-        // BUT usually if data is pre-filled, we want them to just click Next.
-        // So validation needs to be handled.
-
-        // WORKAROUND: Create a dummy file object to pass Zod validation
-        // properties: name, lastModified, size, type
         const dummyFile = new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" });
         form.setValue("vatCertificate", dummyFile);
       }
@@ -234,11 +235,9 @@ export default function CompanyInformationPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check if it's an image or PDF
       if (file.type.startsWith("image/")) {
         form.setValue("vatCertificate", file);
         setFileType('image');
-        // Create preview URL for image
         const reader = new FileReader();
         reader.onload = (e) => {
           setImagePreview(e.target?.result as string);
@@ -247,7 +246,6 @@ export default function CompanyInformationPage() {
       } else if (file.type === "application/pdf") {
         form.setValue("vatCertificate", file);
         setFileType('pdf');
-        // Create preview URL for PDF
         const reader = new FileReader();
         reader.onload = (e) => {
           setImagePreview(e.target?.result as string);
@@ -273,15 +271,12 @@ export default function CompanyInformationPage() {
     try {
       let vatCertificateUrl = undefined;
 
-      // Handle File Upload if selected
       if (data.vatCertificate instanceof File) {
         const uploadData = new FormData();
-        uploadData.append("files", data.vatCertificate); // Matches generic API expectation
+        uploadData.append("files", data.vatCertificate);
         uploadData.append("label", "VENDOR_VAT_CERTIFICATE");
         uploadData.append("data", JSON.stringify({}));
 
-        // Use the same API URL logic as frontend or configure environment
-        // Use centralized API instance to ensure proper token handling (401 fix)
         const uploadRes = await api.post('/upload/files', uploadData);
 
         const uploadJson = uploadRes.data;
@@ -291,15 +286,11 @@ export default function CompanyInformationPage() {
           throw new Error("File upload response invalid");
         }
       } else if (typeof data.vatCertificate === 'string') {
-        // If it's already a string (existing URL), just use it if it matches our preview
         if (imagePreview) {
           vatCertificateUrl = imagePreview;
         }
       }
 
-
-
-      // Transform form data to API schema format
       const payload = {
         countryOfRegistration: data.countryOfRegistration,
         registeredCompanyName: data.registeredCompanyName,
@@ -308,11 +299,16 @@ export default function CompanyInformationPage() {
         legalEntityId: data.legalEntityId,
         legalEntityIssueDate: dateObjectToISOString(data.issueDate) || "",
         legalEntityExpiryDate: dateObjectToISOString(data.expiryDate) || "",
-        cityOfficeAddress: data.cityOfficeAddress,
+        cityOfficeAddress: `${data.addressLine1}, ${data.city}, ${data.state}, ${data.postalCode}`,
+        addressLine1: data.addressLine1,
+        addressLine2: data.addressLine2,
+        state: data.state,
+        city: data.city,
+        postalCode: data.postalCode,
         officialWebsite: data.officialWebsite || undefined,
         entityType: data.entityType,
         dunsNumber: data.dunsNumber || undefined,
-        vatCertificateUrl: vatCertificateUrl, // Send URL
+        vatCertificateUrl: vatCertificateUrl,
         taxVatNumber: data.taxVatNumber || undefined,
         taxIssuingDate: data.taxIssueDate ? dateObjectToISOString(data.taxIssueDate) : undefined,
         taxExpiryDate: data.taxExpiryDate ? dateObjectToISOString(data.taxExpiryDate) : undefined,
@@ -320,7 +316,6 @@ export default function CompanyInformationPage() {
 
       await step1Mutation.mutateAsync(payload);
       toast.success("Company information saved successfully!");
-      // Redirect to contact-person page
       router.push("/vendor/contact-person");
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -341,84 +336,89 @@ export default function CompanyInformationPage() {
     name: "countryOfRegistration",
   });
   const selectedCountry = (countries as Country[]).find(
-    (c) => c.label === countryOfRegistration
+    (c) => c.value === countryOfRegistration
   );
+  const countryValue = selectedCountry?.value;
+
+  // Fetch states when country changes
+  useEffect(() => {
+    if (!countryOfRegistration) {
+      setStates([]);
+      return;
+    }
+
+    const fetchStates = async () => {
+      setStatesLoading(true);
+      try {
+        const selectedCountryObj = (countries as Country[]).find(
+          (c) => c.value === countryOfRegistration
+        );
+        const countryName = selectedCountryObj?.label;
+
+        if (!countryName) {
+          setStates([]);
+          return;
+        }
+
+        const response = await fetch("https://countriesnow.space/api/v0.1/countries/states", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ country: countryName })
+        });
+        const result = await response.json();
+        if (result.data && result.data.states) {
+          setStates(result.data.states);
+        } else {
+          setStates([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch states:", error);
+        setStates([]);
+      } finally {
+        setStatesLoading(false);
+      }
+    };
+
+    fetchStates();
+  }, [countryOfRegistration]);
 
   return (
-    <div className="min-h-screen bg-bg-medium flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-7xl">
+    <div className="min-h-screen bg-[#EBE3D6] flex flex-col items-center px-4 py-8 text-black">
+      <div className="w-full max-w-[1200px]">
         {/* Progress Bar */}
         <OnboardingProgressBar currentStep={1} />
 
-        {/* COMPANY INFORMATION Heading */}
-        <h2 className="text-2xl pb-3 font-bold text-black uppercase">
-          COMPANY INFORMATION
-        </h2>
+        {/* Heading Section */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-[20px] font-bold uppercase font-orbitron">
+            COMPANY INFORMATION
+          </h2>
+          <span className="text-xl cursor-pointer">⌃</span>
+        </div>
 
         {/* Form Container */}
-        <div className="bg-bg-light p-6 shadow-lg">
+        <div className="bg-[#F3EDE3] p-8 shadow-sm">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {/* Country of Registration - Full Width */}
-              <FormField
-                control={form.control}
-                name="countryOfRegistration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                      Country of Registration{" "}
-                      <span className="text-red-500">*</span>
-                      <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <select
-                          {...field}
-                          disabled={isCountriesLoading}
-                          className="w-full bg-bg-medium border border-gray-300 h-11 pl-12 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isCountriesLoading ? (
-                            <option value="">Loading countries...</option>
-                          ) : (
-                            (countries as Country[]).map((country) => (
-                              <option key={country.value} value={country.label}>
-                                {country.label}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                        {selectedCountry && !isCountriesLoading && (
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl pointer-events-none z-10">
-                            {selectedCountry.flag}
-                          </span>
-                        )}
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
-              {/* Two Column Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Column */}
-                <div className="space-y-6">
+              {/* COMPANY DETAILS SECTION */}
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+
                   {/* Registered Company Name */}
                   <FormField
                     control={form.control}
                     name="registeredCompanyName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Registered Company Name{" "}
-                          <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Registered Company Name <span className="text-red-600">*</span>
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary pr-10"
+                              className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                              placeholder="eg: Blue Web Trading"
                               {...field}
                             />
                             {isProfileLoading && (
@@ -433,122 +433,40 @@ export default function CompanyInformationPage() {
                     )}
                   />
 
-                  {/* Year of Establishment */}
-                  <FormField
-                    control={form.control}
-                    name="yearOfEstablishment"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Year of Establishment{" "}
-                          <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="eg : 1985"
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Issue Date */}
-                  <FormField
-                    control={form.control}
-                    name="issueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Issue Date <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <DateSelector
-                            value={field.value}
-                            onChange={field.onChange}
-                            selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* City & Office Address */}
-                  <FormField
-                    control={form.control}
-                    name="cityOfficeAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          City & Office Address{" "}
-                          <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Office Address / Address Line"
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Entity Type */}
-                  <FormField
-                    control={form.control}
-                    name="entityType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Entity Type <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <select
-                              {...field}
-                              className="w-full bg-bg-medium border border-gray-300 h-11 px-4 pr-8 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none appearance-none"
-                            >
-                              <option value="">Select Entity Type</option>
-                              {entityTypes.map((type) => (
-                                <option key={type.value} value={type.value}>
-                                  {type.label}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
                   {/* Trade/Brand Name */}
                   <FormField
                     control={form.control}
                     name="tradeBrandName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                        <FormLabel className="font-semibold mb-1 block text-sm">
                           Trade/Brand Name (if different)
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
                         </FormLabel>
                         <FormControl>
                           <Input
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Year of Establishment */}
+                  <FormField
+                    control={form.control}
+                    name="yearOfEstablishment"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Year of Establishment <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="YYYY"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
                             {...field}
                           />
                         </FormControl>
@@ -563,16 +481,35 @@ export default function CompanyInformationPage() {
                     name="legalEntityId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Legal Entity ID / CR No{" "}
-                          <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Legal Entity ID / CR No <span className="text-red-600">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter Your Trade License Number"
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
                             {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Issue Date */}
+                  <FormField
+                    control={form.control}
+                    name="issueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Issue Date <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <DateSelector
+                            value={field.value}
+                            onChange={field.onChange}
+                            selectClassName="bg-transparent border border-[#C7B88A] h-[42px] focus:outline-none rounded-none text-sm"
                           />
                         </FormControl>
                         <FormMessage />
@@ -586,16 +523,70 @@ export default function CompanyInformationPage() {
                     name="expiryDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                        <FormLabel className="font-semibold mb-1 block text-sm">
                           Expiry Date
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
                         </FormLabel>
                         <FormControl>
                           <DateSelector
                             value={field.value}
                             onChange={field.onChange}
-                            selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            selectClassName="bg-transparent border border-[#C7B88A] h-[42px] focus:outline-none rounded-none text-sm"
                             includeFutureYears={true}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Entity Type */}
+                  <FormField
+                    control={form.control}
+                    name="entityType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Entity Type <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <select
+                              {...field}
+                              className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none appearance-none h-[42px]"
+                            >
+                              <option value="" className="bg-[#F3EDE3]">Select Entity Type</option>
+                              {entityTypesLoading ? (
+                                <option disabled className="bg-[#F3EDE3]">Loading...</option>
+                              ) : (
+                                entityTypes.map((type) => (
+                                  <option key={type.id} value={String(type.id)} className="bg-[#F3EDE3]">
+                                    {type.name}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C7B88A] pointer-events-none" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* DUNS Number */}
+                  <FormField
+                    control={form.control}
+                    name="dunsNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          DUNS Number (if applicable)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="eg: 65-432-1987"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -609,37 +600,14 @@ export default function CompanyInformationPage() {
                     name="officialWebsite"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
+                        <FormLabel className="font-semibold mb-1 block text-sm">
                           Official Website
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
                         </FormLabel>
                         <FormControl>
                           <Input
                             type="url"
                             placeholder="eg: www.blueweb2.com"
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* DUNS Number */}
-                  <FormField
-                    control={form.control}
-                    name="dunsNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          DUNS Number (if applicable)
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="eg: 65-432-1987"
-                            className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
                             {...field}
                           />
                         </FormControl>
@@ -650,30 +618,194 @@ export default function CompanyInformationPage() {
                 </div>
               </div>
 
-              {/* TAX INFORMATION Section */}
-              <div className="space-y-6 pt-6 border-t border-gray-300">
-                <h2 className="text-2xl font-bold text-black mb-6">
-                  TAX INFORMATION
-                </h2>
+              {/* ADDRESS DETAILS SECTION */}
+              <div className="space-y-5 pt-5 border-t border-[#BDAA91]">
+                <h3 className="text-lg font-bold uppercase font-orbitron mb-2">Location Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                  {/* Row 1: Country | State */}
+                  {/* Country of Registration */}
+                  <FormField
+                    control={form.control}
+                    name="countryOfRegistration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Country of Registration <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <select
+                              {...field}
+                              disabled={isCountriesLoading}
+                              className={`w-full border border-[#C7B88A] bg-transparent ${selectedCountry ? "pl-10" : "px-3"
+                                } py-2 text-sm focus:outline-none appearance-none disabled:opacity-50 h-[42px]`}
+                            >
+                              {isCountriesLoading ? (
+                                <option value="">Loading countries...</option>
+                              ) : (
+                                (countries as Country[]).map((country) => (
+                                  <option key={country.value} value={country.value} className="bg-[#F3EDE3]">
+                                    {country.label}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                            {selectedCountry && !isCountriesLoading && (
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl pointer-events-none z-10">
+                                {selectedCountry.flag}
+                              </span>
+                            )}
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C7B88A] pointer-events-none" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column - Tax/VAT Number and Dates */}
-                  <div className="space-y-6">
-                    {/* Tax / VAT Number */}
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          {states.length > 0 ? "State / Province" : "State or Province Code"} <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          {states.length > 0 ? (
+                            <div className="relative">
+                              <select
+                                {...field}
+                                disabled={!countryValue || statesLoading}
+                                className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none appearance-none disabled:opacity-50 h-[42px]"
+                              >
+                                <option value="" className="bg-[#F3EDE3]">Select State</option>
+                                {states.map((s: any) => (
+                                  <option key={s.name} value={s.name} className="bg-[#F3EDE3]">
+                                    {s.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C7B88A] pointer-events-none" />
+                            </div>
+                          ) : (
+                            <Input
+                              {...field}
+                              placeholder="Enter State / Province"
+                              disabled={!countryValue || statesLoading}
+                              className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                            />
+                          )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Row 2: Address Line 1 | City */}
+                  <FormField
+                    control={form.control}
+                    name="addressLine1"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Address Line 1 <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Building No, Street Name"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          City <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="eg: Dubai"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Row 3: Address Line 2 | Postal Code */}
+                  <FormField
+                    control={form.control}
+                    name="addressLine2"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Address Line 2
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Area / Landmark"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="postalCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Postal / Zip Code <span className="text-red-600">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="00000"
+                            className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* TAX INFORMATION SECTION */}
+              <div className="space-y-6 pt-5 border-t border-[#BDAA91]">
+                <h3 className="text-[20px] font-bold uppercase font-orbitron mb-4">
+                  TAX INFORMATION
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                  <div className="space-y-5">
                     <FormField
                       control={form.control}
                       name="taxVatNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                            Tax / VAT Number{" "}
-                            <span className="text-red-500">*</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          <FormLabel className="font-semibold mb-1 block text-sm">
+                            Tax / VAT Number <span className="text-red-600">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="eg: 100123456700003"
-                              className="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
                               {...field}
                             />
                           </FormControl>
@@ -682,68 +814,59 @@ export default function CompanyInformationPage() {
                       )}
                     />
 
-                    {/* Dates Row - Issuing Date and Expiry Date */}
-                    <div className="grid grid-cols-1 gap-4">
-                      {/* Issuing Date */}
-                      <FormField
-                        control={form.control}
-                        name="taxIssueDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                              Issuing Date <span className="text-red-500">*</span>
-                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                            </FormLabel>
-                            <FormControl>
-                              <DateSelector
-                                value={field.value || {}}
-                                onChange={field.onChange}
-                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <FormField
+                      control={form.control}
+                      name="taxIssueDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold mb-1 block text-sm">
+                            Issuing Date <span className="text-red-600">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <DateSelector
+                              value={field.value || {}}
+                              onChange={field.onChange}
+                              selectClassName="bg-transparent border border-[#C7B88A] h-[42px] focus:outline-none rounded-none text-sm"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                      {/* Expiry Date */}
-                      <FormField
-                        control={form.control}
-                        name="taxExpiryDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                              Expiry Date
-                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                            </FormLabel>
-                            <FormControl>
-                              <DateSelector
-                                value={field.value || {}}
-                                onChange={field.onChange}
-                                selectClassName="bg-bg-medium border border-gray-300 h-11 focus:border-secondary focus:ring-1 focus:ring-secondary"
-                                includeFutureYears={true}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="taxExpiryDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold mb-1 block text-sm">
+                            Expiry Date
+                          </FormLabel>
+                          <FormControl>
+                            <DateSelector
+                              value={field.value || {}}
+                              onChange={field.onChange}
+                              selectClassName="bg-transparent border border-[#C7B88A] h-[42px] focus:outline-none rounded-none text-sm"
+                              includeFutureYears={true}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                  {/* Right Column - VAT Registration Certificate */}
+                  {/* VAT Certificate Upload */}
                   <FormField
                     control={form.control}
                     name="vatCertificate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-sm font-medium text-black">
-                          Upload VAT Registration Certificate{" "}
-                          <span className="text-red-500">*</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        <FormLabel className="font-semibold mb-1 block text-sm">
+                          Upload VAT Registration Certificate <span className="text-red-600">*</span>
                         </FormLabel>
                         <FormControl>
-                          <div className="space-y-2">
+                          <div className="space-y-4">
                             <input
                               ref={fileInputRef}
                               type="file"
@@ -752,7 +875,7 @@ export default function CompanyInformationPage() {
                               className="hidden"
                             />
                             {imagePreview ? (
-                              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-bg-medium">
+                              <div className="relative border border-[#C7B88A] overflow-hidden bg-[#EFE8DC] p-2">
                                 {fileType === 'image' ? (
                                   <img
                                     src={imagePreview}
@@ -765,7 +888,7 @@ export default function CompanyInformationPage() {
                                 <button
                                   type="button"
                                   onClick={handleRemoveImage}
-                                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                                  className="absolute top-2 right-2 p-2 bg-[#D35400] text-white rounded-full hover:bg-[#39482C] transition-colors z-10"
                                   aria-label="Remove file"
                                 >
                                   <X className="w-4 h-4" />
@@ -774,14 +897,14 @@ export default function CompanyInformationPage() {
                             ) : (
                               <div
                                 onClick={() => fileInputRef.current?.click()}
-                                className="border-2 border-dashed border-gray-300 p-6 bg-bg-medium flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors"
+                                className="border border-dashed border-[#C7B88A] py-16 bg-[#EFE8DC] flex flex-col items-center justify-center cursor-pointer hover:bg-[#E5DDD1] transition-colors text-center"
                               >
-                                <Upload className="w-10 h-10 text-secondary mb-3" />
-                                <p className="text-sm font-medium text-gray-700 mb-1">
-                                  Choose a File
+                                <Upload className="w-8 h-8 text-[#C7B88A] mb-3" />
+                                <p className="text-sm font-semibold text-black mb-1 px-4">
+                                  Choose a File or Drag & Drop It Here.
                                 </p>
-                                <p className="text-xs text-gray-500 text-center max-w-md">
-                                  Accepted files: JPEG, PNG and PDF.
+                                <p className="text-xs text-gray-500">
+                                  JPEG, PNG and PDF formats up to 10 MB.
                                 </p>
                               </div>
                             )}
@@ -793,30 +916,26 @@ export default function CompanyInformationPage() {
                   />
                 </div>
               </div>
+
+              {/* SAVING / NEXT ACTION */}
+              <div className="flex justify-center pt-10">
+                <button
+                  type="submit"
+                  disabled={step1Mutation.isPending}
+                  className="w-[300px] h-[48px] bg-[#D35400] text-white font-black font-orbitron clip-path-supplier uppercase text-sm hover:bg-[#39482C] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {step1Mutation.isPending ? (
+                    <span className="flex items-center gap-2">
+                      <Spinner size="sm" className="text-white" />
+                      SAVING...
+                    </span>
+                  ) : (
+                    "NEXT"
+                  )}
+                </button>
+              </div>
             </form>
           </Form>
-        </div>
-
-        {/* NEXT Button */}
-        <div className="flex justify-center mt-8 pb-8">
-          <Button
-            type="submit"
-            variant="secondary"
-            disabled={step1Mutation.isPending}
-            className="text-white font-bold uppercase tracking-wide px-24 py-3 text-base shadow-lg hover:shadow-xl transition-all min-w-[300px] disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {
-              form.handleSubmit(onSubmit)();
-            }}
-          >
-            {step1Mutation.isPending ? (
-              <span className="flex items-center gap-2">
-                <Spinner size="sm" className="text-white" />
-                SAVING...
-              </span>
-            ) : (
-              "NEXT"
-            )}
-          </Button>
         </div>
       </div>
     </div>

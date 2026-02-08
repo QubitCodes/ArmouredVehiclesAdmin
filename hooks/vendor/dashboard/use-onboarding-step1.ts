@@ -10,7 +10,12 @@ export interface OnboardingStep1Request {
   legalEntityId: string;
   legalEntityIssueDate: string;
   legalEntityExpiryDate: string;
-  cityOfficeAddress: string;
+  cityOfficeAddress?: string; // Made optional
+  addressLine1?: string;      // Added
+  addressLine2?: string;      // Added
+  city?: string;              // Added
+  state?: string;             // Added
+  postalCode?: string;        // Added
   officialWebsite?: string;
   entityType: string;
   dunsNumber?: string;

@@ -288,9 +288,12 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
     if (vendor && (vendor.userProfile || vendor.profile)) {
       const profile = vendor.userProfile || vendor.profile;
 
-      // Map existing status to state
-      if (profile.onboarding_status) {
+      // Map existing status to state only if it's an actionable one
+      const actionableStatuses = ['approved_general', 'approved_controlled', 'rejected', 'update_needed'];
+      if (profile.onboarding_status && actionableStatuses.includes(profile.onboarding_status)) {
         setSelectedStatus(profile.onboarding_status);
+      } else {
+        setSelectedStatus("");
       }
 
       // Map reason if rejected or needs update

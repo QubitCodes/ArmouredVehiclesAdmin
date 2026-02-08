@@ -284,10 +284,17 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 	useEffect(() => {
 		if (specificationsData.length > 0) {
 			setLocalSpecs(specificationsData);
-		} else if (currentProductId && localSpecs.length === 0) {
-			setLocalSpecs([{ label: '', value: '', type: 'title_only', active: false, sort: 0 }]);
+		} else if (currentProductId && localSpecs.length === 0 && !isLoadingSpecs) {
+			// Pre-fill default specs
+			setLocalSpecs([
+				{ label: 'General', value: '', type: 'title_only', active: true, sort: 0 },
+				{ label: 'Size', value: '', type: 'general', active: true, sort: 1 },
+				{ label: 'Weight', value: '', type: 'general', active: true, sort: 2 },
+				{ label: 'Condition', value: 'New', type: 'general', active: true, sort: 3 },
+				{ label: 'Color', value: '', type: 'general', active: true, sort: 4 },
+			]);
 		}
-	}, [specificationsData, currentProductId]);
+	}, [specificationsData, currentProductId, isLoadingSpecs]);
 
 	// Pricing Fields Arrays
 	const { fields: pricingTiers, append: appendPricingTier, remove: removePricingTier } = useFieldArray({
@@ -479,7 +486,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 				year: p.year,
 				condition: p.condition || "",
 				basePrice: p.base_price,
-				shippingCharge: p.shipping_charge,
+
 				packingCharge: p.packing_charge,
 				currency: p.currency || "AED",
 				productionLeadTime: p.production_lead_time,
@@ -568,11 +575,16 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 		const section = SECTIONS.find(s => s.id === sectionId);
 		if (!section) return false;
 
+		const sizeSpec = localSpecs.find(s => s.label?.trim() === 'Size');
+		const weightSpec = localSpecs.find(s => s.label?.trim() === 'Weight');
+		const hasSize = !!sizeSpec?.value && sizeSpec.value.trim() !== '';
+		const hasWeight = !!weightSpec?.value && weightSpec.value.trim() !== '';
+
 		switch (sectionId) {
 			case 1:
 				return !!(watchName && watchCategories && watchSku && watchDesc);
 			case 2:
-				return true; // Specs are optional
+				return hasSize && hasWeight; // Specs are now required (Size/Weight) for section completion check? Maybe strict only on publish
 			case 3:
 				return watchPrice !== undefined && watchPrice >= 0;
 			case 4:
@@ -585,14 +597,20 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 	};
 
 	// Can publish validation
-	// Can publish validation (now includes SKU, Image and Compliance)
-	const canPublish = !!(watchName && watchCategories && watchSku && watchDesc && watchPrice !== undefined && watchPrice >= 0 && watchImage && watchCompliance);
+	// Can publish validation (now includes SKU, Image, Compliance AND Size/Weight)
+	const hasSizeVal = !!localSpecs.find(s => s.label?.trim() === 'Size' && s.value && s.value.trim() !== '');
+	const hasWeightVal = !!localSpecs.find(s => s.label?.trim() === 'Weight' && s.value && s.value.trim() !== '');
+
+	const canPublish = !!(watchName && watchCategories && watchSku && watchDesc && watchPrice !== undefined && watchPrice >= 0 && watchImage && watchCompliance && hasSizeVal && hasWeightVal);
 
 	// Auto-revert to draft if published but requirements no longer met
 	useEffect(() => {
 		if (!canPublish && form.getValues('status') === 'published') {
 			form.setValue('status', 'draft', { shouldValidate: true });
-			toast("Status reverted to Draft", { description: "Required fields are missing." });
+			toast("Status reverted to Draft", {
+				id: "status-revert-toast",
+				description: "Required fields are missing (Name, Price, Image, Size, Weight, etc.)"
+			});
 		}
 	}, [canPublish, form.watch('status')]);
 
@@ -610,6 +628,44 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 						return;
 					}
 					await bulkUpdateSpecs.mutateAsync(localSpecs);
+
+					// SYNC LOGIC: Updates Product Columns based on "Size" and "Weight" specs
+					const sizeSpec = localSpecs.find(s => s.label?.trim() === 'Size');
+					const weightSpec = localSpecs.find(s => s.label?.trim() === 'Weight');
+
+					const updatePayload: any = {};
+					let shouldUpdate = false;
+
+					// Sync Size (e.g. "10x20x30 mm")
+					if (sizeSpec && sizeSpec.value) {
+						const match = sizeSpec.value.match(/^([\d.]+)x([\d.]+)x([\d.]+)\s*(.*)$/);
+						if (match) {
+							updatePayload.dimension_length = parseFloat(match[1]);
+							updatePayload.dimension_width = parseFloat(match[2]);
+							updatePayload.dimension_height = parseFloat(match[3]);
+							updatePayload.dimension_unit = match[4] || 'mm';
+							shouldUpdate = true;
+						}
+					}
+
+					// Sync Weight (e.g. "50 kg")
+					if (weightSpec && weightSpec.value) {
+						const match = weightSpec.value.match(/^([\d.]+)\s*(.*)$/);
+						if (match) {
+							updatePayload.weight_value = parseFloat(match[1]);
+							updatePayload.weight_unit = match[2] || 'kg';
+							shouldUpdate = true;
+						}
+					}
+
+					if (shouldUpdate) {
+						const fd = new FormData();
+						Object.keys(updatePayload).forEach(k => fd.append(k, String(updatePayload[k])));
+						await updateProductMutation.mutateAsync({
+							id: currentProductId,
+							data: fd as unknown as UpdateProductRequest,
+						});
+					}
 				}
 			}
 
@@ -733,7 +789,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 		categoryId: 'category_id',
 		subCategoryId: 'sub_category_id',
 		basePrice: 'base_price',
-		shippingCharge: 'shipping_charge',
+
 		packingCharge: 'packing_charge',
 		individualProductPricing: 'individual_product_pricing',
 		brandId: 'brand_id',
@@ -841,7 +897,9 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					description: form.watch("description"),
 					basePrice: form.watch("basePrice"),
 					hasCoverImage: !!watchImage,
-					complianceConfirmed: !!watchCompliance
+					complianceConfirmed: !!watchCompliance,
+					hasSize: hasSizeVal,
+					hasWeight: hasWeightVal
 				}}
 				className="mb-6"
 			/>
@@ -1358,7 +1416,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 															list={`suggestions-legacy-${index}`}
 														/>
 														<datalist id={`suggestions-legacy-${index}`}>
-															{["Condition", "Color", "Size"]
+															{["Size", "Weight", "Condition", "Color"]
 																.filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
 																.map(opt => <option key={opt} value={opt} />)
 															}
@@ -1397,7 +1455,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 															}
 
 															if (label === 'Size') {
-																const match = (spec.value || '').match(/^([\dx]+)\s*(.*)$/);
+																const match = (spec.value || '').match(/^([\dx.]+)\s*(.*)$/); // Allow x and . in dimensions
 																const dimensions = match ? match[1] : (spec.value || '');
 																const unit = match ? match[2] : 'mm';
 
@@ -1411,6 +1469,39 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 																		unit={unit}
 																		onChange={(dims, u) => updateSizeValue(dims, u)}
 																	/>
+																);
+															}
+
+															if (label === 'Weight') {
+																const match = (spec.value || '').match(/^([\d.]+)\s*(.*)$/);
+																const weightVal = match ? match[1] : (spec.value || '');
+																const unit = match ? match[2] : 'kg';
+
+																const updateWeightValue = (newVal: string, newUnit: string) => {
+																	updateLocalSpec(index, 'value', `${newVal} ${newUnit}`.trim());
+																};
+
+																return (
+																	<div className="flex gap-2">
+																		<Input
+																			type="number"
+																			step="0.01"
+																			value={weightVal}
+																			onChange={(e) => updateWeightValue(e.target.value, unit)}
+																			placeholder="0.00"
+																			className="w-full bg-[#f9f7f2] border-[#d9d2c5] focus:bg-white"
+																		/>
+																		<select
+																			value={unit}
+																			onChange={(e) => updateWeightValue(weightVal, e.target.value)}
+																			className="h-10 px-2 text-sm border border-[#d9d2c5] rounded bg-[#ece9de] focus:outline-none focus:ring-1 focus:ring-primary/50"
+																		>
+																			<option value="kg">kg</option>
+																			<option value="lb">lb</option>
+																			<option value="g">g</option>
+																			<option value="oz">oz</option>
+																		</select>
+																	</div>
 																);
 															}
 
@@ -1719,25 +1810,6 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 				</div>
 
 				<div className="grid gap-4 md:grid-cols-2">
-					<FormField
-						control={form.control}
-						name="shippingCharge"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Shipping Charge</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										step="0.01"
-										value={field.value ?? ""}
-										onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-										disabled={isReadOnly}
-									/>
-								</FormControl>
-							</FormItem>
-						)}
-					/>
-
 					<FormField
 						control={form.control}
 						name="packingCharge"
@@ -2173,7 +2245,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 							</FormControl>
 							{!canPublish && (
 								<div className="text-xs text-destructive mt-2">
-									To publish, please ensure the following are filled: Name, Category, Description, Price, Cover Image, Compliance Declaration.
+									To publish, please ensure the following are filled: Name, Category, Description, Price, Cover Image, <strong>Size, Weight</strong>, Compliance Declaration.
 								</div>
 							)}
 						</FormItem>
@@ -2194,7 +2266,7 @@ const MaskedSizeInput = ({
 	onChange: (dims: string, unit: string) => void
 }) => {
 	// Value format: "LxWxH"
-	const parts = value.split('x');
+	const parts = (value || '').split('x');
 	const l = parts[0] || '';
 	const w = parts[1] || '';
 	const h = parts[2] || '';
@@ -2203,15 +2275,15 @@ const MaskedSizeInput = ({
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
 	const updatePart = (index: number, val: string) => {
-		// Only allow digits
-		if (val && !/^\d*$/.test(val)) return;
+		// Only allow digits and dot
+		if (val && !/^[\d.]*$/.test(val)) return;
 
 		const newParts = [l, w, h];
 		newParts[index] = val;
 		onChange(newParts.join('x'), unit);
 
-		// Auto-focus next input if length reaches 4
-		if (val.length === 4 && index < 2) {
+		// Auto-focus next input if length reaches 8
+		if (val.length === 8 && index < 2) {
 			inputRefs.current[index + 1]?.focus();
 		}
 	};
@@ -2243,7 +2315,7 @@ const MaskedSizeInput = ({
 					onKeyDown={(e) => handleKeyDown(e, 0)}
 					placeholder="000"
 					className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
-					maxLength={4}
+					maxLength={8}
 				/>
 				<span className="text-muted-foreground font-medium select-none text-xs">x</span>
 				<Input
@@ -2253,7 +2325,7 @@ const MaskedSizeInput = ({
 					onKeyDown={(e) => handleKeyDown(e, 1)}
 					placeholder="000"
 					className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
-					maxLength={4}
+					maxLength={8}
 				/>
 				<span className="text-muted-foreground font-medium select-none text-xs">x</span>
 				<Input
@@ -2263,7 +2335,7 @@ const MaskedSizeInput = ({
 					onKeyDown={(e) => handleKeyDown(e, 2)}
 					placeholder="000"
 					className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
-					maxLength={4}
+					maxLength={8}
 				/>
 			</div>
 

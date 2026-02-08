@@ -1,6 +1,5 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,43 +20,29 @@ interface InvoiceSectionProps {
     orderId: string;
     userRole?: string | null;
     onError?: (error: string) => void;
+    className?: string;
 }
 
 /**
  * Component to display invoices associated with an order
  * Used in order details page to show admin and customer invoices
  */
-export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionProps) {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+export function InvoiceSection({ orderId, userRole, onError, className }: InvoiceSectionProps) {
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchInvoices = async () => {
-            if (!orderId) return;
-
-            setLoading(true);
-            setError(null);
-
-            try {
-                const data = await invoiceService.getInvoicesByOrder(orderId);
-                setInvoices(data);
-            } catch (err: unknown) {
-                const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load invoices';
-                setError(errorMsg);
-                onError?.(errorMsg);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchInvoices();
-    }, [orderId, onError]);
+    const { data: invoices = [], isLoading: loading, error } = useQuery({
+        queryKey: ['invoices', orderId],
+        queryFn: () => invoiceService.getInvoicesByOrder(orderId),
+        enabled: !!orderId,
+    });
 
     const handleOpenInvoice = (invoice: Invoice) => {
         invoiceService.openInvoice(invoice);
     };
+
+    if (error) {
+        // Log error if needed, avoiding side-effects in render
+    }
 
     const handleCopyLink = async (invoice: Invoice) => {
         const success = await invoiceService.copyInvoiceLink(invoice);
@@ -74,19 +59,13 @@ export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionPro
         return new Date(dateStr).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            day: 'numeric'
         });
-    };
-
-    const formatCurrency = (amount: number, currency: string) => {
-        return `${currency} ${Number(amount).toFixed(2)}`;
     };
 
     if (loading) {
         return (
-            <Card className="border-none shadow-md">
+            <Card className={`border-none shadow-md ${className || ''}`}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
                         <FileText className="h-5 w-5 text-primary" />
@@ -104,7 +83,7 @@ export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionPro
 
     if (error) {
         return (
-            <Card className="border-none shadow-md">
+            <Card className={`border-none shadow-md ${className || ''}`}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
                         <FileText className="h-5 w-5 text-primary" />
@@ -114,7 +93,7 @@ export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionPro
                 <CardContent>
                     <div className="flex items-center gap-2 text-destructive">
                         <AlertCircle className="h-4 w-4" />
-                        <span>{error}</span>
+                        <span>{(error as any)?.message || 'Failed to load invoices'}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -123,7 +102,7 @@ export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionPro
 
     if (invoices.length === 0) {
         return (
-            <Card className="border-none shadow-md">
+            <Card className={`border-none shadow-md ${className || ''}`}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
                         <FileText className="h-5 w-5 text-primary" />
@@ -141,7 +120,7 @@ export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionPro
     }
 
     return (
-        <Card className="border-none shadow-md">
+        <Card className={`border-none shadow-md ${className || ''}`}>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-bold">
                     <FileText className="h-5 w-5 text-primary" />
@@ -155,7 +134,6 @@ export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionPro
                             <TableHead>Invoice #</TableHead>
                             {userRole !== 'vendor' && <TableHead>Type</TableHead>}
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                         </TableRow>
@@ -182,9 +160,6 @@ export function InvoiceSection({ orderId, userRole, onError }: InvoiceSectionPro
                                     >
                                         {invoice.payment_status.toUpperCase()}
                                     </Badge>
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                    {formatCurrency(invoice.total_amount, invoice.currency)}
                                 </TableCell>
                                 <TableCell className="text-muted-foreground text-sm">
                                     {formatDate(invoice.created_at)}

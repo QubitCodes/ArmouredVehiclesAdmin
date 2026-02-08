@@ -80,7 +80,7 @@ export default function AddPaymentMethodPage() {
   const form = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(paymentMethodSchema),
     defaultValues: {
-      bankCountry: "United Arab Emirates",
+      bankCountry: "AE",
       financialInstitution: "",
       swiftCode: "",
       bankAccountNumber: "",
@@ -95,7 +95,7 @@ export default function AddPaymentMethodPage() {
     if (profileData?.profile && !isProfileLoading) {
       const p = profileData.profile;
       form.reset({
-        bankCountry: p.bank_country || "United Arab Emirates",
+        bankCountry: p.bank_country || "AE",
         financialInstitution: p.financial_institution || "",
         swiftCode: p.swift_code || "",
         bankAccountNumber: p.bank_account_number || "",

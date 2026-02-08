@@ -74,7 +74,6 @@ export function useBulkUpdateSpecifications(productId: string | null) {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['product-specifications', productId] });
-			toast.success('All specifications saved');
 		},
 		onError: (error: Error) => {
 			toast.error(error.message || 'Failed to save specifications');

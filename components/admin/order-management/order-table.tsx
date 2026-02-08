@@ -52,8 +52,8 @@ export function OrderTable({ orders, basePath = "/admin/orders" }: OrderTablePro
 
     if (type === "order") {
       if (["completed", "delivered", "approved", "order_received"].includes(s)) return "text-green-600 dark:text-green-500";
-      if (["pending", "pending_review", "pending_approval", "processing", "vendor_approved"].includes(s)) return "text-yellow-600 dark:text-yellow-500";
-      if (["cancelled", "rejected", "failed", "vendor_rejected"].includes(s)) return "text-red-600 dark:text-red-500";
+      if (["pending", "pending_review", "pending_approval", "processing"].includes(s)) return "text-yellow-600 dark:text-yellow-500";
+      if (["cancelled", "rejected", "failed", "admin_rejected"].includes(s)) return "text-red-600 dark:text-red-500";
       if (["shipped", "in_transit"].includes(s)) return "text-blue-600 dark:text-blue-500";
     }
     if (type === "payment") {

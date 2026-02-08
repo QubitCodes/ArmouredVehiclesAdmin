@@ -82,7 +82,6 @@ export interface Vendor {
   avatar: string | null;
   email_verified: boolean;
   phone_verified: boolean;
-  completion_percentage: number;
   token_version: number;
   onboarding_step: number | null;
   is_active: boolean;
@@ -96,7 +95,7 @@ export interface Vendor {
   userProfile?: VendorUserProfile | null;
   stats?: VendorStats;
   recentOrders?: unknown[];
-  
+
   // Computed
   product_count?: number;
   pending_product_count?: number;
