@@ -541,20 +541,23 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
                             </a>
                         ) : "—"
                     )}
-                    {renderRow("country_of_registration")}
-                    {renderRow("registered_company_name")}
-                    {renderRow("trade_brand_name")}
+                    {renderRow("country", "Country")}
+                    {profile.country_of_registration && renderRow("country_of_registration")}
+                    {profile.registered_company_name && renderRow("registered_company_name")}
+                    {profile.trade_brand_name && renderRow("trade_brand_name")}
                     {renderRow("year_of_establishment")}
-                    {renderRow("entity_type")}
+                    {renderRow("type_of_buyer", "Entity Type")}
+                    {renderRow("procurement_purpose", "Procurement Purpose")}
+                    {renderRow("end_user_type", "End User Type")}
                     {renderRow("official_website")}
                     {renderRow("city_office_address")}
-                    {renderRow("duns_number")}
-                    {renderRow("tax_vat_number")}
-                    {renderRow("tax_issuing_date")}
-                    {renderRow("tax_expiry_date")}
+                    {profile.duns_number && renderRow("duns_number")}
+                    {profile.tax_vat_number && renderRow("tax_vat_number")}
+                    {profile.tax_issuing_date && renderRow("tax_issuing_date")}
+                    {profile.tax_expiry_date && renderRow("tax_expiry_date")}
                     {renderRow("sponsor_content", "Sponsor Content")}
                     {renderRow("selling_categories")}
-                    {renderRow("vat_certificate_url", "VAT Certificate")}
+                    {profile.vat_certificate_url && renderRow("vat_certificate_url", "VAT Certificate")}
                 </RenderSection>
             )}
 
@@ -582,13 +585,12 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
             {/* Legal & Compliance */}
             {profile && (
                 <RenderSection title="Legal & Compliance" icon={Shield}>
-                    {renderRow("controlled_items", "Buy Controlled Products")}
-                    {/* {renderRow("nature_of_business")} */}
-                    {renderRow("license_types")}
-                    {renderRow("end_use_markets")}
-                    {renderRow("operating_countries")}
-                    {renderRow("business_license_url", "Business License")}
-                    {renderRow("company_profile_url", "Company Profile")}
+                    {profile.controlled_items && renderRow("controlled_items", "Buy Controlled Products")}
+                    {profile.license_types?.length > 0 && renderRow("license_types")}
+                    {profile.end_use_markets?.length > 0 && renderRow("end_use_markets")}
+                    {profile.operating_countries?.length > 0 && renderRow("operating_countries")}
+                    {profile.business_license_url && renderRow("business_license_url", "Business License")}
+                    {profile.company_profile_url && renderRow("company_profile_url", "Company Profile")}
                 </RenderSection>
             )}
 
