@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,9 @@ interface InvoiceSectionProps {
 export function InvoiceSection({ orderId, userRole, onError, className }: InvoiceSectionProps) {
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
+    const queryClient = useQueryClient();
+    const [generating, setGenerating] = useState(false);
+
     const { data: invoices = [], isLoading: loading, error } = useQuery({
         queryKey: ['invoices', orderId],
         queryFn: () => invoiceService.getInvoicesByOrder(orderId),
@@ -38,6 +41,19 @@ export function InvoiceSection({ orderId, userRole, onError, className }: Invoic
 
     const handleOpenInvoice = (invoice: Invoice) => {
         invoiceService.openInvoice(invoice);
+    };
+
+    const handleGenerateInvoice = async () => {
+        setGenerating(true);
+        try {
+            await invoiceService.generateCustomerInvoice(orderId);
+            // Invalidate to refetch header (invoices list)
+            queryClient.invalidateQueries({ queryKey: ['invoices', orderId] });
+        } catch (error) {
+            // Handled in service
+        } finally {
+            setGenerating(false);
+        }
     };
 
     if (error) {
@@ -66,7 +82,7 @@ export function InvoiceSection({ orderId, userRole, onError, className }: Invoic
     if (loading) {
         return (
             <Card className={`border-none shadow-md ${className || ''}`}>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
                         <FileText className="h-5 w-5 text-primary" />
                         Invoices
@@ -84,11 +100,22 @@ export function InvoiceSection({ orderId, userRole, onError, className }: Invoic
     if (error) {
         return (
             <Card className={`border-none shadow-md ${className || ''}`}>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
                         <FileText className="h-5 w-5 text-primary" />
                         Invoices
                     </CardTitle>
+                    {userRole !== 'vendor' && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGenerateInvoice}
+                            disabled={generating}
+                        >
+                            {generating ? <Spinner className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
+                            Generate Invoice
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-2 text-destructive">
@@ -103,16 +130,27 @@ export function InvoiceSection({ orderId, userRole, onError, className }: Invoic
     if (invoices.length === 0) {
         return (
             <Card className={`border-none shadow-md ${className || ''}`}>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
                         <FileText className="h-5 w-5 text-primary" />
                         Invoices
                     </CardTitle>
+                    {userRole !== 'vendor' && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGenerateInvoice}
+                            disabled={generating}
+                        >
+                            {generating ? <Spinner className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
+                            Generate Invoice
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-2 text-muted-foreground py-4">
                         <AlertCircle className="h-4 w-4" />
-                        <span>No invoices generated yet. Invoices are created when orders are approved.</span>
+                        <span>No invoices generated yet. Invoices are created when orders are approved, or you can generate one manually.</span>
                     </div>
                 </CardContent>
             </Card>
@@ -121,11 +159,22 @@ export function InvoiceSection({ orderId, userRole, onError, className }: Invoic
 
     return (
         <Card className={`border-none shadow-md ${className || ''}`}>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg font-bold">
                     <FileText className="h-5 w-5 text-primary" />
                     Invoices
                 </CardTitle>
+                {userRole !== 'vendor' && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateInvoice}
+                        disabled={generating}
+                    >
+                        {generating ? <Spinner className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
+                        Generate Invoice
+                    </Button>
+                )}
             </CardHeader>
             <CardContent className="p-0">
                 <Table>

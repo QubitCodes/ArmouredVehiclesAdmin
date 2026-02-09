@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { toast } from 'sonner';
 
 /**
  * Invoice interface matching backend model
@@ -131,6 +132,21 @@ class InvoiceService {
         } catch (error) {
             console.error('Failed to copy invoice link:', error);
             return false;
+        }
+    }
+
+    /**
+     * Manually trigger generation of Consolidated Customer Invoice
+     */
+    async generateCustomerInvoice(orderId: string): Promise<Invoice> {
+        try {
+            const response = await api.post<{ status: boolean, message: string, invoice: Invoice }>(`/admin/orders/${orderId}/invoice`, {});
+            toast.success(response.data.message || 'Invoice generated successfully');
+            return response.data.invoice;
+        } catch (error: any) {
+            console.error('Error generating invoice:', error);
+            toast.error(error.response?.data?.message || 'Failed to generate invoice');
+            throw error;
         }
     }
 }
