@@ -922,7 +922,6 @@ export default function OrderDetailPage() {
                         {order.currency || "AED"}{" "}
                         {(
                           parseFloat(subOrder.total_amount || "0") -
-                          (userRole === 'vendor' ? parseFloat(subOrder.admin_commission || "0") : 0) -
                           parseFloat(subOrder.vat_amount || "0") -
                           parseFloat(subOrder.total_shipping || "0") -
                           parseFloat(subOrder.total_packing || "0")
@@ -946,19 +945,20 @@ export default function OrderDetailPage() {
                       <span>VAT (5%):</span>
                       <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.vat_amount || "0").toFixed(2)}</span>
                     </div>
-                    
 
-                    {/* Show commission ONLY for non-vendors */}
-                    {subOrder.vendor_id && subOrder.vendor_id !== 'admin' && (
-                      <>
-                        
-                        <div className="border-t pt-2 mt-2 flex justify-between text-base font-bold text-foreground">
-                          <span>Grand Total:</span>
-                          <span className="text-primary">
-                            {order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.admin_commission || "0")).toFixed(2)}
-                          </span>
-                        </div>
-                      </>
+                    <div className="border-t pt-2 mt-2 flex justify-between text-base font-bold text-foreground">
+                      <span>Grand Total:</span>
+                      <span className="text-primary">
+                        {order.currency || "AED"} {parseFloat(subOrder.total_amount || "0").toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* Show Admin Earning Only for Admin */}
+                    {userRole !== 'vendor' && subOrder.calculated_admin_commission && parseFloat(subOrder.calculated_admin_commission) > 0 && (
+                      <div className="bg-primary/5 p-2 rounded-md mt-2 flex justify-between text-xs font-semibold text-primary/80 border border-primary/10">
+                        <span>Admin Commission Content:</span>
+                        <span>{order.currency || "AED"} {parseFloat(subOrder.calculated_admin_commission).toFixed(2)}</span>
+                      </div>
                     )}
                   </div>
                 </div>
