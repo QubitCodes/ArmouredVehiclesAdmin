@@ -142,7 +142,7 @@ export function ProductTable({
 
   const statusOptions = [
     { value: "approved", label: "Approved" },
-    { value: "approved_controlled", label: "Approved (Controlled)" },
+    // { value: "approved_controlled", label: "Approved (Controlled)" },
     { value: "rejected", label: "Rejected" },
     { value: "pending", label: "Pending" },
   ];

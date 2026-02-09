@@ -817,49 +817,77 @@ export default function OrderDetailPage() {
                           )}
                         </a>
 
-                        {/* Product Info */}
-                        <div className="flex-grow min-w-0">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <a
-                                href={`/${domain}/product/${item.product?.id || item.productId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-base font-bold text-foreground line-clamp-1 hover:text-primary hover:underline"
-                              >
-                                {item.product?.name || item.productName}
-                              </a>
-                              <div className="flex items-center gap-3 mt-1">
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-xs font-mono font-medium">
-                                  <Tag className="h-3 w-3" />
-                                  {item.product?.sku || item.productId}
-                                </div>
+                        {/* Product Info & Pricing */}
+                        <div className="flex-grow flex flex-col md:flex-row md:items-start justify-between gap-4 min-w-0">
+                          {/* Left Side: Product Name & SKU */}
+                          <div className="min-w-0">
+                            <a
+                              href={`/${domain}/product/${item.product?.id || item.productId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-base font-bold text-foreground line-clamp-1 hover:text-primary hover:underline"
+                            >
+                              {item.product?.name || item.productName}
+                            </a>
+                            <div className="flex items-center gap-3 mt-1">
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-xs font-mono font-medium">
+                                <Tag className="h-3 w-3" />
+                                {item.product?.sku || item.productId}
                               </div>
                             </div>
                           </div>
 
-                          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                Base Price
-                              </span>
-                              <span className="text-sm font-semibold text-foreground">
-                                {order.currency || "AED"}{" "}
-                                {item.product?.base_price
-                                  ? parseFloat(
-                                    String(item.product.base_price)
-                                  ).toFixed(2)
-                                  : parseFloat(String(item.price)).toFixed(2)}
-                              </span>
-                            </div>
+                          {/* Right Side: Financial Details */}
+                          <div className="flex flex-wrap items-center md:justify-end gap-x-4 gap-y-2 text-right">
+                            {/* Price Breakdown (Base + Platform Fees) - Grouped with Brackets for Admins */}
+                            {(() => {
+                              const basePrice = Number(item.base_price) || Number(item.product?.base_price) || Number(item.price);
+                              const unitPrice = Number(item.price);
+                              const commission = unitPrice - basePrice;
+
+                              const basePriceBlock = (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                    {userRole === 'vendor' ? 'Price' : 'Base Price'}
+                                  </span>
+                                  <span className="text-sm font-semibold text-foreground whitespace-nowrap">
+                                    {order.currency || "AED"} {basePrice.toFixed(2)}
+                                  </span>
+                                </div>
+                              );
+
+                              if (userRole !== 'vendor' && commission > 0) {
+                                return (
+                                  <div className="flex items-center gap-2 px-2.5 py-1.5 border border-dashed border-muted/30 rounded-lg bg-muted/5">
+                                    <span className="text-3xl font-extralight text-muted-foreground/30 antialiased -mt-1 select-none">[</span>
+                                    {basePriceBlock}
+                                    <span className="text-xl font-bold text-muted-foreground/30 mx-0.5">+</span>
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                        Platform Fees
+                                      </span>
+                                      <span className="text-sm font-semibold text-red-500 whitespace-nowrap">
+                                        {order.currency || "AED"} {commission.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    <span className="text-3xl font-extralight text-muted-foreground/30 antialiased -mt-1 select-none">]</span>
+                                  </div>
+                                );
+                              }
+
+                              return basePriceBlock;
+                            })()}
+                            <span className="text-xl font-bold text-muted-foreground/20 mx-0.5">×</span>
+                            {/* Quantity */}
                             <div className="flex flex-col">
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                                 Quantity
                               </span>
-                              <span className="text-sm font-semibold text-foreground">
-                                × {item.quantity}
+                              <span className="text-sm font-semibold text-foreground">{item.quantity}
                               </span>
                             </div>
+
+                            {/* Total (Line Total) */}
                             <div className="flex flex-col">
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                                 Total
@@ -867,7 +895,7 @@ export default function OrderDetailPage() {
                               <span className="text-base font-bold text-primary">
                                 {order.currency || "AED"}{" "}
                                 {(
-                                  parseFloat(String(item.price)) * item.quantity
+                                  Number(userRole === 'vendor' ? (Number(item.base_price) || Number(item.product?.base_price) || Number(item.price)) : item.price) * item.quantity
                                 ).toFixed(2)}
                               </span>
                             </div>
@@ -890,7 +918,16 @@ export default function OrderDetailPage() {
                   <div className="w-full max-w-xs space-y-2">
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Subtotal (Base):</span>
-                      <span className="font-medium">{order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.vat_amount || "0") - parseFloat(subOrder.total_shipping || "0") - parseFloat(subOrder.total_packing || "0")).toFixed(2)}</span>
+                      <span className="font-medium">
+                        {order.currency || "AED"}{" "}
+                        {(
+                          parseFloat(subOrder.total_amount || "0") -
+                          (userRole === 'vendor' ? parseFloat(subOrder.admin_commission || "0") : 0) -
+                          parseFloat(subOrder.vat_amount || "0") -
+                          parseFloat(subOrder.total_shipping || "0") -
+                          parseFloat(subOrder.total_packing || "0")
+                        ).toFixed(2)}
+                      </span>
                     </div>
                     {/* Shipping & Packing - Hide if 0 */}
                     {parseFloat(subOrder.total_shipping || "0") > 0 && (
@@ -909,21 +946,17 @@ export default function OrderDetailPage() {
                       <span>VAT (5%):</span>
                       <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.vat_amount || "0").toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-semibold text-foreground border-t pt-2">
-                      <span>Total Cost (Client Paid):</span>
-                      <span className="font-medium">{order.currency || "AED"} {parseFloat(subOrder.total_amount || "0").toFixed(2)}</span>
-                    </div>
+                    
 
-                    {/* Only show commission and receivable if it is a VENDOR order (has vendor_id and not admin) */}
+                    {/* Show commission ONLY for non-vendors */}
                     {subOrder.vendor_id && subOrder.vendor_id !== 'admin' && (
                       <>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>Commission to Admin:</span>
-                          <span className="font-medium text-red-500">- {order.currency || "AED"} {parseFloat(subOrder.admin_commission || "0").toFixed(2)}</span>
-                        </div>
+                        
                         <div className="border-t pt-2 mt-2 flex justify-between text-base font-bold text-foreground">
-                          <span>Total Receivable (Vendor):</span>
-                          <span className="text-green-600">{order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.admin_commission || "0")).toFixed(2)}</span>
+                          <span>Grand Total:</span>
+                          <span className="text-primary">
+                            {order.currency || "AED"} {(parseFloat(subOrder.total_amount || "0") - parseFloat(subOrder.admin_commission || "0")).toFixed(2)}
+                          </span>
                         </div>
                       </>
                     )}

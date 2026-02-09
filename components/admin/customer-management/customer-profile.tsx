@@ -16,6 +16,8 @@ import {
     Globe,
     ExternalLink,
     Trash2,
+    Percent,
+    Save
 } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
@@ -38,6 +40,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authService } from "@/services/admin/auth.service";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 
 // Helper function to format field names (camelCase to Title Case)
 const formatFieldName = (fieldName: string): string => {
@@ -244,8 +247,39 @@ interface CustomerProfileProps {
     canPerformActions?: boolean;
 }
 
+
 export function CustomerProfile({ customer, markedFields, toggleMarkField, canPerformActions }: CustomerProfileProps) {
     const profile = (customer.profile as any) || null;
+    const [discount, setDiscount] = useState<number>(profile?.discount || 0);
+    const queryClient = useQueryClient();
+
+    // Sync local state with profile data when it changes
+    useEffect(() => {
+        if (profile?.discount !== undefined) {
+            setDiscount(Number(profile.discount));
+        }
+    }, [profile?.discount]);
+
+    const { mutate: updateProfile, isPending: isUpdatingProfile } = useMutation({
+        mutationFn: async (data: { discount: number }) => {
+            return customerService.updateCustomerProfile(customer.id, data);
+        },
+        onSuccess: () => {
+            toast.success("Specialized discount updated successfully");
+            queryClient.invalidateQueries({ queryKey: ["customer", customer.id] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to update discount");
+        }
+    });
+
+    const handleSaveDiscount = () => {
+        if (discount < 0 || discount > 3) {
+            toast.error("Discount must be between 0 and 3%");
+            return;
+        }
+        updateProfile({ discount });
+    };
 
     // Render row logic
     // Render row logic
@@ -499,6 +533,45 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
                                 )}>
                                     {profile?.onboarding_status?.replace(/_/g, " ") || "Pending"}
                                 </span>
+                            </p>
+                        </div>
+
+                        {/* Specialized Discount Field */}
+                        <div className="md:col-span-2 lg:col-span-1">
+                            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                                <Percent className="h-4 w-4" />
+                                Specialized Discount (%)
+                            </label>
+                            <div className="mt-2 flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    max="3"
+                                    step="0.01"
+                                    value={discount}
+                                    onChange={(e) => setDiscount(Number(e.target.value))}
+                                    className="w-24 h-9"
+                                    disabled={!authService.hasPermission("customer.manage") || isUpdatingProfile}
+                                />
+                                {authService.hasPermission("customer.manage") && (
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="h-9 px-3"
+                                        onClick={handleSaveDiscount}
+                                        disabled={isUpdatingProfile || discount === profile?.discount}
+                                    >
+                                        {isUpdatingProfile ? (
+                                            <Spinner className="h-4 w-4" />
+                                        ) : (
+                                            <Save className="h-4 w-4 mr-2" />
+                                        )}
+                                        Save
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                                Max 3%. Reduces admin commission.
                             </p>
                         </div>
                         {customer.suspended_at && (

@@ -119,6 +119,18 @@ class CustomerService {
     }
   }
 
+  /**
+   * Update customer profile (e.g. specialized discount)
+   */
+  async updateCustomerProfile(id: string, data: { discount?: number }) {
+    try {
+      const response = await api.patch(`/admin/customers/${id}/profile`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating customer profile:", error);
+      throw error;
+    }
+  }
 }
 
 export const customerService = new CustomerService();

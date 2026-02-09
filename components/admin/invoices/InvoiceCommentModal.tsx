@@ -50,19 +50,6 @@ export function InvoiceCommentModal({
         }
     };
 
-    const handleSkip = async () => {
-        setSubmitting(true);
-        try {
-            await onSubmit(null);
-            setComments('');
-            onClose();
-        } catch (error) {
-            console.error('Failed to submit:', error);
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
     const handleClose = () => {
         if (!submitting && !isLoading) {
             setComments('');
@@ -107,19 +94,11 @@ export function InvoiceCommentModal({
                     </Button>
                     <div className="flex gap-3">
                         <Button
-                            variant="outline"
-                            onClick={handleSkip}
-                            disabled={submitting || isLoading}
-                            className="text-base font-orbitron uppercase tracking-widest px-6 border-[#BDAA91] bg-white hover:bg-[#F9F9F9] text-[#3D4A26]"
-                        >
-                            {submitting ? '...' : 'SKIP & APPROVE'}
-                        </Button>
-                        <Button
                             onClick={handleSubmit}
                             disabled={submitting || isLoading}
                             className="text-base font-orbitron uppercase tracking-widest px-6 bg-[#3D4A26] hover:bg-[#2C361B] text-white shadow-md"
                         >
-                            {submitting ? '...' : 'ADD & APPROVE'}
+                            {submitting ? '...' : 'APPROVE'}
                         </Button>
                     </div>
                 </DialogFooter>
