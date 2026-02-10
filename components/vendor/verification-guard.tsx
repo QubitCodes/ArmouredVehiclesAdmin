@@ -62,94 +62,73 @@ export function VerificationGuard({ children }: { children: React.ReactNode }) {
     // Don't redirect if data is still loading
     if (isLoading) return;
 
-    // If there's an error (e.g., 401), let the API interceptor handle redirect to login
-    // We don't want to redirect here as it might conflict with auth flow
-    if (error) {
-      const axiosError = error as AxiosError;
-      // If it's a 401, the API interceptor will handle redirect to login
-      if (axiosError.response?.status === 401) {
-        return;
-      }
-      // For other errors, allow the page to render and show error
-      return;
-    }
+    // If there's an error (e.g., 401), allow navigation 
+    // or let the API interceptor handle it
+    if (error) return;
 
     // Only check verification if we have user data
     if (!data?.user) return;
 
     // Skip check if we're on an allowed route (auth or onboarding)
+    const normalizedPath = pathname?.replace(/\/$/, "");
     const isOnAllowedRoute = ALLOWED_ROUTES.some((route) =>
-      pathname?.startsWith(route)
+      normalizedPath?.startsWith(route)
     );
     if (isOnAllowedRoute) return;
 
-    const { emailVerified, phoneVerified } = data.user;
+    const { emailVerified, phoneVerified, onboardingStep } = data.user;
 
     // Priority 1: Check email verification first
     if (!emailVerified) {
-      router.push("/vendor/verify-email");
+      if (pathname !== "/vendor/verify-email") {
+        router.push("/vendor/verify-email");
+      }
       return;
     }
 
     // Priority 2: Check phone verification
     if (!phoneVerified) {
-      // Check if user has a phone number - if not, redirect to add phone
-      // If they have a phone but haven't verified, redirect to verify phone
       if (!data.user.phone) {
-        router.push("/vendor/add-phone");
-      } else {
-        router.push("/vendor/verify-phone");
-      }
-      return;
-    }
-
-    // Priority 3: Only check onboarding if email and phone are verified
-    
-    // Don't check if onboarding data is still loading
-    if (isOnboardingLoading) return;
-
-    // If there's an onboarding error, allow access (don't block on API errors)
-    if (onboardingError) {
-      return;
-    }
-
-    // Check onboarding status
-    if (onboardingProgress) {
-      // If onboarding is pending or in_progress, redirect to the appropriate step
-      if (onboardingProgress.status === "pending" || onboardingProgress.status === "in_progress") {
-        const targetRoute =
-          ONBOARDING_STEP_ROUTES[onboardingProgress.currentStep] ||
-          ONBOARDING_STEP_ROUTES[0]; // Default to step 0 if invalid
-
-        // Only redirect if not already on the target route
-        if (pathname !== targetRoute) {
-          router.push(targetRoute);
+        if (pathname !== "/vendor/add-phone") {
+          router.push("/vendor/add-phone");
         }
-        return;
+      } else {
+        if (pathname !== "/vendor/verify-phone") {
+          router.push("/vendor/verify-phone");
+        }
       }
-      // If onboarding is NOT pending or in_progress, redirect to dashboard
-      // Statuses: pending_verification, under_review, approved, rejected, suspended
-      const isOnOnboardingRoute = Object.values(ONBOARDING_STEP_ROUTES).some(
-        (route) => pathname?.startsWith(route)
-      );
-      if (isOnOnboardingRoute && pathname !== "/vendor") {
-        router.push("/vendor");
-        return;
-      }
+      return;
     }
+
+    // Priority 3: Check onboarding step
+    if (onboardingStep !== null && onboardingStep !== undefined) {
+      const targetRoute = ONBOARDING_STEP_ROUTES[onboardingStep] || ONBOARDING_STEP_ROUTES[0];
+
+      if (pathname !== targetRoute) {
+        router.push(targetRoute);
+      }
+      return;
+    }
+
+    // If onboarding is complete (null), but we are on an onboarding route, redirect to dashboard
+    const isOnOnboardingStepRoute = Object.values(ONBOARDING_STEP_ROUTES).some(
+      (route) => pathname === route
+    );
+    if (isOnOnboardingStepRoute && pathname !== "/vendor") {
+      router.push("/vendor");
+      return;
+    }
+
   }, [
     data,
     isLoading,
     error,
     pathname,
     router,
-    onboardingProgress,
-    isOnboardingLoading,
-    onboardingError,
   ]);
 
   // Show loading state while checking verification
-  if (isLoading || (isEmailPhoneVerified && isOnboardingLoading)) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner />

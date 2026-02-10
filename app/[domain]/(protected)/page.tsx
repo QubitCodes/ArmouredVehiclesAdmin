@@ -62,27 +62,8 @@ export default function AdminDashboard() {
   const router = useRouter(); // Currently unused but needed for redirection
   const onboardingStep = profileData?.user?.onboardingStep;
 
-  // Sticky redirection for vendors
-  useEffect(() => {
-    if (domain === "vendor" && !isProfileLoading && profileData) {
-      // If step is not null, force redirect to that step
-      if (onboardingStep !== null && onboardingStep !== undefined) {
-        const stepMap: Record<number, string> = {
-          0: "create-store",
-          1: "company-information",
-          2: "contact-person",
-          3: "declaration",
-          4: "account-preferences",
-          5: "bank-account",
-          6: "verification",
-        };
-        const stepPath = stepMap[onboardingStep];
-        if (stepPath) {
-          router.push(`/vendor/${stepPath}`);
-        }
-      }
-    }
-  }, [domain, isProfileLoading, profileData, onboardingStep, router]);
+  // Onboarding status display logic (isRestricted) remains here to show banners on dashboard
+  // Redirection is now handled by VerificationGuard in layout.tsx
 
   if (isLoading) {
     return (
