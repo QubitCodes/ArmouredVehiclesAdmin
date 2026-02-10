@@ -14,6 +14,7 @@ import {
     AlertCircle,
     XCircle,
     Trash2,
+    RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -287,19 +288,18 @@ export function VendorProfileView({ user, profile, markedFields, toggleMarkField
             }
         }
 
-        const isMarked = markedFields?.has(fieldName);
+        const NON_NULLABLE_FIELDS = new Set(['controlled_items']);
+        const isNonNullable = NON_NULLABLE_FIELDS.has(fieldName);
 
-        // Logic based on formattedValue. Note: If overrideValue is used, we might still want to check rawValue? 
-        // If overrideValue is explicitly passed, let's assume it should be displayed as is.
-        // BUT if it's not passed, we use formattedValue to check for missing data.
+        const isMarked = markedFields?.has(fieldName);
         const isMissing = overrideValue === undefined && (formattedValue === "—" || formattedValue === "" || formattedValue === null || (Array.isArray(formattedValue) && formattedValue.length === 0));
 
         return (
-            <TableRow key={fieldName} className={cn(isMarked && "bg-destructive/10")}>
-                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide align-top py-4", isMarked && "line-through opacity-50")}>
+            <TableRow key={fieldName} className={cn(isMarked && (isNonNullable ? "bg-primary/5" : "bg-destructive/10"))}>
+                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide align-top py-4", isMarked && (isNonNullable ? "opacity-70" : "line-through opacity-50"))}>
                     {customLabel || formatFieldName(fieldName)}
                 </TableCell>
-                <TableCell className={cn("align-top py-4", isMarked && "line-through opacity-50 text-destructive")}>
+                <TableCell className={cn("align-top py-4", isMarked && (isNonNullable ? "text-primary" : "line-through opacity-50 text-destructive"))}>
                     {isMissing ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
                             <AlertCircle className="w-3 h-3 mr-1" />
@@ -315,10 +315,15 @@ export function VendorProfileView({ user, profile, markedFields, toggleMarkField
                             variant="ghost"
                             size="icon"
                             onClick={() => toggleMarkField?.(fieldName)}
-                            className={cn("h-8 w-8", isMarked ? "text-destructive hover:text-destructive/90 hover:bg-destructive/20 bg-destructive/10" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10")}
-                            title={isMarked ? "Undo Mark for Deletion" : "Mark field for deletion"}
+                            className={cn(
+                                "h-8 w-8",
+                                isMarked
+                                    ? (isNonNullable ? "text-primary hover:bg-primary/20 bg-primary/10" : "text-destructive hover:text-destructive/90 hover:bg-destructive/20 bg-destructive/10")
+                                    : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            )}
+                            title={isMarked ? (isNonNullable ? "Undo Mark for Change" : "Undo Mark for Deletion") : (isNonNullable ? "Mark field for Change" : "Mark field for deletion")}
                         >
-                            <Trash2 className="h-4 w-4" />
+                            {isNonNullable ? <RotateCcw className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
                         </Button>
                     </TableCell>
                 )}

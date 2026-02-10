@@ -470,11 +470,11 @@ export default function AddPaymentMethodPage() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex justify-center items-center gap-6 mt-8 pb-8">
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 mt-8 pb-8">
               <Button
                 type="button"
                 variant="secondary"
-                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[280px] h-[48px]"
                 onClick={() => router.push("/vendor/account-preferences")}
               >
                 Previous
@@ -483,7 +483,7 @@ export default function AddPaymentMethodPage() {
                 type="submit"
                 variant="secondary"
                 disabled={step5Mutation.isPending}
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {step5Mutation.isPending ? (
                   <span className="flex items-center gap-2">

@@ -33,7 +33,7 @@ export default function VerificationPage() {
   const queryClient = useQueryClient();
   const { data: verificationMethods = [], isLoading: isMethodsLoading } =
     useVerificationMethods();
-    
+
   const submitVerificationMutation = useSubmitVerification();
 
   const form = useForm<VerificationFormValues>({
@@ -65,10 +65,10 @@ export default function VerificationPage() {
       };
 
       await submitVerificationMutation.mutateAsync(payload);
-      
+
       // Invalidate onboarding progress to refetch updated status
       await queryClient.invalidateQueries({ queryKey: ["vendor-onboarding-progress"] });
-      
+
       toast.success("Verification preference submitted successfully!");
       // Redirect to dashboard
       router.push("/vendor");
@@ -141,15 +141,13 @@ export default function VerificationPage() {
                               return (
                                 <div
                                   key={method.id}
-                                  className={`p-6 border transition-all ${
-                                    isSelected
+                                  className={`p-6 border transition-all ${isSelected
                                       ? "border-secondary"
                                       : "border-border"
-                                  } ${
-                                    method.is_available
+                                    } ${method.is_available
                                       ? "cursor-pointer hover:border-gray-400"
                                       : "opacity-60 cursor-not-allowed"
-                                  }`}
+                                    }`}
                                   onClick={() => {
                                     if (method.is_available) {
                                       field.onChange(method.name);
@@ -160,11 +158,10 @@ export default function VerificationPage() {
                                     {/* Radio Button */}
                                     <div className="mt-1">
                                       <div
-                                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                          isSelected
+                                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected
                                             ? "border-secondary bg-secondary"
                                             : "border-border bg-bg-light"
-                                        } ${isDisabled ? "opacity-50" : ""}`}
+                                          } ${isDisabled ? "opacity-50" : ""}`}
                                       >
                                         {isSelected && (
                                           <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
@@ -175,11 +172,10 @@ export default function VerificationPage() {
                                     {/* Content */}
                                     <div className="flex-1">
                                       <h3
-                                        className={`text-lg font-bold mb-2 ${
-                                          isDisabled
+                                        className={`text-lg font-bold mb-2 ${isDisabled
                                             ? "text-gray-500"
                                             : "text-black"
-                                        }`}
+                                          }`}
                                       >
                                         {method.name}
                                         {isDisabled && (
@@ -190,11 +186,10 @@ export default function VerificationPage() {
                                         )}
                                       </h3>
                                       <p
-                                        className={`text-sm leading-relaxed ${
-                                          isDisabled
+                                        className={`text-sm leading-relaxed ${isDisabled
                                             ? "text-gray-400"
                                             : "text-gray-600"
-                                        }`}
+                                          }`}
                                       >
                                         {method.description}
                                       </p>
@@ -213,11 +208,11 @@ export default function VerificationPage() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex justify-center items-center gap-6 mt-8 pb-8">
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 mt-8 pb-8">
               <Button
                 type="button"
                 variant="secondary"
-                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[280px] h-[48px]"
                 onClick={() => router.push("/vendor/bank-account")}
               >
                 Previous
@@ -226,7 +221,7 @@ export default function VerificationPage() {
                 type="submit"
                 variant="secondary"
                 disabled={submitVerificationMutation.isPending}
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[300px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[300px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitVerificationMutation.isPending ? (
                   <span className="flex items-center gap-2">

@@ -582,7 +582,24 @@ export default function DeclarationPage() {
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              console.error("Form validation errors:", errors);
+              // Check specifically for file errors which might be hidden
+              if (errors.businessLicenseFile) {
+                toast.error("Business License is required");
+              } else if (errors.licenses || errors.modLicenseFile || errors.eocnApprovalFile || errors.itarRegistrationFile || errors.localAuthorityApprovalFile) {
+                toast.error("Please upload all required license files");
+              } else if (errors.endUseMarket) {
+                toast.error("Please select at least one end-use market");
+              } else if (errors.operatingCountries) {
+                toast.error("Please select at least one operating country");
+              } else {
+                toast.error("Please fill in all required fields marked with *");
+              }
+            })}
+            className="space-y-8"
+          >
             {/* Nature of Business - Separate Container */}
             <div className="space-y-3 bg-bg-light p-6">
               <FormLabel className="text-sm font-bold text-black">
@@ -632,7 +649,7 @@ export default function DeclarationPage() {
                     {isLoading ? (
                       <div className="text-sm text-gray-500">Loading...</div>
                     ) : (
-                      <div className="grid grid-cols-4 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {natureOfBusinessOptions.map((option) => (
                           <FormField
                             key={option.id}
@@ -675,7 +692,7 @@ export default function DeclarationPage() {
 
             {/* Controlled Items, End-Use Market, Licenses - Separate Light Container */}
             <div className="bg-bg-light p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-28">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-28">
                 {/* Left Column */}
                 <div className="space-y-8">
                   {/* Controlled Items */}
@@ -758,7 +775,7 @@ export default function DeclarationPage() {
                         name="licenses"
                         render={() => (
                           <FormItem>
-                            <div className="flex flex-wrap gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                               {licenseOptions.map((option) => (
                                 <FormField
                                   key={option.value}
@@ -884,7 +901,7 @@ export default function DeclarationPage() {
                             {isLoading ? (
                               <div className="text-sm text-gray-500">Loading...</div>
                             ) : (
-                              <div className="flex flex-wrap gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {endUseMarketOptions.map((option) => (
                                   <FormField
                                     key={option.id}
@@ -1391,11 +1408,11 @@ export default function DeclarationPage() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex justify-center items-center gap-6 mt-8 pb-8">
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 mt-8 pb-8">
               <Button
                 type="button"
                 variant="secondary"
-                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[280px] h-[48px]"
                 onClick={() => router.push("/vendor/contact-person")}
               >
                 Previous
@@ -1404,7 +1421,7 @@ export default function DeclarationPage() {
                 type="submit"
                 variant="secondary"
                 disabled={step3Mutation.isPending}
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {step3Mutation.isPending ? (
                   <span className="flex items-center gap-2">
@@ -1419,6 +1436,6 @@ export default function DeclarationPage() {
           </form>
         </Form>
       </div>
-    </div>
+    </div >
   );
 }

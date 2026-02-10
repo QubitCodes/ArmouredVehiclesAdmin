@@ -105,12 +105,13 @@ class CustomerService {
   /**
    * Update customer onboarding status
    */
-  async updateOnboardingStatus(userId: string, status: string, note?: string, fields_to_clear?: string[]) {
+  async updateOnboardingStatus(userId: string, status: string, note?: string, fields_to_clear?: string[], target_step?: number) {
     try {
       const response = await api.patch(`/admin/customers/${userId}/onboarding`, {
         status,
         note,
         fields_to_clear,
+        target_step,
       });
       return response.data;
     } catch (error) {

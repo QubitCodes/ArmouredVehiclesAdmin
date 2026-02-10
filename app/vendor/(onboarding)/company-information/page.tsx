@@ -922,7 +922,7 @@ export default function CompanyInformationPage() {
                 <button
                   type="submit"
                   disabled={step1Mutation.isPending}
-                  className="w-[300px] h-[48px] bg-[#D35400] text-white font-black font-orbitron clip-path-supplier uppercase text-sm hover:bg-[#39482C] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="w-full sm:w-[300px] h-[48px] bg-[#D35400] text-white font-black font-orbitron clip-path-supplier uppercase text-sm hover:bg-[#39482C] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {step1Mutation.isPending ? (
                     <span className="flex items-center gap-2">

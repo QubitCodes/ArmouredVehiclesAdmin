@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  RotateCcw,
 } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
@@ -281,6 +282,7 @@ function VendorActions({ vendor }: { vendor: any }) {
 
 function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFields?: Set<string> }) {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [targetStep, setTargetStep] = useState<number | undefined>(undefined);
   const [comment, setComment] = useState("");
 
   // Pre-select status and reason from vendor profile
@@ -303,6 +305,8 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
       } else if (profile.onboarding_status === 'update_needed' && profile.update_needed_reason) {
         setComment(profile.update_needed_reason);
       }
+    } else {
+      setTargetStep(undefined);
     }
   }, [vendor]);
 
@@ -328,9 +332,10 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
         return;
       }
       try {
-        await rejectVendor(comment, hasMarkedFields ? Array.from(markedFields!) : undefined);
+        await rejectVendor(comment, hasMarkedFields ? Array.from(markedFields!) : undefined, targetStep);
         setSelectedStatus("");
         setComment("");
+        setTargetStep(undefined);
         // Reset marked fields? Need to lift this reset up via prop or context if desired, 
         // but typically page reload or re-render after mutation will handle it (since data changes).
         // Also good UX to clear them.
@@ -393,7 +398,9 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 {selectedStatus === "rejected"
                   ? "Rejection Reason (Required)"
-                  : "Notes / Comments"}
+                  : selectedStatus === "update_needed"
+                    ? "Update Needed Reason (Required)"
+                    : "Notes / Comments"}
               </Label>
               <Textarea
                 id="comment"
@@ -418,6 +425,36 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
                   <Info className="h-4 w-4" />
                   {markedFields!.size} field(s) marked for clearing will be removed.
                 </p>
+              )}
+
+              {(selectedStatus === "rejected" || selectedStatus === "update_needed") && (
+                <div className="space-y-2 mt-4 pt-4 border-t border-dashed">
+                  <Label
+                    htmlFor="target-step"
+                    className="text-base font-semibold flex items-center gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                    Onboarding Step Override (Optional)
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Manually set which step the vendor should return to. If left blank, it will be calculated automatically based on marked fields.
+                  </p>
+                  <Select
+                    id="target-step"
+                    placeholder="Automatic calculation..."
+                    value={targetStep?.toString() || ""}
+                    onChange={(e) => setTargetStep(e.target.value ? parseInt(e.target.value) : undefined)}
+                    className="w-full"
+                  >
+                    <option value="">Automatic (Based on fields)</option>
+                    <option value="1">Step 1: Company Information</option>
+                    <option value="2">Step 2: Contact Person</option>
+                    <option value="3">Step 3: Declaration</option>
+                    <option value="4">Step 4: Account Preferences</option>
+                    <option value="5:">Step 5: Bank Details</option>
+                    <option value="6">Step 6: Verification</option>
+                  </Select>
+                </div>
               )}
             </div>
             <div className="flex gap-4">
@@ -457,6 +494,6 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
           </div>
         )}
       </CardContent>
-    </Card>
+    </Card >
   );
 }

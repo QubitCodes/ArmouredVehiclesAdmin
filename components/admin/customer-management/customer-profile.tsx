@@ -17,7 +17,8 @@ import {
     ExternalLink,
     Trash2,
     Percent,
-    Save
+    Save,
+    RotateCcw,
 } from "lucide-react";
 
 import { Spinner } from "@/components/ui/spinner";
@@ -247,7 +248,6 @@ interface CustomerProfileProps {
     canPerformActions?: boolean;
 }
 
-
 export function CustomerProfile({ customer, markedFields, toggleMarkField, canPerformActions }: CustomerProfileProps) {
     const profile = (customer.profile as any) || null;
     const [discount, setDiscount] = useState<number>(profile?.discount || 0);
@@ -281,7 +281,6 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
         updateProfile({ discount });
     };
 
-    // Render row logic
     // Render row logic
     const renderRow = (fieldName: string, customLabel?: string, overrideValue?: React.ReactNode) => {
         const rawValue = profile?.[fieldName];
@@ -364,17 +363,18 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
             }
         }
 
-        const isMarked = markedFields?.has(fieldName);
+        const NON_NULLABLE_FIELDS = new Set(['controlled_items']);
+        const isNonNullable = NON_NULLABLE_FIELDS.has(fieldName);
 
-        // Fix: logic based on formattedValue, not displayValue
+        const isMarked = markedFields?.has(fieldName);
         const isMissing = overrideValue === undefined && (formattedValue === "—" || formattedValue === "" || formattedValue === null || (Array.isArray(formattedValue) && formattedValue.length === 0));
 
         return (
-            <TableRow key={fieldName} className={cn(isMarked && "bg-destructive/10")}>
-                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide align-top py-4", isMarked && "line-through opacity-50")}>
+            <TableRow key={fieldName} className={cn(isMarked && (isNonNullable ? "bg-primary/5" : "bg-destructive/10"))}>
+                <TableCell className={cn("font-medium text-muted-foreground w-[250px] uppercase text-xs tracking-wide align-top py-4", isMarked && (isNonNullable ? "opacity-70" : "line-through opacity-50"))}>
                     {customLabel || formatFieldName(fieldName)}
                 </TableCell>
-                <TableCell className={cn("align-top py-4", isMarked && "line-through opacity-50 text-destructive")}>
+                <TableCell className={cn("align-top py-4", isMarked && (isNonNullable ? "text-primary" : "line-through opacity-50 text-destructive"))}>
                     {isMissing ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
                             <AlertCircle className="w-3 h-3 mr-1" />
@@ -390,10 +390,15 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
                             variant="ghost"
                             size="icon"
                             onClick={() => toggleMarkField(fieldName)}
-                            className={cn("h-8 w-8", isMarked ? "text-destructive hover:text-destructive/90 hover:bg-destructive/20 bg-destructive/10" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10")}
-                            title={isMarked ? "Undo Mark for Deletion" : "Mark field for deletion"}
+                            className={cn(
+                                "h-8 w-8",
+                                isMarked
+                                    ? (isNonNullable ? "text-primary hover:bg-primary/20 bg-primary/10" : "text-destructive hover:text-destructive/90 hover:bg-destructive/20 bg-destructive/10")
+                                    : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            )}
+                            title={isMarked ? (isNonNullable ? "Undo Mark for Change" : "Undo Mark for Deletion") : (isNonNullable ? "Mark field for Change" : "Mark field for deletion")}
                         >
-                            <Trash2 className="h-4 w-4" />
+                            {isNonNullable ? <RotateCcw className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
                         </Button>
                     </TableCell>
                 )}
@@ -667,19 +672,6 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
                 </RenderSection>
             )}
 
-            {/* Payment Information */}
-            {/* {profile && (
-                <RenderSection title="Payment Information" icon={CreditCard}>
-                    {renderRow("preferred_currency")}
-                    {renderRow("bank_country")}
-                    {renderRow("financial_institution")}
-                    {renderRow("swift_code")}
-                    {renderRow("bank_account_number")}
-                    {renderRow("proof_type")}
-                    {renderRow("bank_proof_url", "Bank Proof")}
-                </RenderSection>
-            )} */}
-
             {/* Onboarding Review */}
             <OnboardingReview customer={customer} markedFields={markedFields} />
 
@@ -689,10 +681,9 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
     );
 }
 
-
-
 function OnboardingReview({ customer, markedFields }: { customer: Customer, markedFields?: Set<string> }) {
     const [selectedStatus, setSelectedStatus] = useState<string>("");
+    const [targetStep, setTargetStep] = useState<number | undefined>(undefined);
     const [note, setNote] = useState("");
     const queryClient = useQueryClient();
     const profile = (customer.profile as any) || {};
@@ -730,14 +721,15 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
     }, [hasMarkedFields, selectedStatus]);
 
     const { mutate: updateOnboarding, isPending } = useMutation({
-        mutationFn: async ({ status, note, fields_to_clear }: { status: string; note?: string; fields_to_clear?: string[] }) => {
-            return customerService.updateOnboardingStatus(customer.id, status, note, fields_to_clear);
+        mutationFn: async ({ status, note, fields_to_clear, target_step }: { status: string; note?: string; fields_to_clear?: string[]; target_step?: number }) => {
+            return customerService.updateOnboardingStatus(customer.id, status, note, fields_to_clear, target_step);
         },
         onSuccess: () => {
             toast.success("Customer onboarding status updated successfully");
             queryClient.invalidateQueries({ queryKey: ["customer", customer.id] });
             setSelectedStatus("");
             setNote("");
+            setTargetStep(undefined);
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || "Failed to update onboarding status");
@@ -753,7 +745,8 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
             updateOnboarding({
                 status: selectedStatus,
                 note,
-                fields_to_clear: hasMarkedFields ? Array.from(markedFields) : undefined
+                fields_to_clear: hasMarkedFields ? Array.from(markedFields) : undefined,
+                target_step: targetStep
             });
         } else {
             updateOnboarding({ status: selectedStatus, note });
@@ -818,7 +811,11 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                                 className="text-base font-semibold flex items-center gap-2"
                             >
                                 <FileText className="h-4 w-4 text-muted-foreground" />
-                                {selectedStatus === 'rejected' || selectedStatus === 'update_needed' ? 'Reason (Required)' : 'Review Note (Optional)'}
+                                {selectedStatus === "rejected"
+                                    ? "Rejection Reason (Required)"
+                                    : selectedStatus === "update_needed"
+                                        ? "Update Needed Reason (Required)"
+                                        : "Review Note (Optional)"}
                             </Label>
                             <Textarea
                                 id="review-note"
@@ -833,10 +830,37 @@ function OnboardingReview({ customer, markedFields }: { customer: Customer, mark
                             {hasMarkedFields && (selectedStatus === "rejected" || selectedStatus === "update_needed") && (
                                 <p className="text-sm text-destructive font-medium flex items-center gap-2">
                                     <AlertCircle className="h-4 w-4" />
-                                    {markedFields.size} field(s) marked for clearing will be removed.
+                                    {markedFields!.size} field(s) marked for clearing will be removed.
                                 </p>
                             )}
                         </div>
+
+                        {(selectedStatus === "rejected" || selectedStatus === "update_needed") && (
+                            <div className="space-y-2 mt-2 pt-4 border-t border-dashed">
+                                <Label
+                                    htmlFor="target-step"
+                                    className="text-base font-semibold flex items-center gap-2"
+                                >
+                                    <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                                    Onboarding Step Override (Optional)
+                                </Label>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    Manually set which step the customer should return to. If left blank, it will be calculated automatically based on marked fields.
+                                </p>
+                                <Select
+                                    id="target-step"
+                                    value={targetStep?.toString() || ""}
+                                    onChange={(e) => setTargetStep(e.target.value ? parseInt(e.target.value) : undefined)}
+                                    className="w-full"
+                                >
+                                    <option value="">Automatic (Based on fields)</option>
+                                    <option value="1">Step 1: Buyer Information</option>
+                                    <option value="2">Step 2: Contact Person</option>
+                                    <option value="3">Step 3: Declaration</option>
+                                    <option value="4">Step 4: Account Setup</option>
+                                </Select>
+                            </div>
+                        )}
 
                         <div className="flex gap-4">
                             <Button

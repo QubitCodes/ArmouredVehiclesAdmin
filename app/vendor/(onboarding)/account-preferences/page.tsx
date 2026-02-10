@@ -194,7 +194,19 @@ export default function AccountPreferencesPage() {
 
         {/* Form Container */}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              console.error("Form validation errors:", errors);
+              if (errors.categories) {
+                toast.error(errors.categories.message || "Please select at least one category");
+              } else if (errors.sponsorContent) {
+                toast.error(errors.sponsorContent.message || "Please select whether you wish to sponsor content");
+              } else {
+                toast.error("Please fill in all required fields marked with *");
+              }
+            })}
+            className="space-y-8"
+          >
             <div className="bg-bg-light p-6">
               {/* Select Categories */}
               <div className="space-y-4 mb-8">
@@ -248,7 +260,7 @@ export default function AccountPreferencesPage() {
                       {isCategoriesLoading ? (
                         <div className="text-sm text-gray-500">Loading categories...</div>
                       ) : (
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                           {categoryOptions.map((option) => (
                             <FormField
                               key={option.id}
@@ -331,8 +343,8 @@ export default function AccountPreferencesPage() {
                               />
                               <span
                                 className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${field.value === "verified-supplier"
-                                    ? "border-border"
-                                    : ""
+                                  ? "border-border"
+                                  : ""
                                   }`}
                               >
                                 {field.value === "verified-supplier" && (
@@ -343,8 +355,8 @@ export default function AccountPreferencesPage() {
                             <label
                               htmlFor="registerAs-verified-supplier"
                               className={`text-sm font-medium leading-none cursor-pointer ${field.value === "verified-supplier"
-                                  ? "text-black"
-                                  : "text-gray-500"
+                                ? "text-black"
+                                : "text-gray-500"
                                 }`}
                             >
                               Verified Supplier
@@ -399,8 +411,8 @@ export default function AccountPreferencesPage() {
                                   />
                                   <span
                                     className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${field.value === option.value
-                                        ? "border-border"
-                                        : ""
+                                      ? "border-border"
+                                      : ""
                                       }`}
                                   >
                                     {field.value === option.value && (
@@ -411,8 +423,8 @@ export default function AccountPreferencesPage() {
                                 <label
                                   htmlFor={`currency-${option.value}`}
                                   className={`text-sm font-medium leading-none cursor-pointer ${field.value === option.value
-                                      ? "text-black"
-                                      : "text-gray-500"
+                                    ? "text-black"
+                                    : "text-gray-500"
                                     }`}
                                 >
                                   {option.label}
@@ -555,8 +567,8 @@ export default function AccountPreferencesPage() {
                               />
                               <span
                                 className={`h-4 w-4 rounded-full border border-border bg-bg-light flex items-center justify-center ${field.value === option.value
-                                    ? "border-border"
-                                    : ""
+                                  ? "border-border"
+                                  : ""
                                   }`}
                               >
                                 {field.value === option.value && (
@@ -627,11 +639,11 @@ export default function AccountPreferencesPage() {
             </div> */}
 
             {/* Navigation Buttons */}
-            <div className="flex justify-center items-center gap-6 mt-8 pb-8">
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 mt-8 pb-8">
               <Button
                 type="button"
                 variant="secondary"
-                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px]"
+                className="bg-bg-light text-black hover:bg-primary/70 hover:text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[280px] h-[48px]"
                 onClick={() => router.push("/vendor/declaration")}
               >
                 Previous
@@ -640,7 +652,7 @@ export default function AccountPreferencesPage() {
                 type="submit"
                 variant="secondary"
                 disabled={step4Mutation.isPending}
-                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-white font-bold uppercase tracking-wide px-16 py-3 text-base shadow-lg hover:shadow-xl transition-all w-full sm:w-[280px] h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {step4Mutation.isPending ? (
                   <>
