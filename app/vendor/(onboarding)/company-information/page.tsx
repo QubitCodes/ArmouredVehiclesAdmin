@@ -606,7 +606,7 @@ export default function CompanyInformationPage() {
                         <FormControl>
                           <Input
                             type="url"
-                            placeholder="eg: www.blueweb2.com"
+                            placeholder="eg: www.domain-name.com"
                             className="w-full border border-[#C7B88A] bg-transparent px-3 py-2 text-sm focus:outline-none h-[42px] rounded-none shadow-none"
                             {...field}
                           />

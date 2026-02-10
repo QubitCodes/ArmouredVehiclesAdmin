@@ -191,11 +191,10 @@ export default function CreateStorePage() {
 
           {/* Form */}
           <Form {...form}>
-            <form 
-              onSubmit={form.handleSubmit(onSubmit)} 
-              className={`space-y-5 transition-opacity duration-200 ${
-                isProfileLoading ? "opacity-50 pointer-events-none" : "opacity-100"
-              }`}
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className={`space-y-5 transition-opacity duration-200 ${isProfileLoading ? "opacity-50 pointer-events-none" : "opacity-100"
+                }`}
             >
               {/* Company Name Field */}
               <FormField
@@ -232,7 +231,7 @@ export default function CreateStorePage() {
                     <FormControl>
                       <Input
                         type="email"
-                        // placeholder="info@blueweb2.com"
+                        // placeholder="info@domain-name.com"
                         className="bg-gray-100 border border-gray-300 h-11 cursor-not-allowed"
                         readOnly
                         {...field}
