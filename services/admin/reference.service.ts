@@ -5,6 +5,7 @@ export interface ReferenceItem {
   name: string;
   is_active: boolean;
   display_order: number;
+  country_code?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -25,7 +26,7 @@ class ReferenceService {
       // Actually, standardizing on known types is safer.
       return [];
     } catch (error) {
-       return [];
+      return [];
     }
   }
 
@@ -35,7 +36,7 @@ class ReferenceService {
   async getData(type: string) {
     try {
       const response = await api.get<{ success: boolean; data: ReferenceItem[] }>(`/references/${type}`);
-      return response.data.data; 
+      return response.data.data;
     } catch (error) {
       console.error(`Error fetching reference ${type}:`, error);
       throw error;

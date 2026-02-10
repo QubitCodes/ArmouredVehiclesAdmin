@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useCountries } from "@/hooks/vendor/dashboard/use-countries";
 
 // Hardcoded list of supported reference types based on ReferenceController docs
 import { BrandList } from "@/components/admin/brands/brand-list";
@@ -29,12 +30,11 @@ const REFERENCE_TYPES = [
   { id: "license-types", label: "License Types" },
   // { id: "countries", label: "Countries" },
   { id: "vendor-categories", label: "Vendor Categories" },
-  { id: "currencies", label: "Currencies" },
+  // { id: "currencies", label: "Currencies" },
   // { id: "payment-methods", label: "Payment Methods" },
   { id: "financial-institutions", label: "Banks / Institutions" },
-  { id: "proof-types", label: "Bank Proof Types" },
-  { id: "verification-methods", label: "Verification Methods" },
-  { id: "verification-methods", label: "Verification Methods" },
+  // { id: "proof-types", label: "Bank Proof Types" },
+  // { id: "verification-methods", label: "Verification Methods" },
   // { id: "product-sizes", label: "Product Sizes" },
   // { id: "product-colors", label: "Product Colors" },
   // { id: "drive-types", label: "Drive Types" },
@@ -42,7 +42,7 @@ const REFERENCE_TYPES = [
   // { id: "weight-units", label: "Weight Units" },
   // { id: "controlled-item-types", label: "Controlled Item Types" },
   // { id: "pricing-terms", label: "Pricing Terms" },
-  { id: "manufacturing-sources", label: "Manufacturing Sources" },
+  // { id: "manufacturing-sources", label: "Manufacturing Sources" },
 ];
 
 export function ReferenceList() {
@@ -52,6 +52,9 @@ export function ReferenceList() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ReferenceItem | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+
+  const { data: countries = [] } = useCountries();
 
   const loadData = async () => {
     if (selectedType === 'brands') return; // Handled by BrandList component
@@ -60,6 +63,7 @@ export function ReferenceList() {
       const items = await referenceService.getData(selectedType);
       setData(items);
     } catch (error) {
+      console.error(error);
       toast.error("Failed to load data");
       setData([]);
     } finally {
@@ -82,14 +86,14 @@ export function ReferenceList() {
       await referenceService.deleteItem(selectedType, deleteId);
       toast.success("Item deleted");
       loadData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to delete");
+    } catch (error) {
+      toast.error((error as { response?: { data?: { message?: string } } }).response?.data?.message || "Failed to delete");
     } finally {
       setDeleteId(null);
     }
   };
 
-  const columns: Column<ReferenceItem>[] = [
+  const columns = useMemo<Column<ReferenceItem>[]>(() => [
     {
       header: "Name / Value",
       accessorKey: "name",
@@ -109,6 +113,18 @@ export function ReferenceList() {
         </span>
       )
     },
+    ...(selectedType === 'financial-institutions' ? [{
+      header: "Country",
+      render: (item: ReferenceItem) => {
+        const country = countries.find(c => c.value === item.country_code);
+        return (
+          <div className="flex items-center gap-2">
+            <span>{country?.flag}</span>
+            <span className="truncate">{country?.label || item.country_code}</span>
+          </div>
+        );
+      }
+    }] : []),
     {
       header: "Actions",
       render: (item) => (
@@ -122,7 +138,7 @@ export function ReferenceList() {
         </div>
       )
     }
-  ];
+  ], [selectedType, countries]);
 
   return (
     <div className="flex bg-bg-light border rounded-lg overflow-hidden min-h-[600px]">
@@ -160,15 +176,40 @@ export function ReferenceList() {
                 </h2>
                 <p className="text-muted-foreground text-sm">Manage values for this dropdown.</p>
               </div>
-              <Button onClick={() => { setSelectedItem(null); setDialogOpen(true); }}>
-                <Plus className="mr-2 h-4 w-4" /> Add Item
-              </Button>
+              <div className="flex items-center gap-3">
+                {selectedType === 'financial-institutions' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Filter by Country:</span>
+                    <select
+                      value={countryFilter}
+                      onChange={(e) => setCountryFilter(e.target.value)}
+                      className="bg-background border rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="all">All Countries</option>
+                      {Array.from(new Set(data.map(item => item.country_code).filter(Boolean)))
+                        .map(code => {
+                          const country = countries.find(c => c.value === code);
+                          return (
+                            <option key={code} value={code}>
+                              {country?.flag} {country?.label || code}
+                            </option>
+                          );
+                        })}
+                    </select>
+                  </div>
+                )}
+                <Button onClick={() => { setSelectedItem(null); setDialogOpen(true); }}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Item
+                </Button>
+              </div>
             </div>
 
             <CustomTable
-              data={data}
+              data={selectedType === 'financial-institutions' && countryFilter !== 'all'
+                ? data.filter(item => item.country_code === countryFilter)
+                : data}
               columns={columns}
-              gridCols="2fr 1fr 100px"
+              gridCols={selectedType === 'financial-institutions' ? "2fr 1fr 1.5fr 100px" : "2fr 1fr 100px"}
               isLoading={loading}
               emptyMessage="No items found in this list."
             />
@@ -181,7 +222,8 @@ export function ReferenceList() {
         onOpenChange={setDialogOpen}
         type={selectedType}
         item={selectedItem}
-        onSuccess={loadData}
+        onSuccess={() => { loadData(); }}
+        defaultCountry={countryFilter !== 'all' ? countryFilter : undefined}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
