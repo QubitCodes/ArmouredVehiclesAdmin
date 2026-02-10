@@ -59,15 +59,16 @@ const SECTIONS = [
 ];
 
 export default function ProductDetailsView({ productId, domain, product }: ProductDetailsViewProps) {
+    const p = (product as any).data || product;
     const { data: specifications = [], isLoading: isLoadingSpecs } = useProductSpecifications(productId);
     const { data: mainCategories = [] } = useMainCategories();
     const { data: brands = [] } = useBrands();
 
     // Category Hierarchy Data Fetching - Support both camelCase and snake_case
-    const mainCategoryId = product.mainCategoryId || (product as any).main_category_id;
-    const categoryId = product.categoryId || (product as any).category_id;
-    const subCategoryId = product.subCategoryId || (product as any).sub_category_id;
-    const brandId = product.brandId || (product as any).brand_id;
+    const mainCategoryId = p.mainCategoryId || (p as any).main_category_id;
+    const categoryId = p.categoryId || (p as any).category_id;
+    const subCategoryId = p.subCategoryId || (p as any).sub_category_id;
+    const brandId = p.brandId || (p as any).brand_id;
 
     const { data: categories = [] } = useCategoriesByParent(mainCategoryId);
     const { data: subCategories = [] } = useCategoriesByParent(categoryId);
@@ -105,16 +106,29 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
     };
 
     // Parse JSON fields
-    const pricingTiers = safeParseArray(product.pricing_tiers);
-    const individualPricing = safeParseArray(product.individualProductPricing || (product as any).individual_product_pricing);
-    const gallery = safeParseArray(product.gallery);
-    const certifications = safeParseArray(product.certifications);
-    const features = safeParseArray(product.features);
+    const pricingTiers = safeParseArray(p.pricing_tiers || (p as any).pricingTiers);
+    const individualPricing = safeParseArray((p as any).individual_product_pricing || p.individualProductPricing);
+    const gallery = safeParseArray(p.gallery || (p as any).gallery);
+    const certifications = safeParseArray(p.certifications || (p as any).certifications);
+    const features = safeParseArray(p.features || (p as any).features);
+    const pricingTerms = safeParseArray((p as any).pricing_terms || p.pricingTerms);
 
     // Support snake_case for other fields
-    const controlledItemType = product.controlledItemType || (product as any).controlled_item_type;
-    const vehicleCompatibility = product.vehicleCompatibility || (product as any).vehicle_compatibility;
-    const countryOfOrigin = product.countryOfOrigin || (product as any).country_of_origin;
+    const controlledItemType = p.controlledItemType || (p as any).controlled_item_type;
+    const vehicleCompatibility = p.vehicleCompatibility || (p as any).vehicle_compatibility;
+    const countryOfOrigin = p.countryOfOrigin || (p as any).country_of_origin;
+    const packingCharge = p.packingCharge ?? (p as any).packing_charge ?? 0;
+    const basePrice = p.basePrice ?? (p as any).base_price ?? 0;
+    const stock = p.stock ?? (p as any).stock ?? 0;
+    const minOrderQuantity = p.minOrderQuantity || (p as any).min_order_quantity || 1;
+    const productionLeadTime = p.productionLeadTime ?? (p as any).production_lead_time;
+    const requiresExportLicense = p.requiresExportLicense ?? (p as any).requires_export_license;
+    const readyStockAvailable = p.readyStockAvailable ?? (p as any).ready_stock_available;
+    const manufacturingSource = p.manufacturingSource || (p as any).manufacturing_source;
+    const manufacturingSourceName = p.manufacturingSourceName || (p as any).manufacturing_source_name;
+    const hasWarranty = p.hasWarranty ?? (p as any).has_warranty;
+    const warrantyDuration = p.warrantyDuration ?? (p as any).warranty_duration;
+    const warrantyDurationUnit = p.warrantyDurationUnit || (p as any).warranty_duration_unit;
 
     const renderBasicInfo = () => (
         <div className="space-y-6">
@@ -297,26 +311,46 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
     const renderPricing = () => (
         <div className="space-y-8">
             {/* Base Pricing Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 bg-muted/20 rounded-lg border">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 p-4 bg-muted/20 rounded-lg border">
                 <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Base Price</h3>
                     <p className="text-2xl font-bold text-primary">
-                        {product.currency} {product.basePrice?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {product.currency || "AED"} {(basePrice !== undefined && basePrice !== null) ? basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "0.00"}
+                    </p>
+                </div>
+                <div>
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Packing Charge</h3>
+                    <p className="text-lg font-medium">
+                        {product.currency || "AED"} {(packingCharge !== undefined && packingCharge !== null) ? packingCharge.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "0.00"}
                     </p>
                 </div>
                 <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">In Stock</h3>
-                    <p className="text-lg font-medium">{product.stock || 0} Units</p>
+                    <p className="text-lg font-medium">{(stock !== undefined && stock !== null) ? stock : 0} Units</p>
                 </div>
                 <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Min Order Qty</h3>
-                    <p className="text-lg font-medium">{product.minOrderQuantity || 1}</p>
+                    <p className="text-lg font-medium">{(minOrderQuantity !== undefined && minOrderQuantity !== null) ? minOrderQuantity : 1}</p>
                 </div>
                 <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Lead Time</h3>
-                    <p className="text-lg font-medium">{product.productionLeadTime || "N/A"} days</p>
+                    <p className="text-lg font-medium">{(productionLeadTime !== undefined && productionLeadTime !== null) ? `${productionLeadTime} days` : "N/A"}</p>
                 </div>
             </div>
+
+            {/* Pricing Terms */}
+            {pricingTerms.length > 0 && (
+                <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Pricing Terms</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {pricingTerms.map((term: string, i: number) => (
+                            <Badge key={i} variant="secondary" className="bg-primary/5 text-primary border-primary/10">
+                                {term}
+                            </Badge>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Wholesale Tiers */}
             {Array.isArray(pricingTiers) && pricingTiers.length > 0 && (
@@ -430,21 +464,21 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
 
                     <div className="flex justify-between items-center py-2 border-b">
                         <span className="text-muted-foreground">Requires Export License</span>
-                        <Badge variant={product.requiresExportLicense ? "destructive" : "secondary"}>
-                            {product.requiresExportLicense ? "Yes" : "No"}
+                        <Badge variant={requiresExportLicense ? "destructive" : "secondary"}>
+                            {requiresExportLicense ? "Yes" : "No"}
                         </Badge>
                     </div>
 
                     <div className="flex justify-between items-center py-2 border-b">
                         <span className="text-muted-foreground">Ready Stock Available</span>
-                        <Badge variant={product.readyStockAvailable ? "default" : "secondary"}>
-                            {product.readyStockAvailable ? "Yes" : "No"}
+                        <Badge variant={readyStockAvailable ? "default" : "secondary"}>
+                            {readyStockAvailable ? "Yes" : "No"}
                         </Badge>
                     </div>
 
                     <div className="flex justify-between items-center py-2 border-b">
                         <span className="text-muted-foreground">Compliance Confirmed</span>
-                        {product.complianceConfirmed ? (
+                        {(p.complianceConfirmed || (p as any).compliance_confirmed) ? (
                             <Badge variant="outline" className="border-green-500 text-green-600 bg-green-50">
                                 <CheckCircle2 className="w-3 h-3 mr-1" /> Confirmed
                             </Badge>
@@ -464,33 +498,35 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
                     <div className="space-y-1">
                         <p className="text-xs font-semibold text-muted-foreground uppercase">Manufacturing Source</p>
                         <div className="flex items-center gap-2">
-                            <span className="capitalize">{product.manufacturingSource || "N/A"}</span>
-                            {product.manufacturingSourceName && (
-                                <Badge variant="secondary">{product.manufacturingSourceName}</Badge>
+                            <span className="capitalize">{manufacturingSource || "N/A"}</span>
+                            {manufacturingSourceName && (
+                                <Badge variant="secondary">{manufacturingSourceName}</Badge>
                             )}
                         </div>
                     </div>
 
                     <div className="space-y-1 mt-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase">Warranty</p>
-                        {product.hasWarranty ? (
-                            <div className="flex items-center gap-2 text-green-700">
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span className="font-medium">
-                                    {product.warrantyDuration} {product.warrantyDurationUnit}
-                                </span>
+                        {hasWarranty ? (
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2 text-green-700">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span className="font-medium">
+                                        {warrantyDuration} {warrantyDurationUnit}
+                                    </span>
+                                </div>
+                                {((p as any).warranty_terms || (p as any).warrantyTerms || (p as any).warranty) && (
+                                    <div className="space-y-1 mt-1 p-3 bg-muted/30 rounded text-sm">
+                                        <p className="text-muted-foreground">
+                                            {(p as any).warranty_terms || (p as any).warrantyTerms || (p as any).warranty}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <span className="text-muted-foreground">No Warranty Offered</span>
                         )}
                     </div>
-
-                    {product.warrantyTerms && (
-                        <div className="space-y-1 mt-4 p-3 bg-muted/30 rounded text-sm">
-                            <p className="font-medium mb-1">Warranty Terms:</p>
-                            <p className="text-muted-foreground">{product.warrantyTerms}</p>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
         </div>

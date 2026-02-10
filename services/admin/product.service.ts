@@ -55,9 +55,16 @@ export interface Product {
   warrantyDuration?: number;
   warrantyDurationUnit?: string;
   warrantyTerms?: string;
+  warranty?: string;
   vehicleCompatibility?: string;
   countryOfOrigin?: string;
   controlledItemType?: string;
+  packingCharge?: number;
+  packing_charge?: number;
+  shippingCharge?: number;
+  shipping_charge?: number;
+  pricingTerms?: string[];
+  pricing_terms?: string[];
 }
 
 export interface CreateProductRequest {

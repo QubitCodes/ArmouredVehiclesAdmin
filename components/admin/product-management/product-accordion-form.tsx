@@ -138,7 +138,6 @@ const productSchema = z.object({
 	// specifications: z.array(z.string()).optional(),
 	// Pricing (now includes MOQ)
 	basePrice: z.coerce.number().min(0).optional(),
-	shippingCharge: z.coerce.number().min(0).optional(),
 	packingCharge: z.coerce.number().min(0).optional(),
 	currency: z.string().optional(),
 	productionLeadTime: z.coerce.number().optional().nullable(),
@@ -161,9 +160,9 @@ const productSchema = z.object({
 	warrantyTerms: z.string().optional(),
 	complianceConfirmed: z.boolean().optional(),
 	supplierSignature: z.string().optional(),
-	warranty: z.string().optional(),
 	signatureDate: z.any().optional(),
 	status: z.string().optional(),
+	features: z.array(z.string()).optional().default([]),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -260,14 +259,10 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 			condition: "",
 			manufacturingSource: "",
 			manufacturingSourceName: "",
-			warranty: "",
 			warrantyTerms: "",
 			supplierSignature: "",
 			certifications: [],
-			// Todo: To be deleted. JkWorkz
-			// materials: [],
-			// features: [],
-			// performance: [],
+			features: [],
 			pricingTerms: [],
 			pricing_tiers: [],
 			individualProductPricing: [],
@@ -440,6 +435,23 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 		form.setValue("basePrice", total);
 	};
 
+	// Helper to safely parse array from API (could be JSON string or actual array)
+	const safeParseArray = (value: any) => {
+		if (Array.isArray(value)) return value;
+		if (typeof value === 'string' && value.trim()) {
+			if (value.startsWith('[') || value.startsWith('{')) {
+				try {
+					const parsed = JSON.parse(value);
+					return Array.isArray(parsed) ? parsed : [];
+				} catch (e) {
+					return [];
+				}
+			}
+			return value.split(',').map(s => s.trim()).filter(Boolean);
+		}
+		return [];
+	};
+
 	// Data fetching
 	const { data: product, isLoading: isLoadingProduct, refetch: refetchProduct } = useProduct(currentProductId || "");
 	// Duplicates removed
@@ -469,49 +481,48 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 	// Initialize form with product data
 	useEffect(() => {
 		if (product && currentProductId) {
-			const p = product as Record<string, any>;
+			const p = (product as any).data || product;
 			form.reset({
 				name: p.name || "",
 				sku: p.sku || "",
 				mainCategoryId: p.main_category_id || p.mainCategoryId,
 				categoryId: p.category_id || p.categoryId,
 				subCategoryId: p.sub_category_id || p.subCategoryId,
-				vehicleCompatibility: p.vehicle_compatibility || "",
-				certifications: Array.isArray(p.certifications) ? p.certifications : [],
-				countryOfOrigin: p.country_of_origin || "",
-				controlledItemType: p.controlled_item_type || "",
+				vehicleCompatibility: p.vehicle_compatibility || p.vehicleCompatibility || "",
+				certifications: safeParseArray(p.certifications || (p as any).certifications),
+				features: safeParseArray(p.features || (p as any).features),
+				countryOfOrigin: p.country_of_origin || p.countryOfOrigin || "",
+				controlledItemType: p.controlled_item_type || p.controlledItemType || "",
 				description: p.description || "",
-				brandId: p.brand_id || null,
+				brandId: p.brand_id || p.brandId || null,
 				model: p.model || "",
 				year: p.year,
 				condition: p.condition || "",
-				basePrice: p.base_price,
-
-				packingCharge: p.packing_charge,
+				basePrice: p.base_price ?? p.basePrice,
+				packingCharge: p.packing_charge ?? p.packingCharge,
 				currency: p.currency || "AED",
-				productionLeadTime: p.production_lead_time,
-				minOrderQuantity: p.min_order_quantity,
-				stock: p.stock,
-				readyStockAvailable: p.ready_stock_available,
-				pricingTerms: Array.isArray(p.pricing_terms) ? p.pricing_terms : [],
-				pricing_tiers: Array.isArray(p.pricing_tiers) ? p.pricing_tiers : [],
-				individualProductPricing: Array.isArray(p.individual_product_pricing) ? p.individual_product_pricing : [],
-				image: p.image || "",
-				gallery: Array.isArray(p.gallery) ? p.gallery : [],
-				manufacturingSource: p.manufacturing_source || "",
-				manufacturingSourceName: p.manufacturing_source_name || "",
-				requiresExportLicense: p.requires_export_license,
-				hasWarranty: p.has_warranty,
-				warranty: p.warranty || "",
-				warrantyDuration: p.warranty_duration,
-				warrantyDurationUnit: p.warranty_duration_unit || "Months",
-				warrantyTerms: p.warranty_terms || "",
-				complianceConfirmed: p.compliance_confirmed,
-				supplierSignature: p.supplier_signature || "",
-				signatureDate: p.submission_date ? {
-					day: new Date(p.submission_date).getDate(),
-					month: new Date(p.submission_date).getMonth() + 1,
-					year: new Date(p.submission_date).getFullYear(),
+				productionLeadTime: p.production_lead_time ?? p.productionLeadTime,
+				minOrderQuantity: p.min_order_quantity || p.minOrderQuantity,
+				stock: p.stock ?? (p as any).stock,
+				readyStockAvailable: p.ready_stock_available ?? p.readyStockAvailable,
+				pricingTerms: safeParseArray(p.pricing_terms || p.pricingTerms),
+				pricing_tiers: safeParseArray(p.pricing_tiers || (p as any).pricingTiers),
+				individualProductPricing: safeParseArray(p.individual_product_pricing || p.individualProductPricing),
+				image: p.image || p.imageUrl || "",
+				gallery: safeParseArray(p.gallery || (p as any).gallery),
+				manufacturingSource: p.manufacturing_source || p.manufacturingSource || "",
+				manufacturingSourceName: p.manufacturing_source_name || p.manufacturingSourceName || "",
+				requiresExportLicense: p.requires_export_license ?? p.requiresExportLicense,
+				hasWarranty: p.has_warranty ?? p.hasWarranty,
+				warrantyDuration: p.warranty_duration ?? p.warrantyDuration,
+				warrantyDurationUnit: p.warranty_duration_unit || p.warrantyDurationUnit || "Months",
+				warrantyTerms: p.warranty_terms || p.warrantyTerms || "",
+				complianceConfirmed: p.compliance_confirmed ?? p.complianceConfirmed,
+				supplierSignature: p.supplier_signature || p.supplierSignature || "",
+				signatureDate: (p.submission_date || p.signatureDate) ? {
+					day: new Date(p.submission_date || p.signatureDate).getDate(),
+					month: new Date(p.submission_date || p.signatureDate).getMonth() + 1,
+					year: new Date(p.submission_date || p.signatureDate || p.signature_date).getFullYear(),
 				} : undefined,
 				status: p.status || "draft",
 			});
@@ -535,7 +546,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 
 			if (!basicInfoComplete) {
 				firstIncompleteSlug = 'basic-info';
-			} else if (p.base_price === undefined || p.base_price === null) {
+			} else if ((p.base_price === undefined || p.base_price === null) && (p.basePrice === undefined || p.basePrice === null)) {
 				// Section 3 (Pricing) is the next one with required fields (basePrice)
 				// Section 2 (Technical) and 4 (Uploads), 5 (Declarations) are optional
 				firstIncompleteSlug = 'pricing';
@@ -544,8 +555,9 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 			if (!firstIncompleteSlug) {
 				// All requirements met - Rule 6: If all required filled, all open
 				setOpenSections(SECTIONS.map(s => s.slug));
+			} else {
 				// Rule 5: Open first unfilled required
-				setOpenSections([firstIncompleteSlug as string]);
+				setOpenSections([firstIncompleteSlug]);
 			}
 		} else if (!currentProductId) {
 			// New Product Mode: Explicitly reset to defaults
@@ -794,6 +806,10 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 		individualProductPricing: 'individual_product_pricing',
 		brandId: 'brand_id',
 		vehicleCompatibility: 'vehicle_compatibility',
+		condition: 'condition',
+		features: 'features',
+		pricing_tiers: 'pricing_tiers',
+		pricingTiers: 'pricing_tiers',
 	};
 
 	const cleanDataForApi = (data: ProductFormValues): Record<string, unknown> => {
@@ -1129,7 +1145,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					/>
 				</div>
 
-				<div className="grid gap-4 md:grid-cols-3">
+				<div className="grid gap-4 md:grid-cols-4">
 					<FormField
 						control={form.control}
 						name="brandId"
@@ -1182,6 +1198,24 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 										onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
 										disabled={isReadOnly}
 									/>
+								</FormControl>
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="condition"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Condition</FormLabel>
+								<FormControl>
+									<Select value={field.value || ""} onChange={field.onChange} disabled={isReadOnly}>
+										<option value="">Select</option>
+										<option value="new">New</option>
+										<option value="used">Used</option>
+										<option value="refurbished">Refurbished</option>
+									</Select>
 								</FormControl>
 							</FormItem>
 						)}
@@ -1304,6 +1338,27 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 						)}
 					</div>
 				</div>
+
+				<FormField
+					control={form.control}
+					name="features"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Key Features</FormLabel>
+							<FormControl>
+								<MultiSelect
+									placeholder="Type and press enter to add features..."
+									selected={field.value || []}
+									onChange={field.onChange}
+									options={(field.value || []).map((f: string) => ({ label: f, value: f }))}
+									creatable
+									disabled={isReadOnly}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
 				<FormField
 					control={form.control}
@@ -1612,7 +1667,50 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 							<option value="USD">USD</option>
 						</Select>
 					</FormItem>} />
+					<FormField
+						control={form.control}
+						name="productionLeadTime"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Production Lead Time (Days)</FormLabel>
+								<FormControl>
+									<Input
+										type="number"
+										value={field.value ?? ""}
+										onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
+										disabled={isReadOnly}
+									/>
+								</FormControl>
+							</FormItem>
+						)}
+					/>
 				</div>
+
+				<FormField
+					control={form.control}
+					name="pricingTerms"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Pricing Terms</FormLabel>
+							<FormControl>
+								<MultiSelect
+									placeholder="e.g. FOB, CIF, EXW..."
+									selected={field.value || []}
+									onChange={field.onChange}
+									options={[
+										{ label: "FOB", value: "FOB" },
+										{ label: "CIF", value: "CIF" },
+										{ label: "EXW", value: "EXW" },
+										{ label: "DDP", value: "DDP" },
+										{ label: "DAP", value: "DAP" },
+									]}
+									creatable
+									disabled={isReadOnly}
+								/>
+							</FormControl>
+						</FormItem>
+					)}
+				/>
 
 				{/* Combo product Individual pricing Section */}
 				<div className="border border-border p-4 rounded-md bg-muted/20">
@@ -2150,7 +2248,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					<>
 						<FormField
 							control={form.control}
-							name="warranty"
+							name="warrantyTerms"
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Warranty Details</FormLabel>
