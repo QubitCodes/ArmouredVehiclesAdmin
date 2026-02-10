@@ -150,6 +150,34 @@ class VendorAuthService {
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
+
+  /**
+   * Request profile update (reset onboarding)
+   */
+  async requestProfileUpdate(): Promise<boolean> {
+    try {
+      const token = this.getToken();
+      if (!token) return false;
+
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
+      const response = await fetch(`${baseUrl}/user/request-update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Failed to request update");
+      }
+      return true;
+    } catch (error) {
+      console.error("Error requesting profile update:", error);
+      throw error;
+    }
+  }
 }
 
 export const vendorAuthService = new VendorAuthService();

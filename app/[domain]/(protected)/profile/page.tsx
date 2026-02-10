@@ -16,8 +16,24 @@ import { AdminProfileView } from "@/components/admin/admin-profile-view";
 
 // ... existing imports
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
 export default function ProfilePage() {
     const params = useParams();
+    const router = useRouter();
     const domain = (params?.domain as string) || "admin";
     const [userId, setUserId] = useState<string | null>(null);
     const [userRole, setUserRole] = useState<string | null>(null);
@@ -61,6 +77,16 @@ export default function ProfilePage() {
     const userProfile = userRole === 'vendor'
         ? (userData?.userProfile || userData?.profile)
         : null; // Admins don't have userProfile usually
+
+    const handleRequestUpdate = async () => {
+        try {
+            await vendorAuthService.requestProfileUpdate();
+            toast.success("Profile update requested. Redirecting to onboarding...");
+            router.push(`/${domain}/onboarding`);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to request update");
+        }
+    };
 
     console.log('[DEBUG] ProfilePage Render', { userId, userRole, userData, error, isLoading });
 
@@ -115,11 +141,34 @@ export default function ProfilePage() {
 
     return (
         <div className="container mx-auto py-6 max-w-7xl space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
-                <p className="text-muted-foreground mt-2">
-                    Manage your account details and information.
-                </p>
+            <div className="flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
+                    <p className="text-muted-foreground mt-2">
+                        Manage your account details and information.
+                    </p>
+                </div>
+
+                {userRole === 'vendor' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline">Request Profile Update</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Request Profile Update?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will reset your account verification status and require you to go through the onboarding process again.
+                                    Your profile will need to be re-approved by an admin. Are you sure you want to proceed?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleRequestUpdate}>Yes, Request Update</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
             </div>
 
             {/* Editable User Information (For Admin & Vendor) */}
