@@ -30,24 +30,24 @@ function getAuthService(url?: string) {
   if (typeof window !== 'undefined') {
     // 1. Check URL Context (Strongest Indicator)
     if (window.location.pathname.startsWith('/vendor')) {
-        return vendorAuthService;
+      return vendorAuthService;
     }
 
     // 2. Check LocalStorage for Vendor
     const vendorUserStr = localStorage.getItem('vendor_user_details');
     if (vendorUserStr) {
-        return vendorAuthService;
+      return vendorAuthService;
     }
 
     // 3. Check Cookie for Vendor
     if (Cookies.get("vendor_access_token")) {
-        return vendorAuthService;
+      return vendorAuthService;
     }
 
     // 4. Fallback to Admin (Default)
     return authService;
   }
-  
+
   return authService;
 }
 
@@ -56,7 +56,7 @@ api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const authService = getAuthService(config.url);
     const token = authService.getToken();
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -106,7 +106,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // 1. If we haven't retried yet, try to refresh
       if (!originalRequest._retry) {
+        console.log("[AuthDebug] 401 detected. Attempting refresh...");
         if (isRefreshing) {
+          console.log("[AuthDebug] Refresh already in progress, queuing request.");
           return new Promise((resolve, reject) => {
             failedQueue.push({ resolve, reject });
           })
@@ -135,6 +137,7 @@ api.interceptors.response.use(
             }
             return api(originalRequest);
           } else {
+            console.error("[AuthDebug] Refresh returned no token. Redirecting.");
             // Refresh failed (soft)
             processQueue(error, null);
             if (typeof window !== "undefined") {
@@ -145,6 +148,7 @@ api.interceptors.response.use(
             return Promise.reject(error);
           }
         } catch (refreshError) {
+          console.error("[AuthDebug] Refresh error catch:", refreshError);
           // Refresh failed (hard)
           processQueue(refreshError as AxiosError, null);
           if (typeof window !== "undefined") {
@@ -176,7 +180,7 @@ api.interceptors.response.use(
     // Given the user request "implement a common error handling", doing it here handles it globally.
     // However, some flows might want to suppress it.
     // For now, let's attach a normalized error object.
-    
+
     return Promise.reject(error);
   }
 );

@@ -71,17 +71,17 @@ class VendorAuthService {
    * Store user details
    */
   setUserDetails(user: any): void {
-      if (typeof window === "undefined") return;
-      localStorage.setItem("vendor_user_details", JSON.stringify(user));
+    if (typeof window === "undefined") return;
+    localStorage.setItem("vendor_user_details", JSON.stringify(user));
   }
 
   /**
    * Get user details
    */
   getUserDetails(): any {
-      if (typeof window === "undefined") return null;
-      const str = localStorage.getItem("vendor_user_details");
-      return str ? JSON.parse(str) : null;
+    if (typeof window === "undefined") return null;
+    const str = localStorage.getItem("vendor_user_details");
+    return str ? JSON.parse(str) : null;
   }
 
   /**
@@ -98,8 +98,11 @@ class VendorAuthService {
       // Use vendor-specific refresh endpoint
       // Try sending refresh token in body first (most common pattern)
       // Some APIs might expect it in Authorization header instead
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
+      console.log("[AuthDebug] Vendor refreshing token at:", `${baseUrl}/vendor/auth/refresh`);
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/vendor/auth/refresh`,
+        `${baseUrl}/vendor/auth/refresh`,
         {
           method: "POST",
           headers: {
