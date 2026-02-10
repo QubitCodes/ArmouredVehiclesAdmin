@@ -28,7 +28,7 @@ const onboardingRoutes = [
 // Protected routes that require authentication
 const protectedRoutes = ["/admin", "/vendor"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check if the route is a public auth route
