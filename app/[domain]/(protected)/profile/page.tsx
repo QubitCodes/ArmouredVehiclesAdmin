@@ -82,7 +82,7 @@ export default function ProfilePage() {
         try {
             await vendorAuthService.requestProfileUpdate();
             toast.success("Profile update requested. Redirecting to onboarding...");
-            router.push(`/${domain}/onboarding`);
+            router.push(`/${domain}/company-information`);
         } catch (error: any) {
             toast.error(error.message || "Failed to request update");
         }
