@@ -36,6 +36,9 @@ const registrationSchema = z.object({
     .string()
     .min(1, "Username is required")
     .min(3, "Username must be at least 3 characters"),
+  termsAccepted: z
+    .boolean()
+    .refine((val) => val === true, "You must accept the Terms of Sale"),
 });
 
 type RegistrationFormValues = z.infer<typeof registrationSchema>;
@@ -48,6 +51,7 @@ export default function CreateSupplierAccountPage() {
       name: "",
       email: "",
       username: "",
+      termsAccepted: false,
     },
   });
 
@@ -75,7 +79,8 @@ export default function CreateSupplierAccountPage() {
         name: data.name,
         email: data.email,
         username: data.username,
-        userType: "vendor"
+        userType: "vendor",
+        termsAccepted: data.termsAccepted
       };
       localStorage.setItem('vendor_reg_form', JSON.stringify(formData));
 
@@ -176,6 +181,29 @@ export default function CreateSupplierAccountPage() {
                         />
                       </FormControl>
                       <FormMessage className="text-red-600 text-xs" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="termsAccepted"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 mt-6">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="w-4 h-4 mt-1 accent-secondary cursor-pointer"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <label className="text-sm text-black/80 font-medium cursor-pointer">
+                          I have read and agree to the <Link href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3000'}/terms-of-sale`} target="_blank" className="text-secondary font-bold hover:underline">Terms of Sale</Link>
+                        </label>
+                        <FormMessage className="text-red-600 text-xs" />
+                      </div>
                     </FormItem>
                   )}
                 />
