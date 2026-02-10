@@ -746,6 +746,14 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 				if (!unlockedSections.includes(sectionId + 1) && sectionId < 5) {
 					setUnlockedSections(prev => [...prev, sectionId + 1]);
 				}
+
+				// Final section redirect
+				if (sectionId === 5 && currentProductId) {
+					toast.success("Product updated successfully!");
+					router.push(`/${domain}/product/${currentProductId}`);
+					return;
+				}
+
 				const nextSection = SECTIONS.find(s => s.id === sectionId + 1);
 				if (nextSection) {
 					setOpenSections([nextSection.slug]);
