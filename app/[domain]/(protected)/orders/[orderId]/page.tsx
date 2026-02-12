@@ -225,6 +225,13 @@ export default function OrderDetailPage() {
       transaction_details,
     });
     setIsPaymentDialogOpen(false);
+
+    // Delay invoice query refetch to allow backend to generate invoices after payment
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['invoices', orderId] });
+      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+    }, 2000);
+
     setPaymentForm({
       payment_mode: "Bank Transfer",
       transaction_id: "",
@@ -713,7 +720,9 @@ export default function OrderDetailPage() {
                         ) : userRole === 'vendor' ? (
                           <>
                             <option value="order_received">Order Received</option>
-                            <option value="approved">Approve Order</option>
+                            {order.payment_status === 'paid' && (
+                              <option value="approved">Approve Order</option>
+                            )}
                             <option value="rejected">Reject Order</option>
                             <option value="admin_rejected">Admin Rejected</option>
                             <option value="cancelled">Cancelled</option>
@@ -721,7 +730,7 @@ export default function OrderDetailPage() {
                         ) : (
                           <>
                             <option value="order_received">Order Received</option>
-                            {(authService.hasPermission("order.approve")) && (
+                            {(authService.hasPermission("order.approve")) && order.payment_status === 'paid' && (
                               <option value="approved">Approved</option>
                             )}
                             <option value="rejected">Rejected</option>

@@ -78,10 +78,12 @@ export default function ProductViewPage({ params }: ProductViewPageProps) {
                     status={product.status}
                     product={{
                         name: product.name,
-                        mainCategoryId: product.mainCategoryId,
+                        mainCategoryId: product.mainCategoryId || (product as any).main_category_id,
                         description: product.description,
                         basePrice: product.basePrice || product.base_price,
                         hasCoverImage: !!product.image,
+                        hasSize: !!(product as any).size_length || !!(product as any).sizeLength,
+                        hasWeight: !!(product as any).weight_value || !!(product as any).weightValue,
                         complianceConfirmed: !!product.complianceConfirmed || !!(product as any).compliance_confirmed
                     }}
                 />

@@ -745,7 +745,9 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					await refetchProduct();
 				}
 
-				toast.success("Section saved successfully!");
+				if (sectionId < 5) {
+					toast.success("Section saved successfully!");
+				}
 
 				// Clear file states after successful upload
 				if (sectionId === 4) {
@@ -902,9 +904,16 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 								"px-2.5 py-0.5 rounded-full text-xs font-semibold border",
 								form.watch("status") === "published"
 									? "bg-green-100 text-green-700 border-green-200"
-									: "bg-orange-100 text-orange-700 border-orange-200"
+									: form.watch("status") === "out_of_stock"
+										? "bg-red-100 text-red-700 border-red-200"
+										: form.watch("status") === "inactive"
+											? "bg-gray-100 text-gray-600 border-gray-200"
+											: "bg-orange-100 text-orange-700 border-orange-200"
 							)}>
-								{form.watch("status") === "published" ? "Published" : "Draft"}
+								{form.watch("status") === "published" ? "Published"
+									: form.watch("status") === "out_of_stock" ? "Out of Stock"
+										: form.watch("status") === "inactive" ? "Inactive"
+											: "Draft"}
 							</div>
 						)}
 					</div>
@@ -2346,7 +2355,11 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 							"space-y-3 p-4 border rounded-md transition-colors",
 							field.value === "published"
 								? "bg-green-100 border-green-300"
-								: "bg-orange-100 border-orange-300"
+								: field.value === "out_of_stock"
+									? "bg-red-100 border-red-300"
+									: field.value === "inactive"
+										? "bg-gray-100 border-gray-300"
+										: "bg-orange-100 border-orange-300"
 						)}>
 							<FormLabel className="text-base font-semibold">Publish Status</FormLabel>
 							<FormControl>
@@ -2355,10 +2368,12 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 									value={field.value || "draft"}
 									className="flex flex-col space-y-1"
 								>
-									<RadioGroupItem value="draft" label="Draft (Hidden from approval)" disabled={isReadOnly} />
+									<RadioGroupItem value="draft" label="Draft (Hidden from everyone. Needs Admin Approval Later)" disabled={isReadOnly} />
+									<RadioGroupItem value="inactive" label="Inactive (Hidden from frontend, visible to admins)" disabled={isReadOnly} />
+									<RadioGroupItem value="out_of_stock" label="Out of Stock (Visible on frontend, cannot be purchased)" disabled={isReadOnly} />
 									<RadioGroupItem
 										value="published"
-										label="Published (Submit for Approval)"
+										label="Published"
 										disabled={!canPublish || isReadOnly}
 									/>
 								</RadioGroup>

@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, PauseCircle, PackageX } from "lucide-react";
 
 interface DraftAlertProps {
     status?: string;
@@ -16,8 +16,39 @@ interface DraftAlertProps {
 }
 
 export function DraftAlert({ status, product, className }: DraftAlertProps) {
-    if (status === 'published') return null; // Show for 'draft', undefined, null, etc.
+    // Don't show for published products
+    if (status === 'published') return null;
 
+    // --- Status-specific messages for inactive & out_of_stock ---
+    if (status === 'inactive') {
+        return (
+            <div className={`p-4 rounded-lg border flex items-start gap-4 bg-gray-50 border-gray-200 text-gray-900 ${className || ''}`}>
+                <PauseCircle className="h-5 w-5 text-gray-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                    <h3 className="font-semibold mb-1 text-gray-800">Product is Inactive</h3>
+                    <p className="text-sm text-gray-600">
+                        This product is currently hidden from the storefront. Change the status to Published to make it visible again.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (status === 'out_of_stock') {
+        return (
+            <div className={`p-4 rounded-lg border flex items-start gap-4 bg-red-50 border-red-200 text-red-900 ${className || ''}`}>
+                <PackageX className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                    <h3 className="font-semibold mb-1 text-red-800">Product is Out of Stock</h3>
+                    <p className="text-sm text-red-600">
+                        This product is visible on the storefront but customers cannot add it to cart. Change the status to Published when stock is available.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // --- Default: Draft status ---
     const requiredFields = [
         { key: 'name', label: 'Product Name' },
         { key: 'mainCategoryId', label: 'Main Category' },
@@ -31,11 +62,10 @@ export function DraftAlert({ status, product, className }: DraftAlertProps) {
 
     const missingFields = requiredFields.filter(field => {
         const val = product[field.key as keyof typeof product];
-        // Check for undefined, null, empty string, or negative number (for price)
         if (val === undefined || val === null) return true;
         if (typeof val === 'string' && val.trim() === '') return true;
         if (typeof val === 'number' && val < 0) return true;
-        if (typeof val === 'boolean' && val === false) return true; // Check for hasCoverImage, hasSize, hasWeight
+        if (typeof val === 'boolean' && val === false) return true;
         return false;
     });
 
@@ -47,7 +77,6 @@ export function DraftAlert({ status, product, className }: DraftAlertProps) {
                 <p className="text-sm mb-2 text-orange-700/90">
                     The admin will not be able to approve this product until it's published.
                 </p>
-
 
                 {missingFields.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-2 mt-2">

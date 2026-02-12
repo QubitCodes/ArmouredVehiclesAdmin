@@ -2540,11 +2540,19 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                       >
                         <RadioGroupItem
                           value="draft"
-                          label="Draft (Hidden from approval)"
+                          label="Draft (Hidden from everyone. Needs Admin Approval Later)"
+                        />
+                        <RadioGroupItem
+                          value="inactive"
+                          label="Inactive (Hidden from frontend, visible to admins)"
+                        />
+                        <RadioGroupItem
+                          value="out_of_stock"
+                          label="Out of Stock (Visible on frontend, cannot be purchased)"
                         />
                         <RadioGroupItem
                           value="published"
-                          label="Published (Submit for Approval)"
+                          label="Published"
                           disabled={!canPublish}
                         />
                       </RadioGroup>
