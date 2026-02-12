@@ -46,7 +46,10 @@ export default function InvoiceViewPage() {
                     if (response.status === 403) {
                         throw new Error('You are not authorized to view this invoice.');
                     }
-                    throw new Error('Failed to load invoice');
+                    // Log the actual response for debugging
+                    const errBody = await response.text();
+                    console.error(`Invoice API error: ${response.status}`, errBody);
+                    throw new Error(`Failed to load invoice (HTTP ${response.status})`);
                 }
 
                 const html = await response.text();

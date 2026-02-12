@@ -5,10 +5,12 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { SlidersView } from "./sliders-view";
 import { AdsView } from "./ads-view";
+import { SubFooterTextView } from "./sub-footer-text-view";
 
 const SECTIONS = [
     { id: "sliders", label: "Home Slider" },
-    { id: "ads", label: "Ads" }
+    { id: "ads", label: "Ads" },
+    { id: "sub_footer_text", label: "Sub Footer Text" }
 ];
 
 export function WebFrontendManager() {
@@ -41,7 +43,9 @@ export function WebFrontendManager() {
             <div className="flex-1 p-6">
                 {selectedSection === 'sliders' && <SlidersView />}
                 {selectedSection === 'ads' && <AdsView />}
+                {selectedSection === 'sub_footer_text' && <SubFooterTextView />}
             </div>
         </div>
     );
 }
+

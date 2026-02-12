@@ -99,7 +99,7 @@ class VendorAuthService {
       // Try sending refresh token in body first (most common pattern)
       // Some APIs might expect it in Authorization header instead
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
-      console.log("[AuthDebug] Vendor refreshing token at:", `${baseUrl}/vendor/auth/refresh`);
+
 
       const response = await fetch(
         `${baseUrl}/vendor/auth/refresh`,
@@ -107,9 +107,6 @@ class VendorAuthService {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            // Alternative: Some APIs expect refresh token in Authorization header
-            // Uncomment if your API requires it:
-            // "Authorization": `Bearer ${refreshToken}`,
           },
           body: JSON.stringify({ refreshToken }),
         }
@@ -123,8 +120,7 @@ class VendorAuthService {
       const responseBody = await response.json();
       const data = responseBody.data;
 
-      // Assuming the API returns { accessToken, refreshToken } or similar
-      // Adjust based on your API response structure
+
       if (data && data.accessToken) {
         this.setAccessToken(data.accessToken);
 

@@ -78,9 +78,7 @@ function VendorLoginContent() {
     checkMagicLink();
   }, [isMagicLink, verifyMagicLink]);
 
-  // ... imports
-
-  // 1. Redirect Logic
+  // Redirect Logic
   const handleRedirect = (user: any) => {
     // 1. Phone Missing -> Add Phone
     if (!user.phone) {

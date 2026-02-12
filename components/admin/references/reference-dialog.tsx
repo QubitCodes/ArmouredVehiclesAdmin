@@ -31,6 +31,7 @@ const referenceSchema = z.object({
   isActive: z.boolean().optional(),
   displayOrder: z.number().optional(),
   countryCode: z.string().optional(),
+  serviceType: z.string().optional(),
 });
 
 type ReferenceFormValues = z.infer<typeof referenceSchema>;
@@ -62,6 +63,7 @@ export function ReferenceDialog({
       isActive: true,
       displayOrder: 0,
       countryCode: "",
+      serviceType: "",
     },
   });
 
@@ -73,6 +75,7 @@ export function ReferenceDialog({
           isActive: item.is_active,
           displayOrder: item.display_order,
           countryCode: item.country_code || "",
+          serviceType: (item as any).service_type || "",
         });
       } else {
         form.reset({
@@ -80,6 +83,7 @@ export function ReferenceDialog({
           isActive: true,
           displayOrder: 0,
           countryCode: defaultCountry || "",
+          serviceType: "",
         });
       }
     }
@@ -90,7 +94,9 @@ export function ReferenceDialog({
     try {
       const payload = {
         ...data,
-        country_code: data.countryCode // Ensure backend receives country_code
+        country_code: data.countryCode, // Ensure backend receives country_code
+        service_type: data.serviceType,
+        display_order: data.displayOrder
       };
       if (item) {
         await referenceService.updateItem(type, item.id, payload);
@@ -132,6 +138,43 @@ export function ReferenceDialog({
               </FormItem>
             )}
           />
+
+          {type === 'shipping-types' && (
+            <>
+              <FormField
+                control={form.control}
+                name="serviceType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Service Type Code (FedEx/Internal)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. INTERNATIONAL_PRIORITY" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="displayOrder"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Display Order (Priority)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        {...field}
+                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
 
           {type === 'financial-institutions' && (
             <FormField

@@ -148,10 +148,7 @@ export default function ContactPersonPage() {
         const isPdf = p.contact_id_document_url.toLowerCase().endsWith('.pdf');
         setFileType(isPdf ? 'pdf' : 'image');
 
-        // Dummy file for validation - we create a File object 
-        // Note: In a real scenario handling existing files with RHF and Zod validation requiring proper File objects is tricky.
-        // We use a dummy file here to satisfy "required" validation if the user doesn't change it.
-        // If the user uploads a new file, it replaces this.
+        // Dummy file for validation - satisfies "required" validation when an existing file is already uploaded
         const dummyFile = new File([""], "existing_file", { type: isPdf ? "application/pdf" : "image/jpeg" });
         form.setValue("passport", dummyFile);
       }

@@ -106,9 +106,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // 1. If we haven't retried yet, try to refresh
       if (!originalRequest._retry) {
-        console.log("[AuthDebug] 401 detected. Attempting refresh...");
         if (isRefreshing) {
-          console.log("[AuthDebug] Refresh already in progress, queuing request.");
           return new Promise((resolve, reject) => {
             failedQueue.push({ resolve, reject });
           })

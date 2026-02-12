@@ -26,6 +26,7 @@ export function CategoryList() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [blockMessage, setBlockMessage] = useState<string | null>(null);
   const [isVendor, setIsVendor] = useState(false);
 
   useEffect(() => {
@@ -94,6 +95,28 @@ export function CategoryList() {
   };
 
   const handleDeleteClick = (id: number) => {
+    const category = categories.find(c => c.id === id);
+    if (!category) return;
+
+    // Check if category has products assigned
+    const productCount = category.product_count ?? 0;
+    if (productCount > 0) {
+      setBlockMessage(
+        `Cannot delete "${category.name}". It has ${productCount} product${productCount !== 1 ? 's' : ''} assigned to it. Please reassign or remove the products first.`
+      );
+      return;
+    }
+
+    // Check if category has subcategories
+    const hasChildren = categories.some(c => (c.parentId ?? c.parent_id) === id);
+    if (hasChildren) {
+      setBlockMessage(
+        `Cannot delete "${category.name}". It has subcategories. Please delete the subcategories first.`
+      );
+      return;
+    }
+
+    // All clear — show confirmation dialog
     setDeleteId(id);
   };
 
@@ -211,6 +234,19 @@ export function CategoryList() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive" onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cannot Delete Dialog */}
+      <AlertDialog open={!!blockMessage} onOpenChange={(open) => !open && setBlockMessage(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cannot Delete Category</AlertDialogTitle>
+            <AlertDialogDescription>{blockMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>OK</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

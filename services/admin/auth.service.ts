@@ -110,10 +110,8 @@ class AuthService {
     }
 
     try {
-      // TODO: Replace with your actual refresh token endpoint
-      // Ensure we use the full API URL including /v1 if configured in environment, otherwise append it
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api/v1";
-      console.log("[AuthDebug] Refreshing token at:", `${baseUrl}/auth/refresh`);
+
 
       const response = await fetch(
         `${baseUrl}/auth/refresh`,
@@ -127,16 +125,15 @@ class AuthService {
       );
 
       if (!response.ok) {
-        console.error("[AuthDebug] Refresh failed with status:", response.status);
         throw new Error("Failed to refresh token");
       }
 
       const responseBody: TokenResponse = await response.json();
-      console.log("[AuthDebug] Refresh response:", responseBody);
+
 
       const data = responseBody.data;
 
-      // Assuming the API returns { status: true, data: { accessToken, refreshToken } }
+
       if (data && data.accessToken) {
         this.setAccessToken(data.accessToken);
 

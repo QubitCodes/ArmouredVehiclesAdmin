@@ -81,6 +81,19 @@ class ReferenceService {
       throw error;
     }
   }
+
+  /**
+   * Reorder reference items
+   */
+  async reorderItems(type: string, items: { id: number; display_order: number }[]) {
+    try {
+      await api.put(`/references/${type}/reorder`, { items });
+      return true;
+    } catch (error) {
+      console.error(`Error reordering reference items in ${type}:`, error);
+      throw error;
+    }
+  }
 }
 
 export const referenceService = new ReferenceService();

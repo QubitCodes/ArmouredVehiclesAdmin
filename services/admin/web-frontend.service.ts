@@ -64,5 +64,18 @@ export const webFrontendService = {
     async deleteAd(id: string) {
         const response = await api.delete(`/admin/web-frontend/ads/${id}`);
         return response.data;
+    },
+
+    // Sub Footer Text
+    /** Fetches the current sub-footer text from platform settings */
+    async getSubFooterText(): Promise<string> {
+        const response = await api.get('/admin/settings');
+        return response.data?.data?.sub_footer_text || '';
+    },
+
+    /** Updates the sub-footer text in platform settings */
+    async updateSubFooterText(content: string) {
+        const response = await api.put('/admin/settings', { sub_footer_text: content });
+        return response.data;
     }
 };

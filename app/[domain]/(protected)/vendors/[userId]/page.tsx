@@ -59,7 +59,6 @@ export default function VendorDetailPage() {
     });
   };
 
-  console.log('[DEBUG] VendorPage Render', { userId, isLoading, hasVendor: !!vendor, error: error?.message });
 
   // Handle 404 errors - Display error but don't redirect
   useEffect(() => {
@@ -160,7 +159,6 @@ function VendorActions({ vendor }: { vendor: any }) {
       toast.success("Vendor status updated successfully");
       queryClient.invalidateQueries({ queryKey: ["vendor", vendor.id] });
       setReason("");
-      // State sync handled by useEffect
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to update status");
@@ -171,11 +169,6 @@ function VendorActions({ vendor }: { vendor: any }) {
 
   const handleToggle = (checked: boolean) => {
     setIsSuspended(checked);
-    // If turning OFF (activating), we might want to auto-show confirm, or just rely on the button below.
-    // Logic: 
-    // If Switch is TRUE (Suspended) -> Showing generic "Suspended" state UI?
-    // Actually, we want the "Pending Action" UI to appear when the *proposed* state differs from *actual* state.
-    // proposed = checked. actual = !vendor.is_active.
   };
 
   const hasPendingChange = isSuspended !== (!vendor.is_active);
@@ -336,12 +329,7 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
         setSelectedStatus("");
         setComment("");
         setTargetStep(undefined);
-        // Reset marked fields? Need to lift this reset up via prop or context if desired, 
-        // but typically page reload or re-render after mutation will handle it (since data changes).
-        // Also good UX to clear them.
-        // We can't clear them here easily without a callback. It's fine for now, they will persist until refresh or success which invalidates query.
       } catch (e) {
-        // Error handled in hook
       }
     } else {
       try {
@@ -349,7 +337,6 @@ function VendorApprovalActions({ vendor, markedFields }: { vendor: any, markedFi
         setSelectedStatus("");
         setComment("");
       } catch (e) {
-        // Error handled in hook
       }
     }
   };

@@ -14,8 +14,6 @@ import { Info } from "lucide-react";
 
 import { AdminProfileView } from "@/components/admin/admin-profile-view";
 
-// ... existing imports
-
 import {
     AlertDialog,
     AlertDialogAction,
@@ -42,7 +40,6 @@ export default function ProfilePage() {
         // Determine auth service and get user details
         const currentAuthService = domain === "vendor" ? vendorAuthService : authService;
         const user = currentAuthService.getUserDetails();
-        console.log('[DEBUG] ProfilePage useEffect', { domain, user });
         if (user) {
             setUserId(user.id);
             setUserRole(user.userType || (domain === 'vendor' ? 'vendor' : 'admin'));
@@ -55,14 +52,12 @@ export default function ProfilePage() {
         queryFn: async () => {
             if (!userId) return null;
 
-            console.log('[DEBUG] Fetching profile', { userId, userRole });
             if (userRole === "vendor") {
                 const response = await vendorService.getVendorByUserId(userId);
                 return response; // Vendor object
             } else {
                 // Admin
                 const response = await adminService.getAdmin(userId);
-                console.log('[DEBUG] Admin Response', response);
                 return response.data;
             }
         },
@@ -88,7 +83,6 @@ export default function ProfilePage() {
         }
     };
 
-    console.log('[DEBUG] ProfilePage Render', { userId, userRole, userData, error, isLoading });
 
     if (isLoading) {
         return (
@@ -127,9 +121,6 @@ export default function ProfilePage() {
                                     )}
                                 </div>
                             )}
-                            <div className="text-xs text-muted-foreground mt-4 font-mono p-1 bg-muted rounded">
-                                Debug: ID={userId} | Role={userRole} | Data={String(!!userData)}
-                            </div>
                         </div>
                     </CardContent>
                 </Card>

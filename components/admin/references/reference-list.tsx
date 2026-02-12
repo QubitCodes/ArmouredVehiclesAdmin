@@ -19,6 +19,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useCountries } from "@/hooks/vendor/dashboard/use-countries";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from "lucide-react";
 
 // Hardcoded list of supported reference types based on ReferenceController docs
 import { BrandList } from "@/components/admin/brands/brand-list";
@@ -43,6 +47,7 @@ const REFERENCE_TYPES = [
   // { id: "controlled-item-types", label: "Controlled Item Types" },
   // { id: "pricing-terms", label: "Pricing Terms" },
   // { id: "manufacturing-sources", label: "Manufacturing Sources" },
+  { id: "shipping-types", label: "Shipping Types" },
 ];
 
 export function ReferenceList() {
@@ -70,6 +75,43 @@ export function ReferenceList() {
       setLoading(false);
     }
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = data.findIndex((item) => item.id === active.id);
+      const newIndex = data.findIndex((item) => item.id === over?.id);
+
+      const newData = arrayMove(data, oldIndex, newIndex);
+      setData(newData); // Optimistic update
+
+      // Prepare payload: map new index to display_order (1-based)
+      const reorderPayload = newData.map((item, index) => ({
+        id: item.id,
+        display_order: index + 1
+      }));
+
+      try {
+        await referenceService.reorderItems(selectedType, reorderPayload);
+        toast.success("Order updated");
+        // Force reload to ensure DB sync
+        loadData();
+      } catch (error) {
+        toast.error("Failed to update order");
+        loadData(); // Revert on failure
+      }
+    }
+  };
+
+  // Sortable Row Component moved outside to prevent re-renders
 
   useEffect(() => {
     loadData();
@@ -204,15 +246,57 @@ export function ReferenceList() {
               </div>
             </div>
 
-            <CustomTable
-              data={selectedType === 'financial-institutions' && countryFilter !== 'all'
-                ? data.filter(item => item.country_code === countryFilter)
-                : data}
-              columns={columns}
-              gridCols={selectedType === 'financial-institutions' ? "2fr 1fr 1.5fr 100px" : "2fr 1fr 100px"}
-              isLoading={loading}
-              emptyMessage="No items found in this list."
-            />
+            {selectedType === 'shipping-types' ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="border rounded-md">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-muted/50 text-muted-foreground font-medium">
+                      <tr>
+                        <th className="h-12 px-4 w-[50px]"></th>
+                        <th className="h-12 px-4 w-[80px]">Sl No</th>
+                        <th className="h-12 px-4">Name / Value</th>
+                        <th className="h-12 px-4 w-[100px]">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="[&_tr:last-child]:border-0">
+                      <SortableContext
+                        items={data.map(i => i.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {data.map((item, index) => (
+                          <SortableRow
+                            key={item.id}
+                            item={item}
+                            index={index}
+                            onEdit={handleEdit}
+                            onDelete={setDeleteId}
+                          />
+                        ))}
+                      </SortableContext>
+                    </tbody>
+                  </table>
+                  {data.length === 0 && !loading && (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No items found.
+                    </div>
+                  )}
+                </div>
+              </DndContext>
+            ) : (
+              <CustomTable
+                data={selectedType === 'financial-institutions' && countryFilter !== 'all'
+                  ? data.filter(item => item.country_code === countryFilter)
+                  : data}
+                columns={columns}
+                gridCols={selectedType === 'financial-institutions' ? "2fr 1fr 1.5fr 100px" : "2fr 1fr 100px"}
+                isLoading={loading}
+                emptyMessage="No items found in this list."
+              />
+            )}
           </>
         )}
       </div>
@@ -243,3 +327,67 @@ export function ReferenceList() {
     </div>
   );
 }
+
+// Sortable Row Component
+const SortableRow = ({ item, index, onEdit, onDelete }: { item: ReferenceItem, index: number, onEdit: (i: any) => void, onDelete: (id: number) => void }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : 1,
+    position: isDragging ? 'relative' : undefined,
+  } as React.CSSProperties;
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "border-b transition-colors hover:bg-muted/50",
+        isDragging && "bg-muted shadow-lg opacity-80"
+      )}
+    >
+      {/* Drag Handle */}
+      <td className="p-4 align-middle w-[50px]">
+        <button
+          {...attributes}
+          {...listeners}
+          type="button"
+          className="cursor-grab hover:text-primary active:cursor-grabbing touch-none"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </td>
+
+      {/* Sl No (Priority) */}
+      <td className="p-4 align-middle font-medium w-[80px]">
+        {index + 1}
+      </td>
+
+      {/* Name / Value */}
+      <td className="p-4 align-middle font-medium">
+        {item.name}
+      </td>
+
+      {/* Status */}
+      <td className="p-4 align-middle w-[100px]">
+        <span className={cn(
+          "text-xs px-2 py-1 rounded-full font-medium",
+          item.is_active
+            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            : "bg-gray-100 text-gray-500"
+        )}>
+          {item.is_active ? "Active" : "Inactive"}
+        </span>
+      </td>
+    </tr>
+  );
+};
