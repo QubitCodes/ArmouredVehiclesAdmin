@@ -22,6 +22,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "ArmoredMart Admin",
   description: "Admin panel for managing ArmoredMart products, orders, and admins.",
+  icons: {
+    icon: "/images/favicon.ico",
+  },
 };
 
 export default function RootLayout({
