@@ -6,11 +6,13 @@ import { cn } from "@/lib/utils";
 import { SlidersView } from "./sliders-view";
 import { AdsView } from "./ads-view";
 import { SubFooterTextView } from "./sub-footer-text-view";
+import { InvoiceTermsView } from "./invoice-terms-view";
 
 const SECTIONS = [
     { id: "sliders", label: "Home Slider" },
     { id: "ads", label: "Ads" },
-    { id: "sub_footer_text", label: "Sub Footer Text" }
+    { id: "sub_footer_text", label: "Sub Footer Text" },
+    { id: "invoice_terms", label: "Invoice T&C" }
 ];
 
 export function WebFrontendManager() {
@@ -44,6 +46,7 @@ export function WebFrontendManager() {
                 {selectedSection === 'sliders' && <SlidersView />}
                 {selectedSection === 'ads' && <AdsView />}
                 {selectedSection === 'sub_footer_text' && <SubFooterTextView />}
+                {selectedSection === 'invoice_terms' && <InvoiceTermsView />}
             </div>
         </div>
     );

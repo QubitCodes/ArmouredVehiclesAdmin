@@ -77,5 +77,22 @@ export const webFrontendService = {
     async updateSubFooterText(content: string) {
         const response = await api.put('/admin/settings', { sub_footer_text: content });
         return response.data;
+    },
+
+    // Invoice Terms & Conditions
+    /** Fetches both customer and vendor invoice terms from platform settings */
+    async getInvoiceTerms(): Promise<{ customer: string; vendor: string }> {
+        const response = await api.get('/admin/settings');
+        const data = response.data?.data || {};
+        return {
+            customer: data.customer_invoice_terms || '',
+            vendor: data.vendor_invoice_terms || ''
+        };
+    },
+
+    /** Updates invoice terms in platform settings */
+    async updateInvoiceTerms(terms: { customer_invoice_terms?: string; vendor_invoice_terms?: string }) {
+        const response = await api.put('/admin/settings', terms);
+        return response.data;
     }
 };
