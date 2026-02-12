@@ -77,6 +77,7 @@ import type {
   Product,
 } from "@/services/admin/product.service";
 import api from "@/lib/api";
+import { referenceService } from "@/services/admin/reference.service";
 
 // Pricing Tier Schema
 const pricingTierSchema = z.object({
@@ -390,6 +391,17 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
   const bulkUpdateSpecs = useBulkUpdateSpecifications(currentProductId);
   const [localSpecs, setLocalSpecs] = useState<ProductSpecification[]>([]);
   const [rowsToAdd, setRowsToAdd] = useState<number>(1);
+  const [controlledItemTypes, setControlledItemTypes] = useState<{ id: number; name: string }[]>([]);
+  const [currencies, setCurrencies] = useState<{ id: number; name: string }[]>([]);
+
+  useEffect(() => {
+    referenceService.getData('controlled-item-types')
+      .then((items) => setControlledItemTypes(items.map((i: any) => ({ id: i.id, name: i.name }))))
+      .catch(() => { /* silent fallback */ });
+    referenceService.getData('currencies')
+      .then((items) => setCurrencies(items.map((i: any) => ({ id: i.id, name: i.name }))))
+      .catch(() => { /* silent fallback */ });
+  }, []);
 
   // Helper functions for specifications
   const getNextSuggestedType = (specs: any[], index: number): 'general' | 'title_only' | 'value_only' => {
@@ -1772,7 +1784,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                                           list={`suggestions-${index}`}
                                         />
                                         <datalist id={`suggestions-${index}`}>
-                                          {["Condition", "Color", "Size"]
+                                          {["Color", "Size"]
                                             .filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
                                             .map(opt => <option key={opt} value={opt} />)
                                           }
@@ -1784,20 +1796,7 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
                                       {(() => {
                                         const label = spec.label?.trim();
 
-                                        if (label === 'Condition') {
-                                          return (
-                                            <select
-                                              value={spec.value || ''}
-                                              onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-                                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                              <option value="" disabled>Select Condition</option>
-                                              <option value="New">New</option>
-                                              <option value="Used">Used</option>
-                                              <option value="Refurbished">Refurbished</option>
-                                            </select>
-                                          );
-                                        }
+
 
                                         if (label === 'Color') {
                                           const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -2042,13 +2041,15 @@ export default function ProductForm({ productId, isVendor = false }: ProductForm
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormItem>} />
-                <FormField control={form.control} name="currency" render={({ field }) => <FormItem><FormLabel>Currency</FormLabel>
-                  <Select value={field.value || "AED"} onChange={field.onChange}>
-                    <option value="AED">AED</option>
-                    <option value="USD">USD</option>
-                  </Select>
+                <FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel>
+                  <div className="relative">
+                    <Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} className="pr-14" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground pointer-events-none">{form.watch("currency") || "AED"}</span>
+                  </div>
                 </FormItem>} />
+                <FormField control={form.control} name="currency" render={({ field }) => (
+                  <input type="hidden" value={field.value || "AED"} />
+                )} />
               </div>
 
               {/* Combo product Individual pricing Section */}

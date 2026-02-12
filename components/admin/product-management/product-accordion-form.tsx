@@ -83,6 +83,7 @@ import type {
 } from "@/services/admin/product.service";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { referenceService } from "@/services/admin/reference.service";
 
 // Import schemas and types from original form
 import { DraftAlert } from "./draft-alert";
@@ -243,6 +244,18 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 
 	const [localSpecs, setLocalSpecs] = useState<ProductSpecification[]>([]);
 	const [rowsToAdd, setRowsToAdd] = useState<number>(1);
+	const [controlledItemTypes, setControlledItemTypes] = useState<{ id: number; name: string }[]>([]);
+	const [currencies, setCurrencies] = useState<{ id: number; name: string }[]>([]);
+
+	/** Fetch controlled item types from reference table */
+	useEffect(() => {
+		referenceService.getData('controlled-item-types')
+			.then((items) => setControlledItemTypes(items.map((i: any) => ({ id: i.id, name: i.name }))))
+			.catch(() => { /* silent fallback */ });
+		referenceService.getData('currencies')
+			.then((items) => setCurrencies(items.map((i: any) => ({ id: i.id, name: i.name }))))
+			.catch(() => { /* silent fallback */ });
+	}, []);
 
 	// Form Definition
 	const form = useForm<ProductFormValues>({
@@ -285,8 +298,6 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 				{ label: 'General', value: '', type: 'title_only', active: true, sort: 0 },
 				{ label: 'Size', value: '', type: 'general', active: true, sort: 1 },
 				{ label: 'Weight', value: '', type: 'general', active: true, sort: 2 },
-				{ label: 'Condition', value: 'New', type: 'general', active: true, sort: 3 },
-				{ label: 'Color', value: '', type: 'general', active: true, sort: 4 },
 			]);
 		}
 	}, [specificationsData, currentProductId, isLoadingSpecs]);
@@ -1153,7 +1164,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					/>
 				</div>
 
-				<div className="grid gap-4 md:grid-cols-4">
+				<div className="grid gap-4 md:grid-cols-3">
 					<FormField
 						control={form.control}
 						name="brandId"
@@ -1211,23 +1222,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 						)}
 					/>
 
-					<FormField
-						control={form.control}
-						name="condition"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Condition</FormLabel>
-								<FormControl>
-									<Select value={field.value || ""} onChange={field.onChange} disabled={isReadOnly}>
-										<option value="">Select</option>
-										<option value="new">New</option>
-										<option value="used">Used</option>
-										<option value="refurbished">Refurbished</option>
-									</Select>
-								</FormControl>
-							</FormItem>
-						)}
-					/>
+					{/* Condition field hidden - defaults to "new" */}
 				</div>
 
 				{/* Combined Row for Attributes */}
@@ -1245,9 +1240,9 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 										disabled={isReadOnly}
 									>
 										<option value="">Select Type</option>
-										<option value="Military">Military</option>
-										<option value="Dual-Use">Dual-Use</option>
-										<option value="Civilian">Civilian</option>
+										{controlledItemTypes.map((item) => (
+											<option key={item.id} value={item.name}>{item.name}</option>
+										))}
 									</Select>
 								</FormControl>
 								<FormMessage />
@@ -1258,26 +1253,53 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					<FormField
 						control={form.control}
 						name="countryOfOrigin"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Country of Origin</FormLabel>
-								<FormControl>
-									<Select
-										value={field.value || ""}
-										onChange={(e) => field.onChange(e.target.value)}
-										disabled={isReadOnly}
-									>
-										<option value="">Select Country</option>
-										{COUNTRY_LIST.map((country) => (
-											<option key={country.countryCode} value={country.countryCode}>
-												{country.flag} {country.name}
-											</option>
-										))}
-									</Select>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
+						render={({ field }) => {
+							const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+
+							const filteredCountries = COUNTRY_LIST.filter((country) =>
+								country.name.toLowerCase().includes((field.value || "").toLowerCase())
+							).slice(0, 10);
+
+							return (
+								<FormItem className="relative">
+									<FormLabel>Country of Origin</FormLabel>
+									<FormControl>
+										<div className="relative">
+											<Input
+												placeholder="Type to search or enter custom value"
+												value={field.value || ""}
+												onChange={(e) => {
+													field.onChange(e.target.value);
+													setShowCountryDropdown(true);
+												}}
+												onFocus={() => setShowCountryDropdown(true)}
+												onBlur={() => setTimeout(() => setShowCountryDropdown(false), 200)}
+												disabled={isReadOnly}
+											/>
+											{showCountryDropdown && filteredCountries.length > 0 && (
+												<div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto">
+													{filteredCountries.map((country) => (
+														<div
+															key={country.countryCode}
+															className="px-3 py-2 cursor-pointer hover:bg-accent flex items-center gap-2"
+															onMouseDown={(e) => {
+																e.preventDefault();
+																field.onChange(country.name);
+																setShowCountryDropdown(false);
+															}}
+														>
+															<span>{country.flag}</span>
+															<span>{country.name}</span>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							);
+						}}
 					/>
 
 					<FormField
@@ -1347,6 +1369,8 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					</div>
 				</div>
 
+				{/* Key Features - hidden */}
+				{/*
 				<FormField
 					control={form.control}
 					name="features"
@@ -1367,6 +1391,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 						</FormItem>
 					)}
 				/>
+				*/}
 
 				<FormField
 					control={form.control}
@@ -1479,7 +1504,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 															list={`suggestions-legacy-${index}`}
 														/>
 														<datalist id={`suggestions-legacy-${index}`}>
-															{["Size", "Weight", "Condition", "Color"]
+															{["Size", "Weight", "Color"]
 																.filter(opt => !localSpecs.some((s, i) => i !== index && s.label === opt))
 																.map(opt => <option key={opt} value={opt} />)
 															}
@@ -1489,20 +1514,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 														{(() => {
 															const label = spec.label?.trim();
 
-															if (label === 'Condition') {
-																return (
-																	<select
-																		value={spec.value || ''}
-																		onChange={(e) => updateLocalSpec(index, 'value', e.target.value)}
-																		className="flex h-10 w-full items-center justify-between rounded-md border border-[#d9d2c5] bg-[#ece9de] px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-																	>
-																		<option value="" disabled>Select Condition</option>
-																		<option value="New">New</option>
-																		<option value="Used">Used</option>
-																		<option value="Refurbished">Refurbished</option>
-																	</select>
-																);
-															}
+
 
 															if (label === 'Color') {
 																const selectedColors = spec.value ? spec.value.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -1668,13 +1680,15 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 		return (
 			<div className={cn("space-y-6", isReadOnly && "pointer-events-none opacity-80")}>
 				<div className="grid gap-4 md:grid-cols-2">
-					<FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel><Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} disabled={isReadOnly} /></FormItem>} />
-					<FormField control={form.control} name="currency" render={({ field }) => <FormItem><FormLabel>Currency</FormLabel>
-						<Select value={field.value || "AED"} onChange={field.onChange} disabled={isReadOnly}>
-							<option value="AED">AED</option>
-							<option value="USD">USD</option>
-						</Select>
+					<FormField control={form.control} name="basePrice" render={({ field }) => <FormItem><FormLabel>Base Price *</FormLabel>
+						<div className="relative">
+							<Input type="number" step="0.01" value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} disabled={isReadOnly} className="pr-14" />
+							<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground pointer-events-none">{form.watch("currency") || "AED"}</span>
+						</div>
 					</FormItem>} />
+					<FormField control={form.control} name="currency" render={({ field }) => (
+						<input type="hidden" value={field.value || "AED"} />
+					)} />
 					<FormField
 						control={form.control}
 						name="productionLeadTime"
