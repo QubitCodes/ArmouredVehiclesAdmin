@@ -151,6 +151,9 @@ export interface GetProductsParams {
   vendorId?: string;
   vendor_id?: string;
   scope?: 'admin' | 'vendor' | 'all';
+  main_category_id?: string;
+  category_id?: string;
+  sub_category_id?: string;
 }
 
 class ProductService {

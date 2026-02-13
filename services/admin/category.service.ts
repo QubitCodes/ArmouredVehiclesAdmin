@@ -11,7 +11,14 @@ export interface Category {
   isControlled?: boolean;
   is_controlled?: boolean;
   is_active?: boolean;
-  product_count?: number; // Count of products directly assigned to this category
+  product_count?: number; // Direct products (all statuses)
+  published_product_count?: number; // Direct products (published only)
+  direct_subcategory_count?: number; // Immediate children count
+  total_subcategory_count?: number; // All descendants count
+  total_product_count?: number; // Products across all descendants (all statuses)
+  total_published_product_count?: number; // Products across all descendants (published only)
+  children?: Category[]; // For hierarchical display
+  level?: number; // Depth level in hierarchy
 }
 
 class CategoryService {

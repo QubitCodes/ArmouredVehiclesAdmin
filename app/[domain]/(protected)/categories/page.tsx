@@ -1,9 +1,9 @@
-import { CategoryList } from "@/components/admin/categories/category-list";
+import { CategoryAccordionList } from '@/components/admin/categories/category-accordion-list';
 
 export default function CategoriesPage() {
   return (
     <div className="space-y-6">
-      <CategoryList />
+      <CategoryAccordionList />
     </div>
   );
 }

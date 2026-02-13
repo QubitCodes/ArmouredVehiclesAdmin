@@ -168,11 +168,21 @@ export function CategoryList() {
     {
       header: "Products",
       accessorKey: "product_count",
-      render: (item) => (
-        <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-          {item.product_count ?? 0}
-        </span>
-      )
+      render: (item) => {
+        const total = item.product_count ?? 0;
+        const published = (item as any).published_product_count ?? 0;
+        return (
+          <div className="flex items-center gap-1 text-xs">
+            <span className="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" title="Published">
+              {published}
+            </span>
+            <span className="text-muted-foreground">/</span>
+            <span className="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground" title="Total">
+              {total}
+            </span>
+          </div>
+        );
+      }
     }
   ];
 

@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { authService } from "@/services/admin/auth.service";
+import { CategoryFilter } from "@/components/admin/product-management/category-filter";
 
 function VendorProductsContent() {
   const router = useRouter();
@@ -48,7 +49,12 @@ function VendorProductsContent() {
     router.push(`${pathname}?${nextParams.toString()}`);
   };
 
-  // Fetch vendor products with search and pagination parameters
+  // Category filter URL params
+  const mainCatId = searchParams.get('main-cat') || undefined;
+  const catId = searchParams.get('cat') || undefined;
+  const subCatId = searchParams.get('sub-cat') || undefined;
+
+  // Fetch vendor products with search, pagination, and category filter parameters
   const {
     data,
     isLoading: isLoadingProducts,
@@ -60,6 +66,9 @@ function VendorProductsContent() {
     approval_status: (approvalStatus === "all" || !approvalStatus)
       ? undefined
       : approvalStatus,
+    main_category_id: mainCatId,
+    category_id: catId,
+    sub_category_id: subCatId,
   });
 
   const products = data?.products || [];
@@ -93,6 +102,9 @@ function VendorProductsContent() {
         </Select>
         <SearchInput placeholder="Search by name" />
       </div>
+
+      {/* 3-Level Category Filter */}
+      <CategoryFilter />
 
       {isLoadingProducts ? (
         <div className="flex min-h-[calc(100vh-300px)] items-center justify-center">

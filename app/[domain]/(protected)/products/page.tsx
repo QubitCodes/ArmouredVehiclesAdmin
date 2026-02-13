@@ -13,6 +13,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ProductActions } from "@/components/admin/product-management/product-actions";
+import { CategoryFilter } from "@/components/admin/product-management/category-filter";
 
 function ProductsContent() {
   const router = useRouter();
@@ -32,12 +33,25 @@ function ProductsContent() {
 
   const scope = (searchParams.get("scope") as "admin" | "vendor" | "all") || undefined;
 
-  // Use React Query to fetch products with search and pagination parameters
+  // Category filter URL params
+  const mainCatId = searchParams.get('main-cat') || undefined;
+  const catId = searchParams.get('cat') || undefined;
+  const subCatId = searchParams.get('sub-cat') || undefined;
+
+  // Use React Query to fetch products with search, pagination, and category filter parameters
   const {
     data,
     isLoading,
     error,
-  } = useProducts({ search: search || undefined, page, limit: 10, scope });
+  } = useProducts({
+    search: search || undefined,
+    page,
+    limit: 10,
+    scope,
+    main_category_id: mainCatId,
+    category_id: catId,
+    sub_category_id: subCatId,
+  });
 
   const products = data?.products || [];
   const pagination = data?.pagination || { page: 1, totalPages: 1, total: 0, limit: 10 };
@@ -84,6 +98,9 @@ function ProductsContent() {
           </div>
         )}
       </div>
+
+      {/* 3-Level Category Filter */}
+      <CategoryFilter />
 
       {
         isLoading ? (
