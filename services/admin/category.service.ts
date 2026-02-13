@@ -10,6 +10,7 @@ export interface Category {
   parent_id?: number | null; // For API compatibility
   isControlled?: boolean;
   is_controlled?: boolean;
+  is_active?: boolean;
   product_count?: number; // Count of products directly assigned to this category
 }
 
@@ -100,6 +101,19 @@ class CategoryService {
       return true;
     } catch (error) {
       console.error("Error deleting category:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Toggle category active status
+   */
+  async toggleCategoryActive(id: number | string, isActive: boolean) {
+    try {
+      const response = await api.patch(`/categories/${id}`, { is_active: isActive });
+      return response.data;
+    } catch (error) {
+      console.error("Error toggling category status:", error);
       throw error;
     }
   }

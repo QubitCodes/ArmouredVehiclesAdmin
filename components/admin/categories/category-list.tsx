@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Folder, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { CustomTable, Column } from "@/components/ui/custom-table";
 import { Category, categoryService } from "@/services/admin/category.service";
 import { authService } from "@/services/admin/auth.service"; // Import authService
@@ -28,6 +29,8 @@ export function CategoryList() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [blockMessage, setBlockMessage] = useState<string | null>(null);
   const [isVendor, setIsVendor] = useState(false);
+  const [deactivateId, setDeactivateId] = useState<number | null>(null);
+  const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     // Check role on mount
@@ -173,6 +176,66 @@ export function CategoryList() {
     }
   ];
 
+  /**
+   * Handle active toggle click
+   */
+  const handleToggleActive = async (item: Category & { level?: number }) => {
+    const isCurrentlyActive = item.is_active !== false;
+    if (isCurrentlyActive) {
+      // Deactivating — show confirmation
+      setDeactivateId(item.id);
+    } else {
+      // Activating — no confirmation needed
+      await performToggle(item.id, true);
+    }
+  };
+
+  /**
+   * Perform the actual toggle API call
+   */
+  const performToggle = async (id: number, isActive: boolean) => {
+    setTogglingIds(prev => new Set(prev).add(id));
+    try {
+      const response = await categoryService.toggleCategoryActive(id, isActive);
+      toast.success(response.message || 'Category status updated');
+      loadData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update status');
+    } finally {
+      setTogglingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  /**
+   * Confirm deactivation from the dialog
+   */
+  const confirmDeactivate = async () => {
+    if (!deactivateId) return;
+    await performToggle(deactivateId, false);
+    setDeactivateId(null);
+  };
+
+  // Add Active column before Actions (only for admins)
+  if (!isVendor) {
+    columns.push({
+      header: "Active",
+      accessorKey: "is_active",
+      render: (item) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch
+            checked={item.is_active !== false}
+            disabled={togglingIds.has(item.id)}
+            onCheckedChange={() => handleToggleActive(item)}
+          />
+        </div>
+      )
+    });
+  }
+
   // Only add Actions column if NOT vendor
   if (!isVendor) {
     columns.push({
@@ -207,7 +270,7 @@ export function CategoryList() {
       <CustomTable
         data={categories}
         columns={columns}
-        gridCols={!isVendor ? "2fr 3fr 1fr 80px 100px" : "2fr 3fr 1fr 80px"} // Name, Description, Controlled, Products, Actions
+        gridCols={!isVendor ? "2fr 3fr 1fr 80px 80px 100px" : "2fr 3fr 1fr 80px"} // Name, Description, Controlled, Products, Actions
         isLoading={loading}
         onRowClick={(item) => {
           // Optional: navigate to subcategories?
@@ -247,6 +310,22 @@ export function CategoryList() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>OK</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Deactivate Confirmation Dialog */}
+      <AlertDialog open={!!deactivateId} onOpenChange={(open) => !open && setDeactivateId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deactivating this category will hide it and all subcategories and products under it from the public storefront. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive" onClick={confirmDeactivate}>Deactivate</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
