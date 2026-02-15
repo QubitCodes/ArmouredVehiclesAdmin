@@ -40,9 +40,9 @@ const productSchema = z.object({
   certifications: z.string().optional(),
   countryOfOrigin: z.string().optional(),
   controlledItemType: z.string().optional(),
-  dimensionLength: z.number().optional(),
-  dimensionWidth: z.number().optional(),
-  dimensionHeight: z.number().optional(),
+  dimensionLength: z.number().min(1, "Length must be at least 1").optional(),
+  dimensionWidth: z.number().min(1, "Width must be at least 1").optional(),
+  dimensionHeight: z.number().min(1, "Height must be at least 1").optional(),
   dimensionUnit: z.string().optional(),
   materials: z.array(z.string()).optional(),
   features: z.array(z.string()).optional(),
@@ -52,13 +52,13 @@ const productSchema = z.object({
   sizes: z.array(z.string()).optional(),
   thickness: z.array(z.string()).optional(),
   colors: z.array(z.string()).optional(),
-  weightValue: z.number().optional(),
+  weightValue: z.number().min(1, "Weight must be at least 1").optional(),
   weightUnit: z.string().optional(),
-  packingLength: z.number().optional(),
-  packingWidth: z.number().optional(),
-  packingHeight: z.number().optional(),
+  packingLength: z.number().min(1, "Packing length must be at least 1").optional(),
+  packingWidth: z.number().min(1, "Packing width must be at least 1").optional(),
+  packingHeight: z.number().min(1, "Packing height must be at least 1").optional(),
   packingDimensionUnit: z.string().optional(),
-  packingWeight: z.number().optional(),
+  packingWeight: z.number().min(1, "Packing weight must be at least 1").optional(),
   packingWeightUnit: z.string().optional(),
   basePrice: z.number().min(0, "Base price must be greater than or equal to 0"),
   currency: z.string().optional(),
@@ -745,6 +745,7 @@ export default function NewProductPage() {
                         <Input
                           type="number"
                           step="0.1"
+                          min="1"
                           placeholder="120.5"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -773,6 +774,7 @@ export default function NewProductPage() {
                         <Input
                           type="number"
                           step="0.1"
+                          min="1"
                           placeholder="80.3"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -801,6 +803,7 @@ export default function NewProductPage() {
                         <Input
                           type="number"
                           step="0.1"
+                          min="1"
                           placeholder="5.2"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -845,6 +848,7 @@ export default function NewProductPage() {
                         <Input
                           type="number"
                           step="0.1"
+                          min="1"
                           placeholder="45.5"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -898,6 +902,7 @@ export default function NewProductPage() {
                       <FormControl>
                         <Input
                           type="number"
+                          min="1"
                           placeholder="130"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -925,6 +930,7 @@ export default function NewProductPage() {
                       <FormControl>
                         <Input
                           type="number"
+                          min="1"
                           placeholder="90"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -952,6 +958,7 @@ export default function NewProductPage() {
                       <FormControl>
                         <Input
                           type="number"
+                          min="1"
                           placeholder="15"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -995,6 +1002,7 @@ export default function NewProductPage() {
                       <FormControl>
                         <Input
                           type="number"
+                          min="1"
                           placeholder="50"
                           value={field.value ?? ""}
                           onChange={(e) => {
@@ -1799,10 +1807,10 @@ export default function NewProductPage() {
             <div key={section.id} className="flex items-center flex-shrink-0">
               <div
                 className={`px-4 py-2 text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${currentStep > section.id
+                  ? "bg-primary text-white"
+                  : currentStep === section.id
                     ? "bg-primary text-white"
-                    : currentStep === section.id
-                      ? "bg-primary text-white"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
                   }`}
                 onClick={() => {
                   // Allow clicking on completed or current sections

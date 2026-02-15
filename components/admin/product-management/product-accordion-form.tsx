@@ -650,6 +650,30 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 						toast.warning('The first specification must always be a Section Title.');
 						return;
 					}
+
+					// Validate Size and Weight specs cannot have values less than 1
+					for (const spec of localSpecs) {
+						if (!spec.active) continue;
+						const label = spec.label?.trim();
+
+						if (label === 'Size' && spec.value) {
+							const parts = spec.value.split(/x|\s+/);
+							const dims = parts.filter((p: string) => /^[\d.]+$/.test(p));
+							if (dims.some((d: string) => parseFloat(d) < 1)) {
+								toast.warning('Size dimensions must be at least 1. Please correct the Size values.');
+								return;
+							}
+						}
+
+						if (label === 'Weight' && spec.value) {
+							const wMatch = spec.value.match(/^([\d.]+)/);
+							if (wMatch && parseFloat(wMatch[1]) < 1) {
+								toast.warning('Weight must be at least 1. Please correct the Weight value.');
+								return;
+							}
+						}
+					}
+
 					await bulkUpdateSpecs.mutateAsync(localSpecs);
 
 					// SYNC LOGIC: Updates Product Columns based on "Size" and "Weight" specs
@@ -1458,6 +1482,18 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					<div className="flex justify-center py-8"><Loader2 className="animate-spin" /></div>
 				) : (
 					<>
+						<div className="mt-2 p-4 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 items-start">
+							<Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+							<div className="space-y-1">
+								<p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
+								<ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+									<li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
+									<li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
+									<li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
+								</ul>
+							</div>
+						</div>
+
 						<div className="border rounded-lg overflow-hidden">
 							<table className="w-full text-sm table-fixed">
 								<thead className="bg-[#eadbc8] text-black font-semibold">
@@ -1570,9 +1606,10 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 																		<Input
 																			type="number"
 																			step="0.01"
+																			min="1"
 																			value={weightVal}
 																			onChange={(e) => updateWeightValue(e.target.value, unit)}
-																			placeholder="0.00"
+																			placeholder="1"
 																			className="w-full bg-[#f9f7f2] border-[#d9d2c5] focus:bg-white"
 																		/>
 																		<select
@@ -1653,6 +1690,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 								</tbody>
 							</table>
 						</div>
+
 						<div className="flex justify-between mt-4 items-center bg-[#fcfaf5] p-2 rounded border border-[#eaddcf]">
 							<div className="flex items-center gap-2">
 								<Input
@@ -1668,17 +1706,6 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 							</div>
 						</div>
 
-						<div className="mt-6 p-4 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 items-start">
-							<Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-							<div className="space-y-1">
-								<p className="text-sm font-semibold text-blue-900">Specification Guidelines</p>
-								<ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-									<li>The <strong>first specification</strong> must always be a <strong>Section Title</strong>.</li>
-									<li>Within a section, all items must be of the <strong>same type</strong> (either all "General" or all "Value Only") until a new title is added.</li>
-									<li>For <strong>Title</strong> types, labels are used as headers. For <strong>Value Only</strong>, values are displayed as bullet points.</li>
-								</ul>
-							</div>
-						</div>
 					</>
 				)}
 			</div>
@@ -2445,32 +2472,35 @@ const MaskedSizeInput = ({
 			<div className="flex-1 flex items-center border rounded-md bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background transition-all overflow-hidden h-10 w-full">
 				<Input
 					ref={(el) => { inputRefs.current[0] = el }}
+					type="number"
+					min="1"
 					value={l}
 					onChange={(e) => updatePart(0, e.target.value)}
 					onKeyDown={(e) => handleKeyDown(e, 0)}
-					placeholder="000"
+					placeholder="1"
 					className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
-					maxLength={8}
 				/>
 				<span className="text-muted-foreground font-medium select-none text-xs">x</span>
 				<Input
 					ref={(el) => { inputRefs.current[1] = el }}
+					type="number"
+					min="1"
 					value={w}
 					onChange={(e) => updatePart(1, e.target.value)}
 					onKeyDown={(e) => handleKeyDown(e, 1)}
-					placeholder="000"
+					placeholder="1"
 					className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
-					maxLength={8}
 				/>
 				<span className="text-muted-foreground font-medium select-none text-xs">x</span>
 				<Input
 					ref={(el) => { inputRefs.current[2] = el }}
+					type="number"
+					min="1"
 					value={h}
 					onChange={(e) => updatePart(2, e.target.value)}
 					onKeyDown={(e) => handleKeyDown(e, 2)}
-					placeholder="000"
+					placeholder="1"
 					className="border-0 focus-visible:ring-0 px-2 text-center h-full shadow-none w-full min-w-[40px]"
-					maxLength={8}
 				/>
 			</div>
 

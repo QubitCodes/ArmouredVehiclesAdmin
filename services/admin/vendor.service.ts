@@ -8,7 +8,6 @@ export interface VendorUserProfile {
   company_email: string | null;
   company_phone: string | null;
   company_phone_country_code: string | null;
-  country_of_registration: string | null;
   registered_company_name: string | null;
   trade_brand_name: string | null;
   year_of_establishment: number | null;

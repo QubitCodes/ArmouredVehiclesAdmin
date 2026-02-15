@@ -27,7 +27,8 @@ import {
   Copy,
   AlertTriangle,
   Store,
-  Download
+  Download,
+  Truck
 } from "lucide-react";
 import Image from "next/image";
 
@@ -42,6 +43,7 @@ import { normalizeImageUrl } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -249,18 +251,68 @@ export default function OrderDetailPage() {
   const [isShipmentDialogOpen, setIsShipmentDialogOpen] = useState(false);
   const [shipmentForm, setShipmentForm] = useState({
     tracking_number: "",
-    provider: "FedEx",
+    provider: "",
   });
 
   // FedEx Pickup Dialog State (Moved up for clarity, but keeping here for replace context if needed)
   // const [isFedExPickupOpen, setIsFedExPickupOpen] = useState(false);
   // const [pendingShipmentStatus, setPendingShipmentStatus] = useState<string | null>(null);
 
+  /**
+   * TODO: Remove isManualShippingOrder once FedEx multi-country account support is enabled.
+   * Checks if a sub-order requires manual shipping (both vendor and buyer outside UAE).
+   * Uses the delivery address country from shipment_details (NOT the buyer's registered profile).
+   * Falls back to FedEx (returns false) if country data is unavailable.
+   */
+  const isManualShippingOrder = (subOrder: any): boolean => {
+    /** Normalize country to ISO 2-letter code */
+    const normalize = (val: string): string => {
+      const v = (val || '').trim().toUpperCase();
+      if (v.length === 2) return v;
+      const map: Record<string, string> = {
+        'UNITED ARAB EMIRATES': 'AE', 'UAE': 'AE',
+        'INDIA': 'IN', 'UNITED STATES': 'US', 'USA': 'US',
+        'UNITED KINGDOM': 'GB', 'UK': 'GB',
+        'SAUDI ARABIA': 'SA', 'KSA': 'SA',
+        'QATAR': 'QA', 'OMAN': 'OM', 'KUWAIT': 'KW',
+        'BAHRAIN': 'BH', 'PAKISTAN': 'PK',
+      };
+      return map[v] || v;
+    };
+
+    const vendorCountry = normalize(subOrder.vendor?.profile?.country || subOrder.vendor?.country || 'AE');
+
+    // Buyer country = delivery address from shipment_details, NOT profile registered country
+    // shipment_details stores the full Address record (including country) at order creation
+    const shipDetails = typeof subOrder.shipment_details === 'string'
+      ? (() => { try { return JSON.parse(subOrder.shipment_details); } catch { return {}; } })()
+      : (subOrder.shipment_details || {});
+    const buyerCountry = normalize(shipDetails.country || 'AE');
+
+    const isManual = vendorCountry !== 'AE' && buyerCountry !== 'AE';
+    if (isManual) {
+      console.log(`[ManualShipping] vendor=${vendorCountry}, buyer(delivery)=${buyerCountry} → manual shipping`);
+    }
+    return isManual;
+  };
+
   const handleShipmentStatusChange = (newStatus: string) => {
-    // FedEx pickup flow for shipped status
+    // TODO: Remove manual shipping check once FedEx multi-country account support is enabled
+    const manualShipping = isManualShippingOrder(order);
+
     if (newStatus === "shipped") {
-      setPendingShipmentStatus(newStatus);
-      setIsFedExPickupOpen(true);
+      if (manualShipping) {
+        // Manual shipping: open tracking dialog instead of FedEx pickup
+        setPickupTargetOrderId(orderId);
+        setIsShipmentDialogOpen(true);
+      } else {
+        // FedEx: open pickup schedule dialog
+        setPendingShipmentStatus(newStatus);
+        setIsFedExPickupOpen(true);
+      }
+    } else if (newStatus === "processing" && manualShipping) {
+      // Manual shipping: just update status, no FedEx pickup needed
+      updateOrder({ shipment_status: newStatus as any });
     } else {
       updateOrder({ shipment_status: newStatus as any });
     }
@@ -340,10 +392,27 @@ export default function OrderDetailPage() {
   };
 
   const handleSubOrderShipmentChange = (subOrderId: string, newStatus: string) => {
-    if (newStatus === "processing") {
+    // Find the sub-order to check for manual shipping
+    const subOrder = (order as any)?.grouped_orders?.find((o: any) => o.id === subOrderId) || order;
+
+
+
+    const manualShipping = isManualShippingOrder(subOrder);
+
+    if (newStatus === "shipped" && manualShipping) {
+      // Manual shipping: open tracking dialog instead of FedEx pickup
       setPickupTargetOrderId(subOrderId);
-      setPendingShipmentStatus(newStatus);
-      setIsFedExPickupOpen(true);
+      setIsShipmentDialogOpen(true);
+    } else if (newStatus === "processing") {
+      if (manualShipping) {
+        // Manual shipping: just update status, no FedEx pickup needed
+        updateOrderById({ id: subOrderId, data: { shipment_status: newStatus as any } });
+      } else {
+        // FedEx: open pickup schedule dialog
+        setPickupTargetOrderId(subOrderId);
+        setPendingShipmentStatus(newStatus);
+        setIsFedExPickupOpen(true);
+      }
     } else {
       updateOrderById({ id: subOrderId, data: { shipment_status: newStatus as any } });
     }
@@ -759,10 +828,13 @@ export default function OrderDetailPage() {
                           className="h-8 text-xs w-[140px]"
                         >
                           <option value="pending">Pending</option>
-                          <option value="processing">Processing (Schedule Pickup)</option>
+                          {!isManualShippingOrder(subOrder) && (
+                            <option value="processing">Processing (Schedule Pickup)</option>
+                          )}
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
                           <option value="returned">Returned</option>
+                          <option value="cancelled">Cancelled</option>
                           <option value="cancelled">Cancelled</option>
                         </Select>
                         {/* Shipment Details Button */}
@@ -1613,6 +1685,79 @@ export default function OrderDetailPage() {
         onSubmit={handleInvoiceCommentConfirm}
         isLoading={isUpdating}
       />
+
+      {/* TODO: Remove manual shipment dialog once FedEx multi-country account support is enabled */}
+      {/* Manual Shipment Confirmation Dialog — for non-AE to non-AE orders */}
+      <Dialog open={isShipmentDialogOpen} onOpenChange={setIsShipmentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              Mark as Shipped
+            </DialogTitle>
+            <DialogDescription>
+              Enter the shipping details for this order. The tracking information will be shared with the customer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="tracking_number">Tracking Number <span className="text-destructive">*</span></Label>
+              <Input
+                id="tracking_number"
+                placeholder="e.g. 1234567890"
+                value={shipmentForm.tracking_number}
+                onChange={(e) =>
+                  setShipmentForm((prev) => ({
+                    ...prev,
+                    tracking_number: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shipping_provider">Shipping Provider <span className="text-destructive">*</span></Label>
+              <Input
+                id="shipping_provider"
+                list="shipping_provider_suggestions"
+                placeholder="e.g. FedEx, DHL, Aramex"
+                value={shipmentForm.provider}
+                onChange={(e) =>
+                  setShipmentForm((prev) => ({ ...prev, provider: e.target.value }))
+                }
+              />
+              <datalist id="shipping_provider_suggestions">
+                <option value="FedEx" />
+                <option value="BlueDart" />
+                <option value="Aramex" />
+                <option value="DHL" />
+                <option value="DTDC" />
+                <option value="UPS" />
+                <option value="India Post" />
+              </datalist>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsShipmentDialogOpen(false);
+                setShipmentForm({ tracking_number: "", provider: "" });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleShipmentConfirm}
+              disabled={!shipmentForm.tracking_number.trim() || !shipmentForm.provider.trim()}
+            >
+              Confirm Shipment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* FedEx Pickup Schedule Dialog */}
       <PickupScheduleDialog

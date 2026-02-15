@@ -26,6 +26,7 @@ import { GripVertical } from "lucide-react";
 
 // Hardcoded list of supported reference types based on ReferenceController docs
 import { BrandList } from "@/components/admin/brands/brand-list";
+import { VatRulesPanel } from "@/components/admin/references/vat-rules-panel";
 
 const REFERENCE_TYPES = [
   { id: "brands", label: "Product Brands" },
@@ -48,6 +49,7 @@ const REFERENCE_TYPES = [
   // { id: "pricing-terms", label: "Pricing Terms" },
   // { id: "manufacturing-sources", label: "Manufacturing Sources" },
   { id: "shipping-types", label: "Shipping Types" },
+  { id: "vat-rules", label: "VAT Rules" },
 ];
 
 export function ReferenceList() {
@@ -62,7 +64,7 @@ export function ReferenceList() {
   const { data: countries = [] } = useCountries();
 
   const loadData = async () => {
-    if (selectedType === 'brands') return; // Handled by BrandList component
+    if (selectedType === 'brands' || selectedType === 'vat-rules') return; // Handled by dedicated components
     setLoading(true);
     try {
       const items = await referenceService.getData(selectedType);
@@ -209,6 +211,8 @@ export function ReferenceList() {
       <div className="flex-1 p-6">
         {selectedType === 'brands' ? (
           <BrandList />
+        ) : selectedType === 'vat-rules' ? (
+          <VatRulesPanel />
         ) : (
           <>
             <div className="flex justify-between items-center mb-6">

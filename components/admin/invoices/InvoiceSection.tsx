@@ -177,70 +177,72 @@ export function InvoiceSection({ orderId, userRole, onError, className }: Invoic
                 )}
             </CardHeader>
             <CardContent className="p-0">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Invoice #</TableHead>
-                            {userRole !== 'vendor' && <TableHead>Type</TableHead>}
-                            <TableHead>Status</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead className="text-center">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {invoices.map((invoice) => (
-                            <TableRow key={invoice.id}>
-                                <TableCell>
-                                    <span className="font-medium">{invoice.invoice_number}</span>
-                                </TableCell>
-                                {userRole !== 'vendor' && (
+                <div className="max-h-[150px] overflow-y-auto">
+                    <Table>
+                        <TableHeader className="sticky top-0 z-10 bg-background">
+                            <TableRow>
+                                <TableHead>Invoice #</TableHead>
+                                {userRole !== 'vendor' && <TableHead>Type</TableHead>}
+                                <TableHead>Status</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-center">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {invoices.map((invoice) => (
+                                <TableRow key={invoice.id}>
                                     <TableCell>
-                                        <Badge variant={invoice.invoice_type === 'admin' ? 'secondary' : 'default'}>
-                                            {invoice.invoice_type === 'admin' ? 'Vendor → Admin' : 'Admin → Customer'}
+                                        <span className="font-medium">{invoice.invoice_number}</span>
+                                    </TableCell>
+                                    {userRole !== 'vendor' && (
+                                        <TableCell>
+                                            <Badge variant={invoice.invoice_type === 'admin' ? 'secondary' : 'default'}>
+                                                {invoice.invoice_type === 'admin' ? 'Vendor → Admin' : 'Admin → Customer'}
+                                            </Badge>
+                                        </TableCell>
+                                    )}
+                                    <TableCell>
+                                        <Badge variant={invoice.payment_status === 'paid' ? 'default' : 'outline'}
+                                            className={invoice.payment_status === 'paid'
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+                                            }
+                                        >
+                                            {invoice.payment_status.toUpperCase()}
                                         </Badge>
                                     </TableCell>
-                                )}
-                                <TableCell>
-                                    <Badge variant={invoice.payment_status === 'paid' ? 'default' : 'outline'}
-                                        className={invoice.payment_status === 'paid'
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
-                                        }
-                                    >
-                                        {invoice.payment_status.toUpperCase()}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                    {formatDate(invoice.created_at)}
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center justify-center gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleOpenInvoice(invoice)}
-                                            title="View Invoice"
-                                        >
-                                            <ExternalLink className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleCopyLink(invoice)}
-                                            title={copiedId === invoice.id ? 'Copied!' : 'Copy Link'}
-                                        >
-                                            {copiedId === invoice.id ? (
-                                                <Check className="h-4 w-4 text-green-500" />
-                                            ) : (
-                                                <Copy className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                        {formatDate(invoice.created_at)}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center justify-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleOpenInvoice(invoice)}
+                                                title="View Invoice"
+                                            >
+                                                <ExternalLink className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleCopyLink(invoice)}
+                                                title={copiedId === invoice.id ? 'Copied!' : 'Copy Link'}
+                                            >
+                                                {copiedId === invoice.id ? (
+                                                    <Check className="h-4 w-4 text-green-500" />
+                                                ) : (
+                                                    <Copy className="h-4 w-4" />
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
     );

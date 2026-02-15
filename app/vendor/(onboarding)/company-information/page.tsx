@@ -191,9 +191,9 @@ export default function CompanyInformationPage() {
 
       // Helper to find country code from profile value
       const countryCode = (() => {
-        const val = p.country_of_registration || "United Arab Emirates";
+        const val = p.country || "AE";
         const found = (countries as Country[]).find(
-          c => c.value === val.toLowerCase() || c.label.toLowerCase() === val.toLowerCase()
+          c => c.value === val.toLowerCase() || c.label.toLowerCase() === val.toLowerCase() || c.value === val
         );
         return found ? found.value : "ae";
       })();

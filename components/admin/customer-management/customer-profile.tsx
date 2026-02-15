@@ -620,7 +620,7 @@ export function CustomerProfile({ customer, markedFields, toggleMarkField, canPe
                         ) : "—"
                     )}
                     {renderRow("country", "Country")}
-                    {profile.country_of_registration && renderRow("country_of_registration")}
+
                     {profile.registered_company_name && renderRow("registered_company_name")}
                     {profile.trade_brand_name && renderRow("trade_brand_name")}
                     {renderRow("year_of_establishment")}

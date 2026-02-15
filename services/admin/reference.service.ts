@@ -94,6 +94,36 @@ class ReferenceService {
       throw error;
     }
   }
+
+  /**
+   * Get a platform setting by key
+   * @param key The setting key (e.g., 'vat_rules')
+   */
+  async getPlatformSetting(key: string) {
+    try {
+      const response = await api.get<{ status: boolean; data: { key: string; value: any; description: string } }>(`/settings/${key}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching platform setting ${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a platform setting by key (Admin only)
+   * @param key The setting key
+   * @param value The new value (can be string, number, object, or array)
+   */
+  async updatePlatformSetting(key: string, value: any) {
+    try {
+      const response = await api.put(`/settings/${key}`, { value });
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error updating platform setting ${key}:`, error);
+      throw error;
+    }
+  }
 }
 
 export const referenceService = new ReferenceService();
+
