@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: process.env.NEXT_PUBLIC_API_URL ?? "",
+        hostname: "https://3vhjzpejuw.ap-south-1.awsapprunner.com/api/v1",
         port: "",
         pathname: "/**",
       },
