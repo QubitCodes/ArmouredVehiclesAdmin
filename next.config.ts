@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "https://3vhjzpejuw.ap-south-1.awsapprunner.com/api/v1",
+        hostname: "3vhjzpejuw.ap-south-1.awsapprunner.com",
         port: "",
         pathname: "/**",
       },

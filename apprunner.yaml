@@ -1,0 +1,26 @@
+version: 1.0
+runtime: nodejs22
+build:
+  commands:
+    pre-build:
+      - echo "Installing dependencies..."
+    build:
+      - npm install
+      - npm run build
+  env:
+    # NEXT_PUBLIC_ vars MUST be set at build time — Next.js inlines them into the JS bundle
+    - name: NEXT_PUBLIC_API_URL
+      value: "https://3vhjzpejuw.ap-south-1.awsapprunner.com/api/v1"
+    - name: NEXT_PUBLIC_WEBSITE_URL
+      value: "https://3vhjzpejuw.ap-south-1.awsapprunner.com/"
+run:
+  command: npm run start
+  network:
+    port: 3005
+    env: PORT
+  env:
+    # Runtime env vars (server-side only, not baked into client JS)
+    - name: PORT
+      value: "3005"
+    - name: NODE_ENV
+      value: "production"
