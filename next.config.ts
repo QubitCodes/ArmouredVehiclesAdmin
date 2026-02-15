@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: process.env.NEXT_PUBLIC_API_BASE_URL ?? "armapi2.qubyt.codes",
+        hostname: process.env.NEXT_PUBLIC_API_URL ?? "",
         port: "",
         pathname: "/**",
       },

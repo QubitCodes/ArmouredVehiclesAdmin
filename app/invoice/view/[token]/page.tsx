@@ -15,7 +15,7 @@ export default function InvoiceViewPage() {
     const [htmlContent, setHtmlContent] = useState<string>('');
 
     // Get API Base URL from env
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3002/api/v1';
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
     useEffect(() => {
         if (!token) {
