@@ -40,14 +40,12 @@ function AdminLoginContent() {
         const checkMagicLink = async () => {
             if (processingRef.current) return;
 
-            // Use the hook or our derived state? Hook is safer for parsing details
             if (isMagicLink(window.location.href)) {
                 processingRef.current = true;
                 setLoading(true);
                 setIsVerifyingLink(true);
 
                 try {
-                    // Try to get email from storage
                     let email = window.localStorage.getItem('emailForSignIn');
                     if (!email) {
                         email = window.prompt('Please provide your email for confirmation');
@@ -81,14 +79,12 @@ function AdminLoginContent() {
             const { status, data, message } = response.data;
 
             if (status && data) {
-                // Verify user type is admin or super_admin
                 const userType = data.user?.userType;
                 if (!['admin', 'super_admin'].includes(userType)) {
                     throw new Error("Unauthorized: Admin access only");
                 }
 
                 if (data.accessToken) {
-                    // Clear conflicting vendor sessions
                     vendorAuthService.clearTokens();
                     authService.setTokens(data.accessToken, data.refreshToken || "");
                 }
@@ -107,7 +103,7 @@ function AdminLoginContent() {
         } catch (err: any) {
             console.error(err);
             toast.error(err.response?.data?.message || err.message || "Login failed on server");
-            setIsVerifyingLink(false); // Show login form on failure
+            setIsVerifyingLink(false);
         } finally {
             setLoading(false);
         }
@@ -124,7 +120,6 @@ function AdminLoginContent() {
         try {
             setLoading(true);
 
-            // 1. Check if user exists & get formatted identifier
             let cleanIdentifier = input;
             try {
                 const checkRes = await api.post("/auth/user-exists", { identifier: input, userType: 'admin' });
@@ -145,7 +140,6 @@ function AdminLoginContent() {
                     const { identifier: id, userType } = checkRes.data.data;
                     cleanIdentifier = id;
 
-                    // Pre-check if Admin
                     if (!['admin', 'super_admin'].includes(userType)) {
                         throw new Error("This account is not an Admin.");
                     }
@@ -162,7 +156,6 @@ function AdminLoginContent() {
                 console.warn("User check failed, proceeding with raw input", e);
             }
 
-            // 2. Trigger Firebase Auth
             if (isEmail(cleanIdentifier)) {
                 await sendMagicLink(cleanIdentifier, window.location.href);
                 setStage("magic_link_sent");
@@ -221,114 +214,150 @@ function AdminLoginContent() {
 
 
     return (
-        <div
-            className="min-h-screen flex items-center justify-start relative overflow-hidden bg-cover bg-center bg-no-repeat"
-            style={{
-                backgroundImage: "url('/images/army.jpg')",
-            }}
-        >
-            {/* Background Overlay */}
-            <div className="absolute inset-0 z-0 bg-black/30" />
+        <>
+            <section className="relative w-full min-h-[calc(100vh-64px)] xl:h-[calc(100vh-64px)] xl:overflow-hidden bg-[#F5F2EA]">
 
-            <div className="relative z-10 w-full max-w-md p-4 md:ml-8 lg:ml-16">
-                <Card className="bg-card border-2 border-border shadow-2xl overflow-hidden px-2">
-                    <CardHeader className="pb-4 pt-6 gap-0">
-                        <h1 className="text-2xl font-bold text-foreground uppercase tracking-wide text-center">
-                            Admin Login
-                        </h1>
-                        <p className=" text-muted-foreground text-center">
-                            {isVerifyingLink ? "Authenticating..." :
-                                stage === 'start' ? "Enter your credentials" :
-                                    stage === 'verify' ? "Enter the secure code" :
-                                        "Check your inbox"}
-                        </p>
-                    </CardHeader>
+                {/* ── Radial gradient overlay ── */}
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(ellipse at 70% 50%, rgba(245,242,234,1) 0%, rgba(224,218,204,0.8) 60%, rgba(200,194,178,0.6) 100%)',
+                    }}
+                />
 
-                    <CardContent className="px-6 pb-6">
+                {/* ── Diagonal olive geometric panel on LEFT (xl+ only) ── */}
+                <div
+                    className="hidden xl:block absolute top-0 left-0 w-[45%] h-full pointer-events-none"
+                    style={{
+                        background: 'linear-gradient(225deg, #3D4A26 0%, #2E3A1A 100%)',
+                        clipPath: 'polygon(0 0, 75% 0, 90% 100%, 0 100%)',
+                    }}
+                />
+                {/* ── Subtle accent stripe ── */}
+                <div
+                    className="hidden xl:block absolute top-0 left-0 w-[45%] h-full pointer-events-none opacity-10"
+                    style={{
+                        clipPath: 'polygon(72% 0, 68% 0, 86% 100%, 90% 100%)',
+                        background: '#D35400',
+                    }}
+                />
 
-                        {/* Hidden Recaptcha */}
-                        <div id="recaptcha-container"></div>
+                {/* ── Content container ── */}
+                <div className="relative z-10 max-w-[1720px] mx-auto px-6 xl:px-[140px] flex flex-col xl:flex-row-reverse items-center justify-between gap-8 py-10 xl:py-0 h-full">
 
-                        {isVerifyingLink ? (
-                            <div className="flex flex-col items-center justify-center py-10 space-y-6">
-                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                <div className="text-center space-y-2">
-                                    <p className="font-medium text-lg">Verifying Access</p>
-                                    <p className="text-sm text-muted-foreground">Please wait while we log you in...</p>
-                                </div>
+                    {/* ─── Right side (xl+): Login Card ─── */}
+                    <div className="w-full max-w-md">
+                        <Card className="bg-white/70 backdrop-blur-sm border-t-[3px] border-[#D35400] shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+
+                            {/* Shield icon */}
+                            <div className="mx-auto mt-8 mb-2 w-12 h-12 flex items-center justify-center rounded-full bg-[#3D4A26]/10">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-[#3D4A26]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                </svg>
                             </div>
-                        ) : stage === 'magic_link_sent' ? (
-                            <div className="text-center space-y-4">
-                                <div className="p-4 bg-green-50 text-green-700 rounded-md text-sm">
-                                    We sent a login link to <strong>{identifier}</strong>.<br />
-                                    Click the link in the email to sign in.
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => setStage('start')}
-                                    className="w-full"
-                                >
-                                    Back to Login
-                                </Button>
-                            </div>
-                        ) : stage === 'verify' ? (
-                            <div className="space-y-4">
-                                <div className="flex justify-center gap-2">
-                                    {otp.map((digit, index) => (
-                                        <input
-                                            key={index}
-                                            ref={(el) => { inputRefs.current[index] = el; }}
+
+                            <CardHeader className="pb-4 pt-2 gap-0">
+                                <h1 className="text-2xl font-bold text-foreground uppercase tracking-wider text-center">
+                                    Admin Login
+                                </h1>
+                                <p className="text-muted-foreground text-center text-sm">
+                                    {isVerifyingLink ? "Authenticating..." :
+                                        stage === 'start' ? "Enter your credentials" :
+                                            stage === 'verify' ? "Enter the secure code" :
+                                                "Check your inbox"}
+                                </p>
+                            </CardHeader>
+
+                            <CardContent className="px-6 pb-6">
+
+                                {/* Hidden Recaptcha */}
+                                <div id="recaptcha-container"></div>
+
+                                {isVerifyingLink ? (
+                                    <div className="flex flex-col items-center justify-center py-10 space-y-6">
+                                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                        <div className="text-center space-y-2">
+                                            <p className="font-medium text-lg">Verifying Access</p>
+                                            <p className="text-sm text-muted-foreground">Please wait while we log you in...</p>
+                                        </div>
+                                    </div>
+                                ) : stage === 'magic_link_sent' ? (
+                                    <div className="text-center space-y-4">
+                                        <div className="p-4 bg-green-50 text-green-700 rounded-md text-sm">
+                                            We sent a login link to <strong>{identifier}</strong>.<br />
+                                            Click the link in the email to sign in.
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setStage('start')}
+                                            className="w-full"
+                                        >
+                                            Back to Login
+                                        </Button>
+                                    </div>
+                                ) : stage === 'verify' ? (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-center gap-2">
+                                            {otp.map((digit, index) => (
+                                                <input
+                                                    key={index}
+                                                    ref={(el) => { inputRefs.current[index] = el; }}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    maxLength={1}
+                                                    value={digit}
+                                                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                                                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                                    className="w-12 h-12 border border-gray-400 text-center text-lg font-bold rounded-md bg-white text-black focus:outline-none focus:ring-2 focus:ring-[#D35400] focus:border-transparent transition-all"
+                                                />
+                                            ))}
+                                        </div>
+                                        <Button
+                                            onClick={() => handleVerifyOtp()}
+                                            disabled={loading}
+                                            className="w-full font-bold uppercase py-3"
+                                        >
+                                            {loading ? <Loader2 className="animate-spin mr-2" /> : null}
+                                            {loading ? "Verifying..." : "Verify"}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setStage('start')}
+                                            className="w-full"
+                                        >
+                                            Back
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleContinue} className="space-y-4">
+                                        <Input
                                             type="text"
-                                            inputMode="numeric"
-                                            maxLength={1}
-                                            value={digit}
-                                            onChange={(e) => handleOtpChange(index, e.target.value)}
-                                            onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                                            className="w-12 h-12 border border-gray-400 text-center text-lg font-bold rounded-md bg-white text-black focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent transition-all"
+                                            placeholder="Email or Phone"
+                                            value={identifier}
+                                            onChange={(e) => setIdentifier(e.target.value)}
+                                            className="h-11"
+                                            autoFocus
                                         />
-                                    ))}
-                                </div>
-                                <Button
-                                    onClick={() => handleVerifyOtp()}
-                                    disabled={loading}
-                                    className="w-full font-bold uppercase py-3"
-                                >
-                                    {loading ? <Loader2 className="animate-spin mr-2" /> : null}
-                                    {loading ? "Verifying..." : "Verify"}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => setStage('start')}
-                                    className="w-full"
-                                >
-                                    Back
-                                </Button>
-                            </div>
-                        ) : (
-                            <form onSubmit={handleContinue} className="space-y-4">
-                                <Input
-                                    type="text"
-                                    placeholder="Email or Phone"
-                                    value={identifier}
-                                    onChange={(e) => setIdentifier(e.target.value)}
-                                    className="h-11"
-                                    autoFocus
-                                />
-                                <Button
-                                    type="submit"
-                                    className="w-full font-bold uppercase py-3"
-                                    disabled={loading}
-                                >
-                                    {loading ? <Loader2 className="animate-spin mr-2" /> : null}
-                                    {loading ? "Checking..." : "Login"}
-                                </Button>
-                            </form>
-                        )}
+                                        <Button
+                                            type="submit"
+                                            className="w-full font-bold uppercase py-3"
+                                            disabled={loading}
+                                        >
+                                            {loading ? <Loader2 className="animate-spin mr-2" /> : null}
+                                            {loading ? "Checking..." : "Login"}
+                                        </Button>
+                                    </form>
+                                )}
 
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* ─── Left side (xl+): Vendor Onboarding Card ─── */}
+                </div>
+
+            </section>
+        </>
     );
 }
 

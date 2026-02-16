@@ -8,10 +8,11 @@ import { MessageCircle } from "lucide-react";
 export function GlobalHeader() {
   const handleHelpClick = () => {
     // WhatsApp link - you can customize the phone number and message
-    const phoneNumber = "+919745870917"; // Add your WhatsApp number here (with country code, no + or spaces)
+    const phoneNumber = "+971529281782"; // Add your WhatsApp number here (with country code, no + or spaces)
     const message = encodeURIComponent("Hello, I need help with ArmoredMart");
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
-    window.open(whatsappUrl, "_blank");
+    window.open(`tel:${phoneNumber}`);
+    // window.open(whatsappUrl, "_blank");
   };
 
   return (
@@ -25,7 +26,7 @@ export function GlobalHeader() {
             width={150}
             height={80}
             priority
-            // className="h-8 w-auto"
+          // className="h-8 w-auto"
           />
         </div>
 
