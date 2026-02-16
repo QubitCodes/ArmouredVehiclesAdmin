@@ -17,6 +17,6 @@ run:
     - name: NODE_ENV
       value: "production"
     - name: NEXT_PUBLIC_API_URL
-      value: "https://3vhjzpejuw.ap-south-1.awsapprunner.com/api/v1"
+      value: "https://www.armoredmart.com/api/v1"
     - name: NEXT_PUBLIC_WEBSITE_URL
-      value: "https://3vhjzpejuw.ap-south-1.awsapprunner.com/"
+      value: "https://www.armoredmart.com/"
