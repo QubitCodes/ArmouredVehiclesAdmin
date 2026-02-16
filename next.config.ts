@@ -35,6 +35,11 @@ const nextConfig: NextConfig = {
         port: "3002",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "*.s3.*.amazonaws.com",
+        pathname: "/**",
+      },
     ],
     unoptimized: true, // Comment in production
   },
