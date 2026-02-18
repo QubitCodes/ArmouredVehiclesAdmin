@@ -34,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${orbitron.variable}`}>
-      <body className="min-h-screen bg-background antialiased font-sans" suppressHydrationWarning>
+      <body className="min-h-screen bg-background antialiased font-sans overflow-hidden" suppressHydrationWarning>
         <ReactQueryProvider>{children}</ReactQueryProvider>
         <Toaster position="top-right" />
       </body>
