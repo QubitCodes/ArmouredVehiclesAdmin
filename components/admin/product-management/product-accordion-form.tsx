@@ -773,11 +773,17 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 			const cleanedData = cleanDataForApi(formData);
 			const fd = new FormData();
 
-
+			// Fields that should only be sent when saving their own section
+			// to prevent accidental overwrites via the full-replace backend strategy
+			const pricingSectionOnlyFields = ['pricing_tiers', 'individual_product_pricing'];
 
 			Object.keys(cleanedData).forEach(key => {
 				const value = cleanedData[key];
 				if (value === undefined || value === null) return;
+
+				// Skip pricing-related array fields unless saving section 3 (Pricing)
+				if (pricingSectionOnlyFields.includes(key) && sectionId !== 3) return;
+
 				if (Array.isArray(value) || (typeof value === 'object' && !(value instanceof File))) {
 					fd.append(key, JSON.stringify(value));
 				} else {
