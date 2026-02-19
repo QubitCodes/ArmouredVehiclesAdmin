@@ -146,7 +146,7 @@ export function Sidebar() {
       visibility: accessCheck("content.manage", false),
     },
     {
-      name: "References",
+      name: "Platform Settings",
       href: `/${domain}/references`,
       icon: Database,
       visibility: accessCheck("reference.manage", false),

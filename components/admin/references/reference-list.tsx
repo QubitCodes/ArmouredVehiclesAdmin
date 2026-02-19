@@ -28,6 +28,7 @@ import { GripVertical } from "lucide-react";
 // Hardcoded list of supported reference types based on ReferenceController docs
 import { BrandList } from "@/components/admin/brands/brand-list";
 import { VatRulesPanel } from "@/components/admin/references/vat-rules-panel";
+import { PlatformFeesPanel } from "@/components/admin/references/platform-fees-panel";
 
 const REFERENCE_TYPES = [
   { id: "brands", label: "Product Brands" },
@@ -36,7 +37,7 @@ const REFERENCE_TYPES = [
   { id: "license-types", label: "License Types" },
   // { id: "countries", label: "Countries" },
   { id: "vendor-categories", label: "Vendor Categories" },
-  { id: "currencies", label: "Currencies" },
+  // { id: "currencies", label: "Currencies" },
   // { id: "payment-methods", label: "Payment Methods" },
   { id: "financial-institutions", label: "Banks / Institutions" },
   // { id: "proof-types", label: "Bank Proof Types" },
@@ -51,6 +52,7 @@ const REFERENCE_TYPES = [
   // { id: "manufacturing-sources", label: "Manufacturing Sources" },
   { id: "shipping-types", label: "Shipping Types" },
   { id: "vat-rules", label: "VAT Rules" },
+  { id: "platform-fees", label: "Platform Fees" },
 ];
 
 export function ReferenceList() {
@@ -71,7 +73,7 @@ export function ReferenceList() {
   }, []);
 
   const loadData = async () => {
-    if (selectedType === 'brands' || selectedType === 'vat-rules') return; // Handled by dedicated components
+    if (selectedType === 'brands' || selectedType === 'vat-rules' || selectedType === 'platform-fees') return; // Handled by dedicated components
     setLoading(true);
     try {
       const items = await referenceService.getData(selectedType);
@@ -208,22 +210,24 @@ export function ReferenceList() {
       <div className="flex bg-bg-light border rounded-lg overflow-hidden min-h-[600px]">
         {/* Sidebar */}
         <div className="w-64 border-r bg-muted/10 p-4">
-          <h3 className="font-semibold mb-4 px-2">Reference Tables</h3>
+          <h3 className="font-semibold mb-4 px-2">Platform Settings</h3>
           <div className="space-y-1">
-            {REFERENCE_TYPES.map(type => (
-              <button
-                key={type.id}
-                onClick={() => setSelectedType(type.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  selectedType === type.id
-                    ? "bg-secondary text-secondary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {type.label}
-              </button>
-            ))}
+            {REFERENCE_TYPES
+              .filter(type => isSuperAdmin || (type.id !== 'vat-rules' && type.id !== 'platform-fees'))
+              .map(type => (
+                <button
+                  key={type.id}
+                  onClick={() => setSelectedType(type.id)}
+                  className={cn(
+                    "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    selectedType === type.id
+                      ? "bg-secondary text-secondary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {type.label}
+                </button>
+              ))}
           </div>
         </div>
 
@@ -233,6 +237,8 @@ export function ReferenceList() {
             <BrandList />
           ) : selectedType === 'vat-rules' ? (
             <VatRulesPanel />
+          ) : selectedType === 'platform-fees' ? (
+            <PlatformFeesPanel />
           ) : (
             <>
 
