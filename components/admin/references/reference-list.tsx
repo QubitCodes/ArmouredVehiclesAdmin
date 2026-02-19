@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Info } from "lucide-react";
+import { authService } from "@/services/admin/auth.service";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CustomTable, Column } from "@/components/ui/custom-table";
@@ -62,6 +63,12 @@ export function ReferenceList() {
   const [countryFilter, setCountryFilter] = useState<string>("all");
 
   const { data: countries = [] } = useCountries();
+
+  /** Only super_admin can delete reference items */
+  const isSuperAdmin = useMemo(() => {
+    const user = authService.getUserDetails();
+    return user?.userType === 'super_admin';
+  }, []);
 
   const loadData = async () => {
     if (selectedType === 'brands' || selectedType === 'vat-rules') return; // Handled by dedicated components
@@ -176,158 +183,175 @@ export function ReferenceList() {
           <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(item.id)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {isSuperAdmin && (
+            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(item.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       )
     }
-  ], [selectedType, countries]);
+  ], [selectedType, countries, isSuperAdmin]);
 
   return (
-    <div className="flex bg-bg-light border rounded-lg overflow-hidden min-h-[600px]">
-      {/* Sidebar */}
-      <div className="w-64 border-r bg-muted/10 p-4">
-        <h3 className="font-semibold mb-4 px-2">Reference Tables</h3>
-        <div className="space-y-1">
-          {REFERENCE_TYPES.map(type => (
-            <button
-              key={type.id}
-              onClick={() => setSelectedType(type.id)}
-              className={cn(
-                "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                selectedType === type.id
-                  ? "bg-secondary text-secondary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {type.label}
-            </button>
-          ))}
+    <div>
+      {/* Critical data warning note — shown to non-super-admin users */}
+      {!isSuperAdmin && (
+        <div className="flex gap-3 items-start p-4 mb-4 rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
+          <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            As these data are critical to the site functionality, records cannot be deleted once added. To remove any records safely, please contact the Tech Support team.
+          </p>
         </div>
-      </div>
+      )}
 
-      {/* Main Content */}
-      <div className="flex-1 p-6">
-        {selectedType === 'brands' ? (
-          <BrandList />
-        ) : selectedType === 'vat-rules' ? (
-          <VatRulesPanel />
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  {REFERENCE_TYPES.find(t => t.id === selectedType)?.label}
-                </h2>
-                <p className="text-muted-foreground text-sm">Manage values for this dropdown.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                {selectedType === 'financial-institutions' && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Filter by Country:</span>
-                    <select
-                      value={countryFilter}
-                      onChange={(e) => setCountryFilter(e.target.value)}
-                      className="bg-background border rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="all">All Countries</option>
-                      {Array.from(new Set(data.map(item => item.country_code).filter(Boolean)))
-                        .map(code => {
-                          const country = countries.find(c => c.value === code);
-                          return (
-                            <option key={code} value={code}>
-                              {country?.flag} {country?.label || code}
-                            </option>
-                          );
-                        })}
-                    </select>
-                  </div>
+      <div className="flex bg-bg-light border rounded-lg overflow-hidden min-h-[600px]">
+        {/* Sidebar */}
+        <div className="w-64 border-r bg-muted/10 p-4">
+          <h3 className="font-semibold mb-4 px-2">Reference Tables</h3>
+          <div className="space-y-1">
+            {REFERENCE_TYPES.map(type => (
+              <button
+                key={type.id}
+                onClick={() => setSelectedType(type.id)}
+                className={cn(
+                  "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  selectedType === type.id
+                    ? "bg-secondary text-secondary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted"
                 )}
-                <Button onClick={() => { setSelectedItem(null); setDialogOpen(true); }}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Item
-                </Button>
-              </div>
-            </div>
-
-            {selectedType === 'shipping-types' ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
               >
-                <div className="border rounded-md">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-muted/50 text-muted-foreground font-medium">
-                      <tr>
-                        <th className="h-12 px-4 w-[50px]"></th>
-                        <th className="h-12 px-4 w-[80px]">Sl No</th>
-                        <th className="h-12 px-4">Name / Value</th>
-                        <th className="h-12 px-4 w-[100px]">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="[&_tr:last-child]:border-0">
-                      <SortableContext
-                        items={data.map(i => i.id)}
-                        strategy={verticalListSortingStrategy}
+                {type.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-6">
+          {selectedType === 'brands' ? (
+            <BrandList />
+          ) : selectedType === 'vat-rules' ? (
+            <VatRulesPanel />
+          ) : (
+            <>
+
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight">
+                    {REFERENCE_TYPES.find(t => t.id === selectedType)?.label}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">Manage values for this dropdown.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {selectedType === 'financial-institutions' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Filter by Country:</span>
+                      <select
+                        value={countryFilter}
+                        onChange={(e) => setCountryFilter(e.target.value)}
+                        className="bg-background border rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        {data.map((item, index) => (
-                          <SortableRow
-                            key={item.id}
-                            item={item}
-                            index={index}
-                            onEdit={handleEdit}
-                            onDelete={setDeleteId}
-                          />
-                        ))}
-                      </SortableContext>
-                    </tbody>
-                  </table>
-                  {data.length === 0 && !loading && (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No items found.
+                        <option value="all">All Countries</option>
+                        {Array.from(new Set(data.map(item => item.country_code).filter(Boolean)))
+                          .map(code => {
+                            const country = countries.find(c => c.value === code);
+                            return (
+                              <option key={code} value={code}>
+                                {country?.flag} {country?.label || code}
+                              </option>
+                            );
+                          })}
+                      </select>
                     </div>
                   )}
+                  <Button onClick={() => { setSelectedItem(null); setDialogOpen(true); }}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Item
+                  </Button>
                 </div>
-              </DndContext>
-            ) : (
-              <CustomTable
-                data={selectedType === 'financial-institutions' && countryFilter !== 'all'
-                  ? data.filter(item => item.country_code === countryFilter)
-                  : data}
-                columns={columns}
-                gridCols={selectedType === 'financial-institutions' ? "2fr 1fr 1.5fr 100px" : "2fr 1fr 100px"}
-                isLoading={loading}
-                emptyMessage="No items found in this list."
-              />
-            )}
-          </>
+              </div>
+
+              {selectedType === 'shipping-types' ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className="border rounded-md">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-muted/50 text-muted-foreground font-medium">
+                        <tr>
+                          <th className="h-12 px-4 w-[50px]"></th>
+                          <th className="h-12 px-4 w-[80px]">Sl No</th>
+                          <th className="h-12 px-4">Name / Value</th>
+                          <th className="h-12 px-4 w-[100px]">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="[&_tr:last-child]:border-0">
+                        <SortableContext
+                          items={data.map(i => i.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {data.map((item, index) => (
+                            <SortableRow
+                              key={item.id}
+                              item={item}
+                              index={index}
+                              onEdit={handleEdit}
+                              onDelete={setDeleteId}
+                            />
+                          ))}
+                        </SortableContext>
+                      </tbody>
+                    </table>
+                    {data.length === 0 && !loading && (
+                      <div className="p-4 text-center text-muted-foreground">
+                        No items found.
+                      </div>
+                    )}
+                  </div>
+                </DndContext>
+              ) : (
+                <CustomTable
+                  data={selectedType === 'financial-institutions' && countryFilter !== 'all'
+                    ? data.filter(item => item.country_code === countryFilter)
+                    : data}
+                  columns={columns}
+                  gridCols={selectedType === 'financial-institutions' ? "2fr 1fr 1.5fr 100px" : "2fr 1fr 100px"}
+                  isLoading={loading}
+                  emptyMessage="No items found in this list."
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        <ReferenceDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          type={selectedType}
+          item={selectedItem}
+          onSuccess={() => { loadData(); }}
+          defaultCountry={countryFilter !== 'all' ? countryFilter : undefined}
+        />
+
+        {isSuperAdmin && (
+          <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this item?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Action cannot be undone. Checks will be performed to ensure this value is not in use by products.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive" onClick={confirmDelete}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
-
-      <ReferenceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        type={selectedType}
-        item={selectedItem}
-        onSuccess={() => { loadData(); }}
-        defaultCountry={countryFilter !== 'all' ? countryFilter : undefined}
-      />
-
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this item?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Action cannot be undone. Checks will be performed to ensure this value is not in use by products.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive" onClick={confirmDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

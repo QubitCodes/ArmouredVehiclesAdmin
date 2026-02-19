@@ -169,6 +169,18 @@ class AdminService {
       throw error;
     }
   }
+  /**
+   * Fetch platform settings (fee matrix, thresholds, etc.)
+   */
+  async getPlatformSettings(): Promise<Record<string, string>> {
+    try {
+      const response = await api.get("/admin/settings");
+      return response.data?.data || {};
+    } catch (error) {
+      console.error("Error fetching platform settings:", error);
+      throw error;
+    }
+  }
 }
 
 export const adminService = new AdminService();

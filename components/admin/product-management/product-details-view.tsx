@@ -43,6 +43,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/services/admin/product.service";
 import { COUNTRY_LIST } from "@/lib/countries";
+import { usePlatformFeeSettings, type FeeMatrixEntry } from "@/hooks/admin/use-platform-settings";
 
 interface ProductDetailsViewProps {
     productId: string;
@@ -74,6 +75,9 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
     const { data: subCategories = [] } = useCategoriesByParent(categoryId);
 
     const [openSections, setOpenSections] = useState<string[]>(["basic-info", "technical", "pricing", "uploads", "declarations"]);
+
+    /** Fetch platform fee settings for the informational note */
+    const { data: feeSettings } = usePlatformFeeSettings();
 
     // Helpers
     const getCategoryName = (id?: number | string, list: any[] = []) => {
@@ -335,6 +339,47 @@ export default function ProductDetailsView({ productId, domain, product }: Produ
                 <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Lead Time</h3>
                     <p className="text-lg font-medium">{(productionLeadTime !== undefined && productionLeadTime !== null) ? `${productionLeadTime} days` : "N/A"}</p>
+                </div>
+            </div>
+
+            {/* Platform Fee Note */}
+            <div className="flex gap-3 items-start p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                <div className="space-y-3 text-sm">
+                    <p className="text-blue-800 dark:text-blue-300 font-medium">
+                        Prices displayed on the storefront include a platform service fee applied on top of the vendor price shown above.
+                    </p>
+                    {feeSettings?.feeMatrix && feeSettings.feeMatrix.length > 0 ? (
+                        <div className="border rounded-md overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-blue-100/60 dark:bg-blue-900/30">
+                                        <TableHead className="text-xs">Buyer Type</TableHead>
+                                        <TableHead className="text-xs">Product Type</TableHead>
+                                        <TableHead className="text-xs text-right">Below {feeSettings.feeMatrix[0]?.threshold?.toLocaleString() || '10,000'} AED</TableHead>
+                                        <TableHead className="text-xs text-right">Above {feeSettings.feeMatrix[0]?.threshold?.toLocaleString() || '10,000'} AED</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {[...feeSettings.feeMatrix]
+                                        .sort((a, b) => b.fee_below - a.fee_below)
+                                        .map((row: FeeMatrixEntry, idx: number) => (
+                                            <TableRow key={idx}>
+                                                <TableCell className="text-xs capitalize">{row.buyer_type}</TableCell>
+                                                <TableCell className="text-xs capitalize">{row.product_type}</TableCell>
+                                                <TableCell className="text-xs text-right font-mono">{row.fee_below}%</TableCell>
+                                                <TableCell className="text-xs text-right font-mono">{row.fee_above}%</TableCell>
+                                            </TableRow>
+                                        ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-blue-600/80 dark:text-blue-400/60 italic">Fee matrix not configured.</p>
+                    )}
+                    <p className="text-xs text-blue-600/80 dark:text-blue-400/60">
+                        Premium buyers are those who have spent above AED {feeSettings?.premiumThreshold?.toLocaleString() || '15,000'} in the last {feeSettings?.premiumLookbackMonths || 6} months.
+                    </p>
                 </div>
             </div>
 
