@@ -310,32 +310,61 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 
 	/**
 	 * Validates wholesale pricing tiers for min/max order and overlapping ranges.
-	 * Returns a record keyed by tier index with error strings for min/max fields.
+	 * Returns a record keyed by tier index with error strings for min/max/price fields.
 	 */
-	const validateWholesaleTiers = (tiers: { min_quantity: number; max_quantity?: number | null | '' | undefined; price: number }[]): Record<number, { min?: string; max?: string }> => {
-		const errors: Record<number, { min?: string; max?: string }> = {};
+	const validateWholesaleTiers = (tiers: { min_quantity: number; max_quantity?: number | null | '' | undefined; price: number }[]): Record<number, { min?: string; max?: string; price?: string }> => {
+		const errors: Record<number, { min?: string; max?: string; price?: string }> = {};
+
+		/** Format a tier's range as a readable string, e.g. "[3–20]" or "[10–∞]" */
+		const rangeLabel = (t: typeof tiers[0]) => {
+			const mx = (t.max_quantity === '' || t.max_quantity === undefined || t.max_quantity === null) ? '∞' : t.max_quantity;
+			return `[${t.min_quantity}–${mx}]`;
+		};
 
 		for (let i = 0; i < tiers.length; i++) {
 			const tier = tiers[i];
-			// Coerce empty string / undefined to null for comparison
+			const minVal = tier.min_quantity;
+			const priceVal = tier.price;
 			const maxQty = (tier.max_quantity === '' || tier.max_quantity === undefined) ? null : tier.max_quantity;
 
-			// Rule 1: min must be less than max (if max is provided)
-			if (maxQty !== null && tier.min_quantity >= maxQty) {
+			const minEmpty = minVal === null || minVal === undefined || (minVal as any) === '' || minVal === 0;
+			const priceEmpty = priceVal === null || priceVal === undefined || (priceVal as any) === '' || priceVal === 0;
+
+			// Only validate filled fields
+			if (!minEmpty && minVal < 1) {
+				errors[i] = { ...errors[i], min: 'Min Qty must be at least 1' };
+			}
+
+			if (!priceEmpty && priceVal <= 0) {
+				errors[i] = { ...errors[i], price: 'Price must be greater than 0' };
+			}
+
+			if (!minEmpty && maxQty !== null && minVal >= maxQty) {
 				errors[i] = { ...errors[i], max: 'Max must be greater than Min' };
 			}
 
-			// Rule 2: Check for overlapping ranges against all other tiers
+			// Skip range checks if min is empty
+			if (minEmpty) continue;
+
+			// Overlap check FIRST (more important than duplicate)
 			for (let j = 0; j < tiers.length; j++) {
 				if (i === j) continue;
+				const otherMin = tiers[j].min_quantity;
+				const otherMinEmpty = otherMin === null || otherMin === undefined || (otherMin as any) === '' || otherMin === 0;
+				if (otherMinEmpty) continue;
+
 				const other = tiers[j];
 				const otherMaxRaw = (other.max_quantity === '' || other.max_quantity === undefined) ? null : other.max_quantity;
 				const thisMax = maxQty ?? Infinity;
 				const otherMax = otherMaxRaw ?? Infinity;
 
-				if (tier.min_quantity <= otherMax && other.min_quantity <= thisMax) {
-					errors[i] = { ...errors[i], min: `Overlaps with Tier ${j + 1}` };
-					break; // Only show first overlap per tier
+				if (minVal <= otherMax && otherMin <= thisMax) {
+					// Descriptive message showing both ranges
+					errors[i] = {
+						...errors[i],
+						min: errors[i]?.min || `Range ${rangeLabel(tier)} overlaps with Tier ${j + 1} ${rangeLabel(other)}`
+					};
+					break;
 				}
 			}
 		}
@@ -344,7 +373,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 	};
 
 	/** Tier validation errors stored in state, updated on blur */
-	const [tierErrors, setTierErrors] = useState<Record<number, { min?: string; max?: string }>>({});
+	const [tierErrors, setTierErrors] = useState<Record<number, { min?: string; max?: string; price?: string }>>({});
 
 	/** Re-validate all tiers by reading current form values */
 	const revalidateTiers = () => {
@@ -352,7 +381,17 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 		setTierErrors(validateWholesaleTiers(tiers));
 	};
 
-	// Helper to add pricing tier — blocks if existing tiers have errors
+	/** Check if any existing tier has incomplete min_quantity or price, used to disable Add Tier */
+	const hasIncompleteTiers = (): boolean => {
+		const tiers = form.getValues('pricing_tiers') || [];
+		return tiers.some((t: any) => {
+			const minEmpty = t.min_quantity === null || t.min_quantity === undefined || t.min_quantity === '' || t.min_quantity === 0;
+			const priceEmpty = t.price === null || t.price === undefined || t.price === '' || t.price === 0;
+			return minEmpty || priceEmpty;
+		});
+	};
+
+	// Helper to add pricing tier — blocks if existing tiers have errors or incomplete fields
 	const addPricingTier = () => {
 		// Re-validate before checking
 		const tiers = form.getValues('pricing_tiers') || [];
@@ -362,7 +401,11 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 			toast.error('Fix existing tier errors before adding a new one');
 			return;
 		}
-		appendPricingTier({ min_quantity: null as any, max_quantity: null, price: 0 });
+		if (hasIncompleteTiers()) {
+			toast.error('Complete all existing tier fields before adding a new one');
+			return;
+		}
+		appendPricingTier({ min_quantity: null as any, max_quantity: null, price: null as any });
 	};
 
 	const { fields: individualPricing, append: appendIndividual, remove: removeIndividual } = useFieldArray({
@@ -773,6 +816,25 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 			const cleanedData = cleanDataForApi(formData);
 			const fd = new FormData();
 
+			// Validate pricing tiers before saving section 3 (Pricing)
+			if (sectionId === 3) {
+				const tiers = formData.pricing_tiers || [];
+				if (tiers.length > 0) {
+					// Block save if any tier is missing required fields
+					if (hasIncompleteTiers()) {
+						toast.error('All pricing tiers must have Min Qty and Price filled.');
+						return;
+					}
+
+					const errors = validateWholesaleTiers(tiers);
+					setTierErrors(errors);
+					if (Object.keys(errors).length > 0) {
+						toast.error('Please fix pricing tier errors before saving.');
+						return;
+					}
+				}
+			}
+
 			// Fields that should only be sent when saving their own section
 			// to prevent accidental overwrites via the full-replace backend strategy
 			const pricingSectionOnlyFields = ['pricing_tiers', 'individual_product_pricing'];
@@ -929,7 +991,13 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 				if (dateValue.day && dateValue.month && dateValue.year) {
 					cleanedData[apiField] = `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
 				}
-			} else if (field === "pricing_tiers" || field === "individualProductPricing") {
+			} else if (field === "pricing_tiers") {
+				// Sort pricing tiers by min_quantity ASC before sending to API
+				if (value && Array.isArray(value) && value.length > 0) {
+					const sorted = [...value].sort((a: any, b: any) => (a.min_quantity || 0) - (b.min_quantity || 0));
+					cleanedData[apiField] = sorted;
+				}
+			} else if (field === "individualProductPricing") {
 				if (value) cleanedData[apiField] = value;
 			} else if (Array.isArray(value)) {
 				const filtered = value.filter(item => item !== "");
@@ -1905,7 +1973,7 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 					<div className="flex justify-between items-center mb-4">
 						<h3 className="font-semibold text-lg">Wholesale Pricing Tiers</h3>
 						{!isReadOnly && (
-							<Button type="button" variant="outline" size="sm" onClick={addPricingTier}>
+							<Button type="button" variant="outline" size="sm" onClick={addPricingTier} disabled={hasIncompleteTiers()}>
 								<Plus className="h-4 w-4 mr-2" /> Add Tier
 							</Button>
 						)}
@@ -1965,17 +2033,22 @@ export default function ProductAccordionForm({ productId, domain, readOnly = fal
 								control={form.control}
 								name={`pricing_tiers.${index}.price`}
 								render={({ field }) => (
-									<FormItem className="flex-1 pb-5">
+									<FormItem className="flex-1 relative pb-5">
 										<FormLabel className="text-xs">Price</FormLabel>
 										<FormControl>
 											<Input
 												type="number"
 												step="0.01"
-												{...field}
-												onChange={e => field.onChange(parseFloat(e.target.value || "0"))}
-												disabled={isReadOnly}
+												value={field.value ?? ''}
+												onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+												onBlur={revalidateTiers}
+												disabled={isReadOnly || !form.watch(`pricing_tiers.${index}.min_quantity`)}
+												className={tierErrors[index]?.price ? 'border-destructive' : ''}
 											/>
 										</FormControl>
+										{tierErrors[index]?.price && (
+											<p className="text-xs text-destructive absolute bottom-0 left-0">{tierErrors[index].price}</p>
+										)}
 										<FormMessage />
 									</FormItem>
 								)}
