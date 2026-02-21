@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { vendorService } from "@/services/admin/vendor.service";
 import { authService } from "@/services/admin/auth.service";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMarkReadByEntity } from "@/hooks/admin/use-notifications";
 
 import { VendorProfileView } from "@/components/admin/vendor-profile-view";
 
@@ -46,6 +47,15 @@ export default function VendorDetailPage() {
     const perm = authService.hasPermission("vendor.approve") || authService.hasPermission("vendor.controlled.approve");
     setCanPerformActions(perm);
   }, []);
+
+  // Auto-mark notifications as read when opening this vendor
+  const markReadByEntity = useMarkReadByEntity();
+  useEffect(() => {
+    if (userId) {
+      markReadByEntity.mutate({ entityType: 'user', entityId: userId });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const toggleMarkField = (field: string) => {
     setMarkedFields(prev => {

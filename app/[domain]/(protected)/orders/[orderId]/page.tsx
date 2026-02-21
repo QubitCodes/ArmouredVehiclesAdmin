@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "@/services/admin/auth.service";
 import { AxiosError } from "axios";
+import { useMarkReadByEntity } from "@/hooks/admin/use-notifications";
 import {
   ArrowLeft,
   Package,
@@ -84,6 +85,20 @@ export default function OrderDetailPage() {
     }
     setRoleLoading(false);
   }, []);
+
+  // Auto-mark notifications as read when opening this order
+  // Some notifications store entity_id = order_group_id (8-digit short ID from checkout),
+  // others store entity_id = order UUID (from status changes). Mark both.
+  const markReadByEntity = useMarkReadByEntity();
+  useEffect(() => {
+    if (orderId) {
+      markReadByEntity.mutate({ entityType: 'order', entityId: orderId });
+    }
+    if (order?.order_group_id && order.order_group_id !== orderId) {
+      markReadByEntity.mutate({ entityType: 'order', entityId: order.order_group_id });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, order?.order_group_id]);
 
   // Payment Confirmation Dialog State
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);

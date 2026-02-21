@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
     Table,
     TableBody,
@@ -16,6 +16,7 @@ import { financeService } from "@/services/admin/finance.service";
 import { PayoutDetailsModal } from "@/components/admin/payouts/PayoutDetailsModal";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+import { useMarkAllAsRead } from "@/hooks/admin/use-notifications";
 
 interface PayoutRequest {
     id: string;
@@ -73,6 +74,17 @@ export default function AdminPayoutsPage() {
     useEffect(() => {
         loadPayouts();
     }, [statusFilter]);
+
+    // Auto-mark all finance notifications as read when this page is opened
+    const { mutate: markAllRead } = useMarkAllAsRead();
+    const hasMarkedRef = useRef(false);
+    useEffect(() => {
+        if (!hasMarkedRef.current) {
+            markAllRead('finance');
+            hasMarkedRef.current = true;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleRowClick = (payout: PayoutRequest) => {
         setSelectedPayout(payout);

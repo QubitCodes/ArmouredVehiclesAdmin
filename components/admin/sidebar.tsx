@@ -23,6 +23,8 @@ import {
 import { vendorAuthService } from "@/services/vendor/auth.service";
 
 import { useOnboardingProfile } from "@/hooks/vendor/dashboard/use-onboarding-profile";
+import { NotificationBell } from "@/components/admin/notification-bell";
+import { useNotificationCounts } from "@/hooks/admin/use-notifications";
 
 // Navigation moved inside component for state access
 
@@ -39,6 +41,10 @@ export function Sidebar() {
   // Check onboarding status for vendors
   const { data: profileData } = useOnboardingProfile(domain === 'vendor');
   const onboardingStatus = profileData?.profile?.onboarding_status;
+
+  // Notification badge counts — only poll for the notification test-user bell users
+  const isNotifUser = userDetails?.email && (userDetails.email.includes('+') || ['saneercyd@gmail.com', 'mail@iamjk.in', 'sinusaneer@gmail.com', 'info@blueweb2.com'].includes(userDetails.email.toLowerCase().trim()));
+  const { data: notifCounts } = useNotificationCounts(!!isNotifUser);
 
   useEffect(() => {
     // Select auth service based on domain
@@ -102,6 +108,7 @@ export function Sidebar() {
       href: `/${domain}/vendors`,
       icon: Store,
       visibility: accessCheck(["vendor.view", "vendor.controlled.approve"], false),
+      badge: notifCounts?.users ?? 0,
     },
     {
       name: "Customers",
@@ -120,6 +127,7 @@ export function Sidebar() {
       href: `/${domain}/orders`,
       icon: ShoppingCart,
       visibility: accessCheck(["order.view", "order.controlled.approve"], true),
+      badge: notifCounts?.orders ?? 0,
     },
     {
       name: "Wallet",
@@ -132,6 +140,7 @@ export function Sidebar() {
       href: `/${domain}/payouts`,
       icon: CreditCard,
       visibility: accessCheck("payout.view", false),
+      badge: notifCounts?.finance ?? 0,
     },
     {
       name: "Categories",
@@ -172,16 +181,17 @@ export function Sidebar() {
   const defaultUserRole = domain === "vendor" ? "VENDOR" : "ADMIN";
 
   return (
-    <div className="flex h-full w-64 flex-col bg-primary">
-      {/* Logo */}
-      <div className="flex items-center justify-center px-4">
+    <div className="flex h-full w-64 flex-col bg-primary relative z-50">
+      {/* Logo + Notification Bell */}
+      <div className="flex items-center justify-between px-4">
         <Image
           src="/images/white-logo.svg"
           alt="ArmoredMart Logo"
-          width={180}
-          height={50}
+          width={160}
+          height={45}
           priority
         />
+        <NotificationBell email={userDetails?.email} />
       </div>
 
       {!isRestricted && (
@@ -202,12 +212,18 @@ export function Sidebar() {
                 )}
               >
                 <Icon className="h-5 w-5" />
-                <span>{item.name}</span>
+                <span className="flex-1">{item.name}</span>
+                {(item as any).badge > 0 && (
+                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                    {(item as any).badge > 99 ? '99+' : (item as any).badge}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
       )}
+
 
       {/* Mini Profile Card & Logout */}
       <div className="border-t border-primary/20 p-4">

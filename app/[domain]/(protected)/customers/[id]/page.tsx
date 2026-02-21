@@ -20,6 +20,7 @@ import { CustomerOrders } from "@/components/admin/customer-management/customer-
 import { customerService, Customer } from "@/services/admin/customer.service";
 import { authService } from "@/services/admin/auth.service";
 import { useQuery } from "@tanstack/react-query";
+import { useMarkReadByEntity } from "@/hooks/admin/use-notifications";
 
 export default function CustomerDetailPage() {
     const params = useParams();
@@ -57,6 +58,15 @@ export default function CustomerDetailPage() {
         ], false);
         setCanViewOrders(hasOrderPerm);
     }, []);
+
+    // Auto-mark notifications as read when opening this customer
+    const markReadByEntity = useMarkReadByEntity();
+    useEffect(() => {
+        if (customerId) {
+            markReadByEntity.mutate({ entityType: 'user', entityId: customerId });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [customerId]);
 
     const toggleMarkField = (field: string) => {
         setMarkedFields(prev => {
